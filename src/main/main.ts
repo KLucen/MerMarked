@@ -5,7 +5,7 @@ import path from 'node:path';
 import squirrelStartup from 'electron-squirrel-startup';
 import type { OpenedMarkdownDocument } from '../types/reader-api';
 import {
-  decodeUtf8Markdown,
+  decodeMarkdownSource,
   readDocumentImage,
   selectedMarkdownPath,
   validatedExternalUrl,
@@ -35,10 +35,10 @@ function registerReaderIpc(): void {
     if (!selectedPath) return null;
 
     const bytes = await readFile(selectedPath);
-    const content = decodeUtf8Markdown(bytes);
+    const source = decodeMarkdownSource(bytes);
 
     documentPaths.set(event.sender.id, selectedPath);
-    return { path: selectedPath, name: path.basename(selectedPath), content };
+    return { path: selectedPath, name: path.basename(selectedPath), ...source };
   });
 
   ipcMain.handle('document:read-image', async (event, relativePath: unknown): Promise<string | null> => {
