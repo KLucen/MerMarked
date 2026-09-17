@@ -4,11 +4,11 @@
 
 ## ADR-001：Windows 首发，Electron Forge + React/TypeScript
 
-- 日期：2026-09-17；状态：暂定，待 P0 打包验收。
+- 日期：2026-09-17；状态：P0 本机打包与安装验收通过；升级仍需重复验收。
 - 决定：先用 Electron Forge、React、TypeScript 开发 Windows 桌面版，npm 管理依赖并提交锁文件。优先试用 Forge Vite 模板且固定版本。
 - 理由：Electron 提供明确的 PDF 打印和页面捕获 API；本机 Node/npm/Git 可用，不依赖 Rust。Forge 可生成 Windows 安装包。
 - 风险与替代：Forge Vite 插件目前标为实验性。P0 若打包或安装不稳定，在业务代码较少时换成 Forge Webpack 插件；不更换文档核心模型。
-- 验证：启动、类型检查、package、Windows Setup.exe 安装与运行。
+- 验证：启动、类型检查、package、Windows Setup.exe 安装与运行均已通过。本机卸载有 Squirrel 残留、启动有缓存权限警告，须在干净环境复测。首次 Electron 下载超时，使用镜像后完成。
 
 ## ADR-002：Markdown 与伴随画布文件分离
 
@@ -31,3 +31,10 @@
 - 决定：交互画布与导出渲染器共享场景数据，不直接截图 React Flow DOM。导出场景使用 HTML 卡片和 SVG 箭头；PDF 先分页再打印；位图逐块捕获。Sharp 只在安装包中验证通过后用于单张拼接。
 - 理由：视口裁剪、嵌套 DOM 与页面尺寸使直接截图无法保证完整导出。
 - 验证：中文、图片、长卡片、跨页箭头、视口外节点、8k 以上场景与安装包内输出。
+
+## ADR-005：阅读渲染与资源权限边界
+
+- 日期：2026-09-17；状态：最小阅读切片已实测，后续卡片正文复用时再验收。
+- 决定：阅读界面使用 `react-markdown`、GFM 与 YAML frontmatter 插件；标题目录仍来自 `src/core` 的章节树。默认跳过原始 HTML。桌面主进程只通过文件选择器读取单个 `.md`；相对图片限在当前文档目录，外链仅允许 `http`、`https`、`mailto` 并交给系统浏览器。
+- 理由：Markdown 正文可能包含不可信链接或 HTML，需要让正文显示与本地文件权限分离，同时保持阅读无写入路径。
+- 验证：UTF-8/BOM、危险协议、目录越界测试通过；打包版打开正常样本与危险样本，本地图片显示，原始 HTML 未产生可执行 DOM，源文件 SHA-256 不变。
