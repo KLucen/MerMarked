@@ -46,6 +46,12 @@ button:focus-visible, a:focus-visible { outline: 3px solid #86aef8; outline-offs
 .document-heading-row { align-items: center; display: flex; gap: 12px; }
 .document-name { font-size: 24px; letter-spacing: -.025em; line-height: 1.3; margin: 0; overflow-wrap: anywhere; }
 .read-only-badge { background: #eef4ff; border: 1px solid #dce8ff; border-radius: 5px; color: #5174af; flex: 0 0 auto; font-size: 11px; padding: 3px 7px; }
+.selection-probe-controls { align-items: center; color: #788396; display: flex; flex-wrap: wrap; font-size: 12px; gap: 9px; margin-top: 15px; }
+.selection-probe-button { background: #fff; border: 1px solid #cfd9ea; border-radius: 6px; color: #315eb7; cursor: pointer; font-size: 12px; font-weight: 600; padding: 5px 10px; }
+.selection-probe-button:hover { background: #f2f6fc; }
+.selection-probe-result { background: #f8fafd; border-left: 2px solid #a7b9d8; color: #4d5b70; display: flex; flex-direction: column; font-size: 12px; gap: 5px; line-height: 1.5; margin-top: 12px; padding: 10px 13px; }
+.selection-probe-result strong { color: #304261; font-size: 12px; }
+.selection-probe-result code { color: #263753; font-family: Consolas, monospace; overflow-wrap: anywhere; white-space: pre-wrap; }
 .document-divider { border-bottom: 1px solid #e7ebf1; margin: 24px 0 30px; }
 .empty-document { color: #778295; padding: 58px 0; text-align: center; }
 .empty-document h2 { color: #4d5c72; font-size: 17px; margin: 0 0 8px; }

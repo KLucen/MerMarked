@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import {
+  decodeMarkdownSource,
   decodeUtf8Markdown,
   readDocumentImage,
   selectedMarkdownPath,
@@ -22,6 +23,25 @@ test('UTF-8 decoding handles BOM without changing the source bytes', () => {
   assert.equal(decodeUtf8Markdown(bytes), '# 中文\r\n正文');
   assert.deepEqual(bytes, snapshot);
   assert.throws(() => decodeUtf8Markdown(Uint8Array.from([0xff, 0xfe, 0x23])), /UTF-8/);
+});
+
+test('source metadata hashes original BOM and CRLF bytes', () => {
+  const text = '# 中文\r\n正文 😀\r\n';
+  const withoutBom = Buffer.from(text, 'utf8');
+  const withBom = Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), withoutBom]);
+  const snapshot = Buffer.from(withBom);
+
+  assert.deepEqual(decodeMarkdownSource(withoutBom), {
+    content: text,
+    sourceSha256: 'c4d0954d595b032209a990e7adbe421fec4f98ced3028000028d66cb5125a497',
+    bomByteLength: 0,
+  });
+  assert.deepEqual(decodeMarkdownSource(withBom), {
+    content: text,
+    sourceSha256: 'e52568dc00ee5a94db2fccc6aeec9bb372bbbae2749519696cba8e1103324e8e',
+    bomByteLength: 3,
+  });
+  assert.deepEqual(withBom, snapshot);
 });
 
 test('external links use a narrow protocol allowlist', () => {

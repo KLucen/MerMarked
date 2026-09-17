@@ -1,6 +1,6 @@
 # MerMarkd 开发进度
 
-> 2026-09-17。当前阶段：P0 可行性原型，进行中；最小阅读切片完成，本轮只更新批注与混排方案，未继续开发。状态只记录已观察到的结果；“设计可行”不等于“功能已实现”。
+> 2026-09-17。当前阶段：P0 可行性原型，进行中；最小阅读切片和 A1 选区映射原型已完成。状态只记录已观察到的结果；“设计可行”不等于“功能已实现”。
 
 ## 已完成
 
@@ -13,15 +13,19 @@
 - 使用打包版实测 `reading-features.md`：目录 5 个标题、表格 1 个、本地 PNG 实际宽 96 px、目录跳转后滚动并选中章节；YAML 元数据未显示。`security-cases.md` 中原始 HTML 未产生脚本或图片节点，越界图片显示失败占位。阅读前后样本 SHA-256 均为 `D5C6D8EAFD642D28C0D5852FD38DF9519913EC77666108BAB75217FAE9FF34FC`，未生成 sidecar。
 - `npm test` 13/13 通过，`npm run typecheck` 通过。`npm run make` 使用 Electron 镜像后生成新版 Windows 测试安装包，位于 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`，约 154 MB；打包版成功启动并通过上述实际阅读检查。
 - 根据新增需求把产品架构升级为 v0.3：规划 `*.md.annotations.yaml` 批注 sidecar、源码锚点与保守重定位、内容优先的便签/高亮、标签化阅读摘要、中英文混排排版规则。同步修订开发流程、可行性关口、ADR 与工作区不变量。此项仅为设计，尚无批注或排版新代码。
+- 完成 A1 单块选区映射原型：主进程返回原始文件 SHA-256 和 BOM 长度；`src/core/selection-map.ts` 把渲染后标题/段落的可见文字位置映射到原始 `.md` 的 UTF-8 半开字节范围；阅读界面的“验证选区”显示范围、选文、原文片段或拒绝原因。只读原文，不创建批注 sidecar。
+- 新增 UTF-8 BOM + CRLF 的 `selection-mapping.md` 样本及边界测试，核对重复文字、加粗、链接、中文、emoji、组合字符的确切字节范围；无法确定的转义/实体边界、软换行、跨块和含不支持内联节点的块保守拒绝。`npm test` 20/20、`npm run typecheck` 通过。`npm run package` 初次因 Electron GitHub 下载超时失败，设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后通过。
+- 打包版实测打开该样本并选中“加粗内容”；阅读界面显示 `已定位到原文`、UTF-8 范围 `[163, 175)`，可见选文与原文片段均为“加粗内容”，与直接读取原始字节的结果一致。跨段落选区显示明确拒绝。试用前后样本 SHA-256 均为 `40CD23BB1D6A92AFEA4D1C42AD34A6EFA01E0D551F4B3864B94895325999B3ED`，未生成 `.annotations.yaml`。
+- `npm run make` 使用 Electron 镜像生成本批 Windows 测试安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`（153,747,456 字节）。本批验证了打包版，尚未在干净 Windows 环境完成该安装版的安装/卸载复验。
 
 ## 当前停点
 
-- 等待用户审阅新增设计与试用反馈。用户允许继续开发后，下一批 A1 只做“阅读选区 → 原始 Markdown UTF-8 字节范围”的可检查原型；不写 YAML，也不改原文。
+- 等待用户试用 A1 选区映射原型并反馈。下一批 A2 才做批注 YAML schema、受限解析、原子持久化与磁盘冲突检测；本批不提前开始 A2。
 
 ## 后续切片
 
-1. A1：选区到原文字节范围的锚点原型与边界样本。
-2. A2：批注 YAML schema、安全持久化和冲突检测。
+1. A1：选区到原文字节范围的锚点原型与边界样本，已完成。
+2. A2：批注 YAML schema、安全持久化和冲突检测，待反馈后开发。
 3. A3–A6：混排排版、高亮、便签与标签、保守重定位和阅读摘要；每批交付后等待试用反馈。
 4. A7：章节结构移动、批注重定位与三文件恢复；A8：嵌套画布和独立 PDF/JPG 导出原型。
 5. 后续完成编辑模式、卡片交互、质量打磨与正式发布。逐批验收见 `docs/DEVELOPMENT_PROCESS.md`。
@@ -32,7 +36,7 @@
 - 章节移动、三文件恢复、批注锚点、ID 匹配和全图导出尚未由可运行代码验证。
 - 5 MB 文档、1000 标题、200 可见卡片以及单图尺寸均只是目标，尚无测量结果。
 - 阅读器目前将全文在渲染线程同步解析；大文件性能和图片解码后内存占用尚未测量。相对 `.md` 链接只提示暂不支持。
-- 新增批注功能尚未实现。当前 `openMarkdown()` 只返回解码后的正文，展示字符串会去掉 UTF-8 BOM；A1 需补原始字节摘要、BOM 长度及 UTF-16/UTF-8 映射。当前阅读 CSS 的表格 `display:block` 需在 A3 改为表格外层滚动容器。
+- 批注、高亮与标签尚未实现。A1 只支持可核验的单段落/标题选区；表格单元格、代码、跨块和部分实体/转义需后续扩大映射范围。当前阅读 CSS 的表格 `display:block` 需在 A3 改为表格外层滚动容器。
 
 ## 本轮验证命令
 
@@ -43,4 +47,4 @@ npm run package
 npm run make
 ```
 
-`npm test`：13/13 通过；`npm run typecheck`：通过。首次 `npm run make` 因 GitHub Electron 下载超时失败；设置 `ELECTRON_MIRROR` 后重试成功。打包版经 DevTools 协议和 Windows 文件选择器实测打开、目录跳转、本地图片、安全内容与原文摘要。Node 测试会提示项目未声明 ESM 模块类型，目前不影响测试结果。本轮只有文档修改，未重新运行软件测试或打包。
+本轮 A1：`npm test` 20/20、`npm run typecheck`、`npm run package`、`npm run make` 通过（打包使用 Electron 镜像）。打包版“加粗内容”选区映射与跨段落拒绝实测通过，样本摘要不变、无 sidecar。Node 测试仍提示项目未声明 ESM 模块类型，目前不影响测试结果。

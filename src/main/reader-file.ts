@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -32,6 +33,22 @@ export function decodeUtf8Markdown(bytes: Uint8Array): string {
   } catch {
     throw new Error('文档不是有效的 UTF-8 编码，请先转换为 UTF-8。');
   }
+}
+
+export interface DecodedMarkdownSource {
+  content: string;
+  sourceSha256: string;
+  bomByteLength: 0 | 3;
+}
+
+export function decodeMarkdownSource(bytes: Uint8Array): DecodedMarkdownSource {
+  const content = decodeUtf8Markdown(bytes);
+  const bomByteLength = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0;
+  return {
+    content,
+    sourceSha256: createHash('sha256').update(bytes).digest('hex'),
+    bomByteLength,
+  };
 }
 
 function decodeImagePath(value: unknown): string | null {

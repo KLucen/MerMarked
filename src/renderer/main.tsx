@@ -6,12 +6,15 @@ import type { Components, ExtraProps } from 'react-markdown';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import { extractSections } from '../core/sections';
+import { buildSelectionMap, resolveSelection } from '../core/selection-map';
+import type { OpenedMarkdownDocument } from '../types/reader-api';
 import './style.css';
 
-interface OpenDocument {
-  readonly path: string;
-  readonly name: string;
-  readonly content: string;
+type SelectionProbeResult = ReturnType<typeof resolveSelection>;
+
+function sourceBlockFor(node: Node): HTMLElement | null {
+  const element = node instanceof Element ? node : node.parentElement;
+  return element?.closest<HTMLElement>('[data-source-block-start]') ?? null;
 }
 
 function slugify(title: string): string {
@@ -67,13 +70,18 @@ function LocalImage({ src, alt, documentPath }: {
 }
 
 function App() {
-  const [openedDocument, setOpenedDocument] = useState<OpenDocument | null>(null);
+  const [openedDocument, setOpenedDocument] = useState<OpenedMarkdownDocument | null>(null);
   const [opening, setOpening] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<number | null>(null);
+  const [selectionProbe, setSelectionProbe] = useState<SelectionProbeResult | null>(null);
 
   const sectionTree = useMemo(
     () => openedDocument ? extractSections(openedDocument.content) : null,
+    [openedDocument],
+  );
+  const selectionMap = useMemo(
+    () => openedDocument ? buildSelectionMap(openedDocument.content, openedDocument.bomByteLength) : null,
     [openedDocument],
   );
   const sectionIds = useMemo(() => {
@@ -106,6 +114,7 @@ function App() {
       if (opened) {
         setOpenedDocument(opened);
         setActiveSection(null);
+        setSelectionProbe(null);
         window.scrollTo({ top: 0 });
       }
     } catch (error) {
@@ -160,12 +169,52 @@ function App() {
     setMessage('当前版本暂不支持打开文档中的相对链接。');
   }, []);
 
+  const probeSelection = useCallback(() => {
+    const selection = window.getSelection();
+    const article = window.document.querySelector<HTMLElement>('.markdown-body');
+    if (!selectionMap || !article || !selection || selection.rangeCount !== 1 || selection.isCollapsed) {
+      setSelectionProbe({ ok: false, reason: '请先在正文中选择一段文字。' });
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    const startBlock = sourceBlockFor(range.startContainer);
+    const endBlock = sourceBlockFor(range.endContainer);
+    if (!startBlock || startBlock !== endBlock || !article.contains(startBlock)) {
+      setSelectionProbe({ ok: false, reason: '当前原型只支持同一标题或段落内的选区。' });
+      return;
+    }
+
+    const blockStart = Number(startBlock.dataset.sourceBlockStart);
+    const block = selectionMap.blocks.find((candidate) => candidate.blockStart === blockStart);
+    if (!block || startBlock.textContent !== block.visibleText) {
+      setSelectionProbe({ ok: false, reason: '渲染文字与源码映射不一致，已拒绝定位。' });
+      return;
+    }
+
+    try {
+      const prefix = window.document.createRange();
+      prefix.setStart(startBlock, 0);
+      prefix.setEnd(range.startContainer, range.startOffset);
+      const visibleStart = prefix.toString().length;
+      const visibleEnd = visibleStart + range.toString().length;
+      if (block.visibleText.slice(visibleStart, visibleEnd) !== range.toString()) {
+        setSelectionProbe({ ok: false, reason: '选中文字与源码映射不一致，已拒绝定位。' });
+        return;
+      }
+      setSelectionProbe(resolveSelection(selectionMap, blockStart, visibleStart, visibleEnd));
+    } catch {
+      setSelectionProbe({ ok: false, reason: '无法读取当前选区，请重新选择文字。' });
+    }
+  }, [selectionMap]);
+
   const heading = useCallback((tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', props: ComponentProps<'h1'> & ExtraProps) => {
     const { node, children, ...rest } = props;
     const index = node?.position?.start.offset === undefined ? undefined : headingByOffset.get(node.position.start.offset);
     const id = index === undefined ? undefined : sectionIds[index];
     const Tag = tag;
-    return <Tag {...rest} id={id} tabIndex={id ? -1 : undefined}>{children}</Tag>;
+    return <Tag {...rest} id={id} tabIndex={id ? -1 : undefined}
+      data-source-block-start={node?.position?.start.offset}>{children}</Tag>;
   }, [headingByOffset, sectionIds]);
 
   const components = useMemo<Components>(() => ({
@@ -175,6 +224,9 @@ function App() {
     h4: (props) => heading('h4', props),
     h5: (props) => heading('h5', props),
     h6: (props) => heading('h6', props),
+    p: ({ node, children, ...props }) => (
+      <p {...props} data-source-block-start={node?.position?.start.offset}>{children}</p>
+    ),
     a: ({ node: _node, href, children, ...props }) => (
       <a {...props} href={href} onClick={(event) => openLink(event, href)}>{children}</a>
     ),
@@ -232,6 +284,19 @@ function App() {
           <main className="reading-main">
             <div className="document-kicker">MARKDOWN 文档</div>
             <div className="document-heading-row"><h1 className="document-name">{openedDocument.name}</h1><span className="read-only-badge">只读</span></div>
+            <div className="selection-probe-controls">
+              <button type="button" className="selection-probe-button" onMouseDown={(event) => event.preventDefault()}
+                onClick={probeSelection}>验证选区</button>
+              <span>选中一段正文后点击 · 映射原型，不保存批注</span>
+            </div>
+            {selectionProbe && <div className="selection-probe-result" role="status">
+              {selectionProbe.ok ? <>
+                <strong>已定位到原文</strong>
+                <span>UTF-8 字节范围 [{selectionProbe.startByte}, {selectionProbe.endByte})</span>
+                <span>可见选文：<code>{selectionProbe.displayQuote}</code></span>
+                <span>原文片段：<code>{selectionProbe.sourceExact}</code></span>
+              </> : <><strong>无法安全定位</strong><span>{selectionProbe.reason}</span></>}
+            </div>}
             <div className="document-divider" />
             {openedDocument.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文">
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter]} skipHtml components={components}>
