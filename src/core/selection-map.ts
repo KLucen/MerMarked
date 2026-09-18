@@ -42,6 +42,17 @@ export type SelectionResolution =
     }
   | { readonly ok: false; readonly reason: string };
 
+export type StoredHighlightResolution =
+  | {
+      readonly ok: true;
+      /** Parser offset identifying the rendered paragraph or heading. */
+      readonly blockStart: number;
+      /** Half-open UTF-16 range in that block's visible text. */
+      readonly visibleStart: number;
+      readonly visibleEnd: number;
+    }
+  | { readonly ok: false; readonly reason: string };
+
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -223,4 +234,60 @@ export function resolveSelection(
     sourceExact: map.source.slice(sourceStart, sourceEnd),
     displayQuote: block.visibleText.slice(visibleStart, visibleEnd),
   };
+}
+
+/**
+ * Invert a stored source anchor only when one supported rendered range maps
+ * back to exactly the same original bytes and visible quote. A matching word
+ * elsewhere in the document is never sufficient to display a highlight.
+ */
+export function resolveStoredHighlight(
+  map: SelectionMap,
+  anchor: {
+    readonly startByte: number;
+    readonly endByte: number;
+    readonly sourceExact: string;
+    readonly displayQuote: string;
+  },
+): StoredHighlightResolution {
+  const { startByte, endByte, sourceExact, displayQuote } = anchor;
+  if (
+    !Number.isSafeInteger(startByte) || !Number.isSafeInteger(endByte) ||
+    startByte < map.bomByteLength || startByte >= endByte ||
+    sourceExact.length === 0 || displayQuote.length === 0
+  ) {
+    return { ok: false, reason: '存储的高亮锚点范围无效。' };
+  }
+
+  const sourceBytes = encoder.encode(map.source);
+  const exactBytes = encoder.encode(sourceExact);
+  const relativeStart = startByte - map.bomByteLength;
+  const relativeEnd = endByte - map.bomByteLength;
+  if (
+    relativeEnd > sourceBytes.length || exactBytes.length !== endByte - startByte ||
+    !sourceBytes.subarray(relativeStart, relativeEnd).every((byte, index) => byte === exactBytes[index])
+  ) {
+    return { ok: false, reason: '存储的高亮锚点与当前原文不一致。' };
+  }
+
+  let match: { blockStart: number; visibleStart: number; visibleEnd: number } | undefined;
+  for (const block of map.blocks) {
+    if (!block.supported) continue;
+    let visibleStart = block.visibleText.indexOf(displayQuote);
+    while (visibleStart !== -1) {
+      const visibleEnd = visibleStart + displayQuote.length;
+      const resolved = resolveSelection(map, block.blockStart, visibleStart, visibleEnd);
+      if (
+        resolved.ok && resolved.startByte === startByte && resolved.endByte === endByte &&
+        resolved.sourceExact === sourceExact && resolved.displayQuote === displayQuote
+      ) {
+        if (match) return { ok: false, reason: '高亮锚点对应多个可见选区，无法安全绘制。' };
+        match = { blockStart: block.blockStart, visibleStart, visibleEnd };
+      }
+      visibleStart = block.visibleText.indexOf(displayQuote, visibleStart + 1);
+    }
+  }
+  return match
+    ? { ok: true, ...match }
+    : { ok: false, reason: '高亮锚点无法精确还原为当前阅读选区。' };
 }

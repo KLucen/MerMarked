@@ -1,3 +1,7 @@
+import type { AnnotationAnchorStatus, AnnotationColor } from '../core/annotations';
+
+export type { AnnotationColor } from '../core/annotations';
+
 export interface OpenedMarkdownDocument {
   path: string;
   name: string;
@@ -24,11 +28,34 @@ export interface AnnotationSummary {
   reason?: string;
 }
 
+export interface AnnotationItemView {
+  id: string;
+  kind: 'highlight' | 'note';
+  color?: AnnotationColor;
+  anchor: Pick<AnnotationSelectionInput, 'startByte' | 'endByte' | 'sourceExact' | 'displayQuote'>;
+  status: AnnotationAnchorStatus;
+}
+
+export interface AnnotationDocumentView extends AnnotationSummary {
+  items: AnnotationItemView[];
+}
+
+export interface CreateHighlightInput {
+  selection: AnnotationSelectionInput;
+  color: AnnotationColor;
+}
+
+export interface RecolorHighlightInput {
+  id: string;
+  color: AnnotationColor;
+}
+
 export interface AnnotationSaveResult {
   status: 'saved' | 'conflict' | 'pending-draft';
   reason?: string;
   draftPath?: string;
   count?: number;
+  id?: string;
 }
 
 export interface MerMarkdApi {
@@ -36,8 +63,10 @@ export interface MerMarkdApi {
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
   openDroppedMarkdown(file: File): Promise<OpenedMarkdownDocument>;
   readDocumentImage(relativePath: string): Promise<string | null>;
-  loadAnnotationSummary(): Promise<AnnotationSummary>;
-  saveSelectionProbe(input: AnnotationSelectionInput): Promise<AnnotationSaveResult>;
+  loadAnnotations(): Promise<AnnotationDocumentView>;
+  createHighlight(input: CreateHighlightInput): Promise<AnnotationSaveResult>;
+  recolorHighlight(input: RecolorHighlightInput): Promise<AnnotationSaveResult>;
+  deleteHighlight(id: string): Promise<AnnotationSaveResult>;
   openExternal(url: string): Promise<boolean>;
 }
 

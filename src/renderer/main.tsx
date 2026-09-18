@@ -6,11 +6,55 @@ import type { Components, ExtraProps } from 'react-markdown';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import { extractSections } from '../core/sections';
-import { buildSelectionMap, resolveSelection } from '../core/selection-map';
-import type { AnnotationSummary, OpenedMarkdownDocument } from '../types/reader-api';
+import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
+import type { AnnotationColor } from '../core/annotations';
+import type { AnnotationDocumentView, AnnotationSaveResult, OpenedMarkdownDocument } from '../types/reader-api';
 import './style.css';
 
 type SelectionProbeResult = ReturnType<typeof resolveSelection>;
+
+const HIGHLIGHT_COLORS: ReadonlyArray<{ value: AnnotationColor; name: string }> = [
+  { value: 'amber', name: '琥珀' },
+  { value: 'sage', name: '鼠尾草' },
+  { value: 'blue', name: '浅蓝' },
+  { value: 'rose', name: '浅玫瑰' },
+];
+const HIGHLIGHT_NAMES = HIGHLIGHT_COLORS.flatMap(({ value }) => [
+  `mermarkd-${value}`, `mermarkd-selected-${value}`,
+]);
+
+function highlightRegistry(): MapLikeHighlightRegistry | null {
+  if (typeof CSS === 'undefined' || typeof Highlight === 'undefined') return null;
+  const css = CSS as typeof CSS & { highlights?: MapLikeHighlightRegistry };
+  return typeof Highlight === 'function' && css.highlights ? css.highlights : null;
+}
+
+interface MapLikeHighlightRegistry {
+  set(name: string, highlight: Highlight): void;
+  delete(name: string): boolean;
+}
+
+function textRange(block: HTMLElement, start: number, end: number, expected: string): Range | null {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  for (let current = walker.nextNode(); current; current = walker.nextNode()) {
+    if (current instanceof Text) nodes.push(current);
+  }
+  let cursor = 0;
+  let startPoint: { node: Text; offset: number } | null = null;
+  let endPoint: { node: Text; offset: number } | null = null;
+  for (const node of nodes) {
+    const next = cursor + node.length;
+    if (!startPoint && cursor <= start && start < next) startPoint = { node, offset: start - cursor };
+    if (!endPoint && cursor < end && end <= next) endPoint = { node, offset: end - cursor };
+    cursor = next;
+  }
+  if (!startPoint || !endPoint) return null;
+  const range = document.createRange();
+  range.setStart(startPoint.node, startPoint.offset);
+  range.setEnd(endPoint.node, endPoint.offset);
+  return range.toString() === expected ? range : null;
+}
 
 function sourceBlockFor(node: Node): HTMLElement | null {
   const element = node instanceof Element ? node : node.parentElement;
@@ -79,13 +123,18 @@ function App() {
   const [message, setMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [selectionProbe, setSelectionProbe] = useState<SelectionProbeResult | null>(null);
-  const [annotationSummary, setAnnotationSummary] = useState<AnnotationSummary | null>(null);
+  const [annotationView, setAnnotationView] = useState<AnnotationDocumentView | null>(null);
   const [annotationLoading, setAnnotationLoading] = useState(false);
   const [annotationSaving, setAnnotationSaving] = useState(false);
   const [annotationError, setAnnotationError] = useState<string | null>(null);
+  const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null);
+  const [unpaintableIds, setUnpaintableIds] = useState<readonly string[]>([]);
+  const [highlightSupported, setHighlightSupported] = useState(true);
   const [dropActive, setDropActive] = useState(false);
   const dropDepth = useRef(0);
   const documentEpoch = useRef(0);
+  const paintedRanges = useRef(new Map<string, Range>());
+  const mutationInFlight = useRef(false);
 
   const sectionTree = useMemo(
     () => openedDocument ? extractSections(openedDocument.content) : null,
@@ -117,15 +166,15 @@ function App() {
     return result;
   }, [openedDocument, sectionTree]);
 
-  const refreshAnnotationSummary = useCallback(async (epoch: number) => {
+  const refreshAnnotations = useCallback(async (epoch: number) => {
     setAnnotationLoading(true);
     setAnnotationError(null);
     try {
-      const summary = await window.mermarkd.loadAnnotationSummary();
-      if (documentEpoch.current === epoch) setAnnotationSummary(summary);
+      const view = await window.mermarkd.loadAnnotations();
+      if (documentEpoch.current === epoch) setAnnotationView(view);
     } catch (error) {
       if (documentEpoch.current === epoch) {
-        setAnnotationSummary(null);
+        setAnnotationView(null);
         setAnnotationError(error instanceof Error ? error.message : '读取批注状态失败。');
       }
     } finally {
@@ -138,11 +187,75 @@ function App() {
     setOpenedDocument(opened);
     setActiveSection(null);
     setSelectionProbe(null);
-    setAnnotationSummary(null);
+    setAnnotationView(null);
+    setSelectedHighlightId(null);
+    setUnpaintableIds([]);
     setAnnotationSaving(false);
     window.scrollTo({ top: 0 });
-    void refreshAnnotationSummary(epoch);
-  }, [refreshAnnotationSummary]);
+    void refreshAnnotations(epoch);
+  }, [refreshAnnotations]);
+
+  useEffect(() => {
+    const registry = highlightRegistry();
+    const article = document.querySelector<HTMLElement>('.markdown-body');
+    paintedRanges.current.clear();
+    HIGHLIGHT_NAMES.forEach((name) => registry?.delete(name));
+    if (!registry) {
+      setHighlightSupported(false);
+      setUnpaintableIds([]);
+      return;
+    }
+    setHighlightSupported(true);
+    const groups = new Map<string, Range[]>();
+    const failures: string[] = [];
+    if (article && selectionMap && annotationView) {
+      const blockElements = new Map<number, HTMLElement>();
+      article.querySelectorAll<HTMLElement>('[data-source-block-start]').forEach((element) => {
+        blockElements.set(Number(element.dataset.sourceBlockStart), element);
+      });
+      const sourceBlocks = new Map(selectionMap.blocks.map((block) => [block.blockStart, block]));
+      for (const item of annotationView.items) {
+        if (item.kind !== 'highlight' || item.status !== 'resolved') continue;
+        if (!item.color || !HIGHLIGHT_COLORS.some(({ value }) => value === item.color)) {
+          failures.push(item.id);
+          continue;
+        }
+        const mapped = resolveStoredHighlight(selectionMap, item.anchor);
+        if (!mapped.ok) {
+          failures.push(item.id);
+          continue;
+        }
+        const block = blockElements.get(mapped.blockStart);
+        const mappedBlock = sourceBlocks.get(mapped.blockStart);
+        if (!block || !mappedBlock || block.textContent !== mappedBlock.visibleText) {
+          failures.push(item.id);
+          continue;
+        }
+        const range = textRange(block, mapped.visibleStart, mapped.visibleEnd, item.anchor.displayQuote);
+        if (!range) {
+          failures.push(item.id);
+          continue;
+        }
+        paintedRanges.current.set(item.id, range);
+        const name = item.id === selectedHighlightId
+          ? `mermarkd-selected-${item.color}` : `mermarkd-${item.color}`;
+        const group = groups.get(name) ?? [];
+        group.push(range);
+        groups.set(name, group);
+      }
+    }
+    for (const [name, ranges] of groups) {
+      const highlight = new Highlight(...ranges);
+      const colorIndex = HIGHLIGHT_COLORS.findIndex(({ value }) => name.endsWith(value));
+      highlight.priority = name.includes('selected') ? 10 : colorIndex;
+      registry.set(name, highlight);
+    }
+    setUnpaintableIds(failures);
+    return () => {
+      HIGHLIGHT_NAMES.forEach((name) => registry.delete(name));
+      paintedRanges.current.clear();
+    };
+  }, [annotationView, openedDocument?.path, openedDocument?.sourceSha256, selectedHighlightId, selectionMap]);
 
   const openMarkdown = useCallback(async () => {
     setOpening(true);
@@ -265,27 +378,24 @@ function App() {
     setMessage('当前版本暂不支持打开文档中的相对链接。');
   }, []);
 
-  const probeSelection = useCallback(() => {
+  const readSelection = useCallback((): SelectionProbeResult => {
     const selection = window.getSelection();
     const article = window.document.querySelector<HTMLElement>('.markdown-body');
     if (!selectionMap || !article || !selection || selection.rangeCount !== 1 || selection.isCollapsed) {
-      setSelectionProbe({ ok: false, reason: '请先在正文中选择一段文字。' });
-      return;
+      return { ok: false, reason: '请先在正文中选择一段文字。' };
     }
 
     const range = selection.getRangeAt(0);
     const startBlock = sourceBlockFor(range.startContainer);
     const endBlock = sourceBlockFor(range.endContainer);
     if (!startBlock || startBlock !== endBlock || !article.contains(startBlock)) {
-      setSelectionProbe({ ok: false, reason: '当前原型只支持同一标题或段落内的选区。' });
-      return;
+      return { ok: false, reason: '目前只支持同一标题或段落内的选区。' };
     }
 
     const blockStart = Number(startBlock.dataset.sourceBlockStart);
     const block = selectionMap.blocks.find((candidate) => candidate.blockStart === blockStart);
     if (!block || startBlock.textContent !== block.visibleText) {
-      setSelectionProbe({ ok: false, reason: '渲染文字与源码映射不一致，已拒绝定位。' });
-      return;
+      return { ok: false, reason: '渲染文字与源码映射不一致，已拒绝定位。' };
     }
 
     try {
@@ -295,33 +405,32 @@ function App() {
       const visibleStart = prefix.toString().length;
       const visibleEnd = visibleStart + range.toString().length;
       if (block.visibleText.slice(visibleStart, visibleEnd) !== range.toString()) {
-        setSelectionProbe({ ok: false, reason: '选中文字与源码映射不一致，已拒绝定位。' });
-        return;
+        return { ok: false, reason: '选中文字与源码映射不一致，已拒绝定位。' };
       }
-      setSelectionProbe(resolveSelection(selectionMap, blockStart, visibleStart, visibleEnd));
+      return resolveSelection(selectionMap, blockStart, visibleStart, visibleEnd);
     } catch {
-      setSelectionProbe({ ok: false, reason: '无法读取当前选区，请重新选择文字。' });
+      return { ok: false, reason: '无法读取当前选区，请重新选择文字。' };
     }
   }, [selectionMap]);
 
-  const saveSelectionProbe = useCallback(async () => {
-    if (!selectionProbe?.ok || annotationSummary?.status !== 'ready' ||
-        annotationSummary.pendingDraftCount > 0 || annotationSaving) return;
+  const runHighlightMutation = useCallback(async (
+    action: () => Promise<AnnotationSaveResult>,
+    successMessage: string,
+    afterSaved?: (result: AnnotationSaveResult) => void,
+  ) => {
+    if (annotationView?.status !== 'ready' || annotationView.pendingDraftCount > 0 ||
+        annotationLoading || mutationInFlight.current) return;
     const epoch = documentEpoch.current;
+    mutationInFlight.current = true;
     setAnnotationSaving(true);
     setMessage(null);
     try {
-      const result = await window.mermarkd.saveSelectionProbe({
-        startByte: selectionProbe.startByte,
-        endByte: selectionProbe.endByte,
-        sourceExact: selectionProbe.sourceExact,
-        displayQuote: selectionProbe.displayQuote,
-      });
+      const result = await action();
       if (documentEpoch.current !== epoch) return;
-      await refreshAnnotationSummary(epoch);
+      await refreshAnnotations(epoch);
       if (result.status === 'saved') {
-        setSelectionProbe(null);
-        setMessage('测试高亮锚点已保存到同目录的批注 sidecar。');
+        afterSaved?.(result);
+        setMessage(successMessage);
       } else if (result.status === 'conflict') {
         setSelectionProbe(null);
         setMessage(result.draftPath
@@ -333,12 +442,57 @@ function App() {
       }
     } catch (error) {
       if (documentEpoch.current === epoch) {
-        setMessage(error instanceof Error ? error.message : '保存测试高亮锚点失败。');
+        setMessage(error instanceof Error ? error.message : '保存高亮失败。');
       }
     } finally {
+      mutationInFlight.current = false;
       if (documentEpoch.current === epoch) setAnnotationSaving(false);
     }
-  }, [annotationSaving, annotationSummary, refreshAnnotationSummary, selectionProbe]);
+  }, [annotationLoading, annotationView, refreshAnnotations]);
+
+  const createHighlight = useCallback((color: AnnotationColor) => {
+    const selectionProbe = readSelection();
+    setSelectionProbe(selectionProbe);
+    if (!selectionProbe.ok) return;
+    const selection = {
+      startByte: selectionProbe.startByte,
+      endByte: selectionProbe.endByte,
+      sourceExact: selectionProbe.sourceExact,
+      displayQuote: selectionProbe.displayQuote,
+    };
+    void runHighlightMutation(
+      () => window.mermarkd.createHighlight({ selection, color }),
+      '高亮已保存到批注 sidecar，Markdown 原文未修改。',
+      (result) => {
+        setSelectionProbe(null);
+        setSelectedHighlightId(result.id ?? null);
+        window.getSelection()?.removeAllRanges();
+      },
+    );
+  }, [readSelection, runHighlightMutation]);
+
+  const recolorHighlight = useCallback((id: string, color: AnnotationColor) => {
+    void runHighlightMutation(
+      () => window.mermarkd.recolorHighlight({ id, color }),
+      '高亮颜色已更新。',
+    );
+  }, [runHighlightMutation]);
+
+  const deleteHighlight = useCallback((id: string) => {
+    void runHighlightMutation(
+      () => window.mermarkd.deleteHighlight(id),
+      '高亮已删除。',
+      () => { if (selectedHighlightId === id) setSelectedHighlightId(null); },
+    );
+  }, [runHighlightMutation, selectedHighlightId]);
+
+  const jumpToHighlight = useCallback((id: string) => {
+    const range = paintedRanges.current.get(id);
+    if (!range) return;
+    setSelectedHighlightId(id);
+    const rect = range.getBoundingClientRect();
+    window.scrollBy({ top: rect.top - Math.min(window.innerHeight * .3, 180), behavior: 'smooth' });
+  }, []);
 
   const heading = useCallback((tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', props: ComponentProps<'h1'> & ExtraProps) => {
     const { node, children, ...rest } = props;
@@ -372,6 +526,11 @@ function App() {
     ),
     input: ({ node: _node, ...props }) => <input {...props} disabled readOnly />,
   }), [openedDocument?.path, heading, openLink]);
+
+  const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
+  const unpaintableSet = new Set(unpaintableIds);
+  const canChangeHighlights = annotationView?.status === 'ready' &&
+    annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading;
 
   return (
     <div className="app-shell">
@@ -428,19 +587,29 @@ function App() {
             <div className="document-heading-row"><h1 className="document-name">{openedDocument.name}</h1><span className="read-only-badge">只读</span></div>
             <div className="annotation-summary" role="status">
               <strong>批注 sidecar</strong>
-              {annotationLoading ? <span>正在检查…</span> : annotationSummary ? <>
-                <span>{annotationSummary.count} 条记录</span>
-                {annotationSummary.unresolvedCount > 0 && <span>{annotationSummary.unresolvedCount} 条待定位</span>}
-                {annotationSummary.pendingDraftCount > 0 && <span className="annotation-pending">{annotationSummary.pendingDraftCount} 份草稿尚未写回同目录，暂停新增测试锚点</span>}
-                {(annotationSummary.unreadableDraftCount ?? 0) > 0 && <span className="annotation-warning">其中 {annotationSummary.unreadableDraftCount} 份草稿无法读取，请检查应用数据目录</span>}
-                {annotationSummary.status === 'read-only' && <span className="annotation-warning">只读：{annotationSummary.reason ?? '批注文件不可安全修改'}</span>}
-                <span className="annotation-location" title={annotationSummary.sidecarPath}>{annotationSummary.sidecarPath}</span>
+              {annotationLoading ? <span>正在检查…</span> : annotationView ? <>
+                <span>{annotationView.count} 条记录</span>
+                {annotationView.unresolvedCount > 0 && <span>{annotationView.unresolvedCount} 条待定位</span>}
+                {unpaintableIds.length > 0 && <span className="annotation-warning">{unpaintableIds.length} 条无法核验可见位置，未着色</span>}
+                {annotationView.pendingDraftCount > 0 && <span className="annotation-pending">{annotationView.pendingDraftCount} 份草稿尚未写回同目录，暂停修改高亮</span>}
+                {(annotationView.unreadableDraftCount ?? 0) > 0 && <span className="annotation-warning">其中 {annotationView.unreadableDraftCount} 份草稿无法读取，请检查应用数据目录</span>}
+                {annotationView.status === 'read-only' && <span className="annotation-warning">只读：{annotationView.reason ?? '批注文件不可安全修改'}</span>}
+                {!highlightSupported && <span className="annotation-warning">当前环境不支持正文高亮着色</span>}
+                <span className="annotation-location" title={annotationView.sidecarPath}>{annotationView.sidecarPath}</span>
               </> : <span className="annotation-warning">{annotationError ?? '尚未读取批注状态'}</span>}
             </div>
             <div className="selection-probe-controls">
-              <button type="button" className="selection-probe-button" onMouseDown={(event) => event.preventDefault()}
-                onClick={probeSelection}>验证选区</button>
-              <span>选中一段正文后点击 · 仅保存可核验的测试锚点</span>
+              <span>选中文字后选择高亮颜色</span>
+              <div className="highlight-palette" role="group" aria-label="高亮所选文字">
+                {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button"
+                  className="highlight-choice" data-color={value} onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => createHighlight(value)} disabled={!canChangeHighlights || !highlightSupported}
+                  aria-label={`用${name}色高亮所选文字`}>
+                  <span className="highlight-swatch" aria-hidden="true" />{name}
+                </button>)}
+              </div>
+              <button type="button" className="selection-check-button" onMouseDown={(event) => event.preventDefault()}
+                onClick={() => setSelectionProbe(readSelection())}>检查选区定位</button>
             </div>
             {selectionProbe && <div className="selection-probe-result" role="status">
               {selectionProbe.ok ? <>
@@ -448,16 +617,32 @@ function App() {
                 <span>UTF-8 字节范围 [{selectionProbe.startByte}, {selectionProbe.endByte})</span>
                 <span>可见选文：<code>{selectionProbe.displayQuote}</code></span>
                 <span>原文片段：<code>{selectionProbe.sourceExact}</code></span>
-                <div className="selection-save-row">
-                  <button type="button" className="selection-probe-button" onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => void saveSelectionProbe()} disabled={annotationSaving || annotationLoading ||
-                      annotationSummary?.status !== 'ready' || annotationSummary.pendingDraftCount > 0}>
-                    {annotationSaving ? '正在保存…' : '保存测试高亮锚点'}
-                  </button>
-                  <span>当前仅验证 sidecar 持久化，正文着色将在后续批次加入。</span>
-                </div>
               </> : <><strong>无法安全定位</strong><span>{selectionProbe.reason}</span></>}
             </div>}
+            <details className="highlight-records">
+              <summary>高亮记录 <span>{highlightItems.length}</span></summary>
+              {highlightItems.length ? <ol className="highlight-list">{highlightItems.map((item) => {
+                const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
+                  paintedRanges.current.has(item.id) && highlightSupported;
+                const locationLabel = item.status !== 'resolved' ? '待定位'
+                  : !highlightSupported ? '当前环境无法显示'
+                    : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
+                return <li key={item.id} className={selectedHighlightId === item.id ? 'selected' : undefined}>
+                  <span className="highlight-record-swatch" data-color={item.color} aria-hidden="true" />
+                  <button type="button" className="highlight-jump" onClick={() => jumpToHighlight(item.id)}
+                    disabled={!available} aria-pressed={selectedHighlightId === item.id}
+                    title={available ? '跳转到原文' : `${locationLabel}，暂不跳转`}>{item.anchor.displayQuote}</button>
+                  {!available && <span className="highlight-unresolved">{locationLabel}</span>}
+                  <select value={item.color ?? 'amber'} aria-label={`更改“${item.anchor.displayQuote}”的高亮颜色`}
+                    disabled={!canChangeHighlights || !available}
+                    onChange={(event) => recolorHighlight(item.id, event.target.value as AnnotationColor)}>
+                    {HIGHLIGHT_COLORS.map(({ value, name }) => <option key={value} value={value}>{name}</option>)}
+                  </select>
+                  <button type="button" className="highlight-delete" onClick={() => deleteHighlight(item.id)}
+                    disabled={!canChangeHighlights || !available} aria-label={`删除“${item.anchor.displayQuote}”的高亮`}>删除</button>
+                </li>;
+              })}</ol> : <p>还没有高亮。选中文字并选择颜色即可创建。</p>}
+            </details>
             <div className="document-divider" />
             {openedDocument.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文">
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter]} skipHtml components={components}>
