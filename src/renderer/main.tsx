@@ -359,6 +359,11 @@ function App() {
     p: ({ node, children, ...props }) => (
       <p {...props} data-source-block-start={node?.position?.start.offset}>{children}</p>
     ),
+    table: ({ node: _node, children, ...props }) => (
+      <div className="table-scroll" role="region" aria-label="表格，可水平滚动" tabIndex={0}>
+        <table {...props}>{children}</table>
+      </div>
+    ),
     a: ({ node: _node, href, children, ...props }) => (
       <a {...props} href={href} onClick={(event) => openLink(event, href)}>{children}</a>
     ),
