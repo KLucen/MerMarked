@@ -25,6 +25,29 @@ export function selectedMarkdownPath(selection: FileSelection): string | null {
   return selectedPath;
 }
 
+export async function validatedDroppedMarkdownPath(value: unknown): Promise<string> {
+  if (
+    typeof value !== 'string' ||
+    !path.isAbsolute(value) ||
+    path.extname(value).toLowerCase() !== '.md'
+  ) {
+    throw new Error('请拖入单个本地 .md 文件。');
+  }
+
+  let resolvedPath: string;
+  try {
+    resolvedPath = await realpath(value);
+    const fileStat = await stat(resolvedPath);
+    if (!fileStat.isFile() || path.extname(resolvedPath).toLowerCase() !== '.md') {
+      throw new Error('请拖入单个本地 .md 文件。');
+    }
+  } catch {
+    throw new Error('无法打开拖入的文件，请确认它是可读取的 .md 文件。');
+  }
+
+  return resolvedPath;
+}
+
 export function decodeUtf8Markdown(bytes: Uint8Array): string {
   try {
     // Fatal decoding refuses legacy encodings instead of silently replacing bytes.

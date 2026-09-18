@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -8,6 +8,7 @@ import {
   decodeUtf8Markdown,
   readDocumentImage,
   selectedMarkdownPath,
+  validatedDroppedMarkdownPath,
   validatedExternalUrl,
 } from '../../src/main/reader-file.ts';
 
@@ -15,6 +16,27 @@ test('file selection accepts one .md and leaves cancellation empty', () => {
   assert.equal(selectedMarkdownPath({ canceled: true, filePaths: [] }), null);
   assert.equal(selectedMarkdownPath({ canceled: false, filePaths: ['note.MD'] }), 'note.MD');
   assert.throws(() => selectedMarkdownPath({ canceled: false, filePaths: ['note.txt'] }), /\.md/);
+});
+
+test('dropped files require one existing local Markdown regular file', async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'mermarkd-drop-'));
+  try {
+    const markdownPath = path.join(directory, 'note.MD');
+    const textPath = path.join(directory, 'note.txt');
+    const directoryPath = path.join(directory, 'folder.md');
+    await writeFile(markdownPath, '# Note\n');
+    await writeFile(textPath, 'plain text\n');
+    await mkdir(directoryPath);
+
+    assert.equal(await validatedDroppedMarkdownPath(markdownPath), await realpath(markdownPath));
+    await assert.rejects(validatedDroppedMarkdownPath(textPath), /\.md/);
+    await assert.rejects(validatedDroppedMarkdownPath(directoryPath), /\.md/);
+    await assert.rejects(validatedDroppedMarkdownPath(path.join(directory, 'missing.md')), /\.md/);
+    await assert.rejects(validatedDroppedMarkdownPath('relative.md'), /\.md/);
+    await assert.rejects(validatedDroppedMarkdownPath(null), /\.md/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test('UTF-8 decoding handles BOM without changing the source bytes', () => {

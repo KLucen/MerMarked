@@ -12,6 +12,10 @@ button:focus-visible, a:focus-visible { outline: 3px solid #86aef8; outline-offs
 .file-meta { display: flex; flex: 1; flex-direction: column; gap: 3px; min-width: 0; }
 .file-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-status { color: #778295; font-size: 12px; }
+.open-drop-target { align-items: center; background: #fbfcff; border: 1px dashed #ccd6e5; border-radius: 10px; display: flex; flex: 0 0 auto; gap: 10px; min-height: 54px; padding: 4px 5px 4px 11px; }
+.open-drop-target.active { background: #edf4ff; border-color: #4d7acb; }
+.drop-hint { color: #7888a1; font-size: 11px; white-space: nowrap; }
+.open-drop-target.active .drop-hint { color: #315eb7; font-weight: 650; }
 .open-button, .welcome-open { align-items: center; background: #315eb7; border: 1px solid #315eb7; border-radius: 8px; color: #fff; cursor: pointer; display: inline-flex; font-size: 13px; font-weight: 600; gap: 18px; justify-content: center; min-height: 36px; padding: 0 13px; white-space: nowrap; }
 .open-button:hover, .welcome-open:hover { background: #254e9d; }
 .open-button:disabled, .welcome-open:disabled { cursor: wait; opacity: .62; }
@@ -86,7 +90,8 @@ button:focus-visible, a:focus-visible { outline: 3px solid #86aef8; outline-offs
 .image-placeholder span:first-child { font-size: 17px; }
 @media (max-width: 720px) {
   .topbar { gap: 11px; padding: 0 14px; }
-  .brand-name, .shortcut, .file-status { display: none; }
+  .brand-name, .shortcut, .file-status, .drop-hint { display: none; }
+  .open-drop-target { padding: 4px; }
   .open-button { padding: 0 10px; }
   .modebar { gap: 18px; overflow-x: auto; padding: 0 14px; }
   .reading-layout { display: block; }
