@@ -10,6 +10,7 @@ export interface OpenedMarkdownDocument {
 export interface MerMarkdApi {
   readonly appName: 'MerMarkd';
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
+  openDroppedMarkdown(file: File): Promise<OpenedMarkdownDocument>;
   readDocumentImage(relativePath: string): Promise<string | null>;
   openExternal(url: string): Promise<boolean>;
 }

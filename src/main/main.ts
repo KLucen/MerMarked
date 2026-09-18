@@ -8,6 +8,7 @@ import {
   decodeMarkdownSource,
   readDocumentImage,
   selectedMarkdownPath,
+  validatedDroppedMarkdownPath,
   validatedExternalUrl,
 } from './reader-file';
 
@@ -18,6 +19,11 @@ const documentPaths = new Map<number, string>();
 
 function isMainFrame(event: IpcMainInvokeEvent): boolean {
   return event.senderFrame === event.sender.mainFrame;
+}
+
+async function loadMarkdownDocument(filePath: string): Promise<OpenedMarkdownDocument> {
+  const bytes = await readFile(filePath);
+  return { path: filePath, name: path.basename(filePath), ...decodeMarkdownSource(bytes) };
 }
 
 function registerReaderIpc(): void {
@@ -34,11 +40,20 @@ function registerReaderIpc(): void {
     const selectedPath = selectedMarkdownPath(selection);
     if (!selectedPath) return null;
 
-    const bytes = await readFile(selectedPath);
-    const source = decodeMarkdownSource(bytes);
-
+    const document = await loadMarkdownDocument(selectedPath);
     documentPaths.set(event.sender.id, selectedPath);
-    return { path: selectedPath, name: path.basename(selectedPath), ...source };
+    return document;
+  });
+
+  ipcMain.handle('document:open-dropped', async (event, droppedPath: unknown): Promise<OpenedMarkdownDocument> => {
+    if (!isMainFrame(event) || !BrowserWindow.fromWebContents(event.sender)) {
+      throw new Error('无法从当前窗口打开文件。');
+    }
+
+    const filePath = await validatedDroppedMarkdownPath(droppedPath);
+    const document = await loadMarkdownDocument(filePath);
+    documentPaths.set(event.sender.id, filePath);
+    return document;
   });
 
   ipcMain.handle('document:read-image', async (event, relativePath: unknown): Promise<string | null> => {

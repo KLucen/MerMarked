@@ -1,9 +1,21 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { MerMarkdApi } from '../types/reader-api';
 
 const api: MerMarkdApi = Object.freeze({
   appName: 'MerMarkd',
   openMarkdown: () => ipcRenderer.invoke('document:open'),
+  openDroppedMarkdown: (file: File) => {
+    let droppedPath: string;
+    try {
+      droppedPath = webUtils.getPathForFile(file);
+    } catch {
+      throw new Error('请拖入单个本地 .md 文件。');
+    }
+    if (!droppedPath) {
+      throw new Error('请拖入单个本地 .md 文件。');
+    }
+    return ipcRenderer.invoke('document:open-dropped', droppedPath);
+  },
   readDocumentImage: (relativePath: string) =>
     ipcRenderer.invoke('document:read-image', relativePath),
   openExternal: (url: string) => ipcRenderer.invoke('external:open', url),

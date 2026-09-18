@@ -1,5 +1,5 @@
-import { StrictMode, useCallback, useEffect, useMemo, useState } from 'react';
-import type { ComponentProps, CSSProperties, MouseEvent } from 'react';
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ComponentProps, CSSProperties, DragEvent as ReactDragEvent, MouseEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import Markdown from 'react-markdown';
 import type { Components, ExtraProps } from 'react-markdown';
@@ -32,6 +32,10 @@ function isExternalUrl(value: string): boolean {
 function isRelativeImage(value: string): boolean {
   return Boolean(value) && !value.startsWith('/') && !value.startsWith('\\') &&
     !value.includes('\\') && !/^[a-z][a-z\d+.-]*:/i.test(value);
+}
+
+function hasDraggedFiles(event: ReactDragEvent<HTMLElement>): boolean {
+  return Array.from(event.dataTransfer.types).includes('Files');
 }
 
 function LocalImage({ src, alt, documentPath }: {
@@ -75,6 +79,8 @@ function App() {
   const [message, setMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [selectionProbe, setSelectionProbe] = useState<SelectionProbeResult | null>(null);
+  const [dropActive, setDropActive] = useState(false);
+  const dropDepth = useRef(0);
 
   const sectionTree = useMemo(
     () => openedDocument ? extractSections(openedDocument.content) : null,
@@ -106,23 +112,76 @@ function App() {
     return result;
   }, [openedDocument, sectionTree]);
 
+  const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
+    setOpenedDocument(opened);
+    setActiveSection(null);
+    setSelectionProbe(null);
+    window.scrollTo({ top: 0 });
+  }, []);
+
   const openMarkdown = useCallback(async () => {
     setOpening(true);
     setMessage(null);
     try {
       const opened = await window.mermarkd.openMarkdown();
-      if (opened) {
-        setOpenedDocument(opened);
-        setActiveSection(null);
-        setSelectionProbe(null);
-        window.scrollTo({ top: 0 });
-      }
+      if (opened) showOpenedDocument(opened);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '打开文档失败，请重试。');
     } finally {
       setOpening(false);
     }
+  }, [showOpenedDocument]);
+
+  const openDroppedMarkdown = useCallback(async (file: File) => {
+    if (opening) return;
+    setOpening(true);
+    setMessage(null);
+    try {
+      const opened = await window.mermarkd.openDroppedMarkdown(file);
+      showOpenedDocument(opened);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '拖入文档失败，请重试。');
+    } finally {
+      setOpening(false);
+    }
+  }, [opening, showOpenedDocument]);
+
+  const onDropTargetEnter = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    dropDepth.current += 1;
+    setDropActive(true);
   }, []);
+
+  const onDropTargetOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+    setDropActive(true);
+  }, []);
+
+  const onDropTargetLeave = useCallback(() => {
+    if (dropDepth.current === 0) return;
+    dropDepth.current = Math.max(0, dropDepth.current - 1);
+    if (dropDepth.current === 0) setDropActive(false);
+  }, []);
+
+  const onDropTargetDrop = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    dropDepth.current = 0;
+    setDropActive(false);
+    const files = Array.from(event.dataTransfer.files);
+    if (files.length !== 1) {
+      setMessage('请一次只拖入一份 .md 文件。');
+      return;
+    }
+    const file = files[0];
+    if (!file.name.toLowerCase().endsWith('.md')) {
+      setMessage('请选择 .md 文件。');
+      return;
+    }
+    void openDroppedMarkdown(file);
+  }, [openDroppedMarkdown]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -134,6 +193,18 @@ function App() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [openMarkdown, opening]);
+
+  useEffect(() => {
+    const preventFileNavigation = (event: DragEvent) => {
+      if (Array.from(event.dataTransfer?.types ?? []).includes('Files')) event.preventDefault();
+    };
+    window.addEventListener('dragover', preventFileNavigation);
+    window.addEventListener('drop', preventFileNavigation);
+    return () => {
+      window.removeEventListener('dragover', preventFileNavigation);
+      window.removeEventListener('drop', preventFileNavigation);
+    };
+  }, []);
 
   const jumpToSection = useCallback((index: number) => {
     const id = sectionIds[index];
@@ -244,9 +315,14 @@ function App() {
           <strong className="file-name" title={openedDocument?.path}>{openedDocument?.name ?? '未打开文档'}</strong>
           <span className="file-status">{openedDocument ? '只读 · 未修改' : '本地 Markdown 阅读器'}</span>
         </div>
-        <button className="open-button" type="button" onClick={() => void openMarkdown()} disabled={opening}>
-          {opening ? '正在打开…' : '打开 Markdown'}<span className="shortcut" aria-hidden="true">Ctrl+O</span>
-        </button>
+        <div className={dropActive ? 'open-drop-target active' : 'open-drop-target'}
+          data-markdown-drop-target="true" onDragEnter={onDropTargetEnter} onDragOver={onDropTargetOver}
+          onDragLeave={onDropTargetLeave} onDrop={onDropTargetDrop}>
+          <span className="drop-hint" aria-hidden="true">{dropActive ? '松开打开 .md' : '拖入 .md'}</span>
+          <button className="open-button" type="button" onClick={() => void openMarkdown()} disabled={opening}>
+            {opening ? '正在打开…' : '打开 Markdown'}<span className="shortcut" aria-hidden="true">Ctrl+O</span>
+          </button>
+        </div>
       </header>
       <nav className="modebar" aria-label="视图模式">
         <span className="mode-tab current" aria-current="page">阅读模式</span>
