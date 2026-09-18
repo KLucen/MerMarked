@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { buildSelectionMap, resolveSelection } from '../../src/core/selection-map.ts';
+import {
+  buildSelectionMap,
+  resolveSelection,
+  resolveStoredHighlight,
+  type SelectionMap,
+} from '../../src/core/selection-map.ts';
 
 const fixturePath = new URL('../fixtures/reader/selection-mapping.md', import.meta.url);
 
@@ -105,4 +110,73 @@ test('maps a plain no-BOM source and checks inconsistent metadata', () => {
   if (result.ok) assert.deepEqual([result.startByte, result.endByte], [12, 18]);
   assert.throws(() => buildSelectionMap('\uFEFF# Hi', 0), /BOM/);
   assert.throws(() => buildSelectionMap('Hi', 2), /BOM/);
+});
+
+function selectedAnchor(map: SelectionMap, quote: string, occurrence = 0) {
+  const block = map.blocks.find((candidate) => candidate.supported && candidate.visibleText.includes(quote));
+  assert.ok(block, quote);
+  let start = -1;
+  for (let index = 0; index <= occurrence; index += 1) {
+    start = block.visibleText.indexOf(quote, start + 1);
+  }
+  assert.notEqual(start, -1, quote);
+  const anchor = resolveSelection(map, block.blockStart, start, start + quote.length);
+  assert.equal(anchor.ok, true, quote);
+  if (!anchor.ok) throw new Error(anchor.reason);
+  return { block, start, anchor };
+}
+
+test('inverts repeated text by exact source bytes rather than first visible occurrence', async () => {
+  const { map } = await fixture();
+  for (const occurrence of [0, 1]) {
+    const { block, start, anchor } = selectedAnchor(map, '重复词', occurrence);
+    assert.deepEqual(resolveStoredHighlight(map, anchor), {
+      ok: true,
+      blockStart: block.blockStart,
+      visibleStart: start,
+      visibleEnd: start + '重复词'.length,
+    });
+  }
+});
+
+test('inverts formatted ranges and Unicode graphemes with BOM and CRLF offsets', async () => {
+  const { bytes, map } = await fixture();
+  for (const quote of ['选区映射验收', '加粗内容', '链接文字', '跨节点前半段 跨节点后半段', '😀', 'é']) {
+    const { block, start, anchor } = selectedAnchor(map, quote);
+    assert.equal(bytes.subarray(anchor.startByte, anchor.endByte).toString('utf8'), anchor.sourceExact);
+    assert.deepEqual(resolveStoredHighlight(map, anchor), {
+      ok: true,
+      blockStart: block.blockStart,
+      visibleStart: start,
+      visibleEnd: start + quote.length,
+    }, quote);
+  }
+});
+
+test('refuses stale, malformed, unsupported, and ambiguous stored anchors', async () => {
+  const { map } = await fixture();
+  const { block, anchor } = selectedAnchor(map, '重复词', 1);
+  const rejected = [
+    { ...anchor, startByte: anchor.startByte - 1 },
+    { ...anchor, endByte: anchor.endByte + 1 },
+    { ...anchor, sourceExact: '假'.repeat(3) },
+    { ...anchor, displayQuote: '其他词' },
+    { ...anchor, displayQuote: '复' },
+    { ...anchor, startByte: -1 },
+  ];
+  for (const candidate of rejected) {
+    assert.equal(resolveStoredHighlight(map, candidate).ok, false, JSON.stringify(candidate));
+  }
+
+  const unsupported = buildSelectionMap('A &amp; B', 0);
+  assert.equal(resolveStoredHighlight(unsupported, {
+    startByte: 2,
+    endByte: 7,
+    sourceExact: '&amp;',
+    displayQuote: '&',
+  }).ok, false);
+
+  // If a future mapper exposes two DOM locations for the same source range,
+  // refuse to choose one even when every source field is identical.
+  assert.equal(resolveStoredHighlight({ ...map, blocks: [...map.blocks, block] }, anchor).ok, false);
 });

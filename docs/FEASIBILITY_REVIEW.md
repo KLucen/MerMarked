@@ -4,7 +4,7 @@
 
 现有方案**适合继续开发 Windows 首版**，但它目前是“有实现路径”，不是已经证明能无损处理任意 Markdown、任意尺寸画布。新增批注后，P0 除原有安装、结构移动、持久化与整图导出门槛，还必须证明阅读选区能准确对应原始 Markdown，以及 `.annotations.yaml` 不会误绑或丢失批注。门槛不过时先限制输入或替换局部方案，不把未经验证的能力写成已完成承诺。
 
-本机已检查为 Windows x64，Node 24.20.0、npm 11.19.0、Git 2.45.1 可用；没有 Rust/Cargo 或 MSVC 编译工具。纯 TypeScript/Electron 开发已开始，原生图片模块若引入须额外验证预编译包与安装包加载。P0 安全桌面壳、最小阅读器和测试安装包已运行；当前 38 项测试通过。A1 已验证单块标题/段落中可精确映射的选区；A2 已验证受限 YAML sidecar 保存、重开、冲突保护与原文摘要不变；A3 已在 Windows 打包版验证混排排版及不同缩放。复杂选区、自动重定位、结构移动、三文件恢复和导出仍待原型验证。
+本机已检查为 Windows x64，Node 24.20.0、npm 11.19.0、Git 2.45.1 可用；没有 Rust/Cargo 或 MSVC 编译工具。纯 TypeScript/Electron 开发已开始，原生图片模块若引入须额外验证预编译包与安装包加载。P0 安全桌面壳、最小阅读器和测试安装包已运行；当前 44 项测试通过。A1 已验证单块标题/段落中可精确映射的选区；A2 已验证受限 YAML sidecar 保存、重开、冲突保护与原文摘要不变；A3 已在 Windows 打包版验证混排排版及不同缩放；A4 已在打包版验证高亮创建、改色、删除、重开与过期锚点冻结。复杂选区、自动重定位、结构移动、三文件恢复和导出仍待原型验证。
 
 ## 可行性与问题清单
 
@@ -13,6 +13,7 @@
 | Electron 桌面壳 | 高 | Electron Forge 的 Vite 插件仍标为实验性；未来次版本可能有破坏性改动。发布包较大。 | npm + 锁文件固定版本；P0 就执行 `start`、类型检查、打包和 Windows `Setup.exe` 安装冒烟。若插件打包不稳定，在 UI 代码尚少时改用 Forge Webpack 模板。 |
 | Markdown 章节树 | 高 | 不能用正则扫描 `#`；围栏代码、列表/引用标题、YAML frontmatter 和 Setext 会误判。 | `remark-parse` + `remark-gfm` + `remark-frontmatter`，只把根层 `heading` 节点转成可移动卡片；其他容器内标题留在正文。用固定样本断言章节父子树与源位置。 |
 | 阅读选区与原文锚点 | 中，最高批注正确性风险 | DOM Range 用渲染文本的 UTF-16 位置，`.md` 中加粗、链接、转义和实体会改变可见文本与源码的长度；现有读取还会从展示字符串去掉 BOM。全角/半角和 emoji 不能按固定字符宽度推算。 | 同一 Markdown AST 建可见文本到源码片段映射，原始文件记录 UTF-8 字节摘要/BOM 长度与半开字节范围；同时记录原文片段、上下文和章节线索。先只支持能精确反算的单块选区，复杂选区拒绝。用重复文字、中文、emoji、BOM、CRLF、格式化片段实测往返。 |
+| 阅读高亮还原 | 中；A4 Windows 打包版已验证小样本 | 同一引文可能在多处出现；源码格式标记让字节范围与 DOM 文字范围不同；颜色叠加和系统高对比模式会影响可读性。 | 先核验源摘要和字节片段，再要求反向映射到唯一可见选区，DOM 文本再次核验后以 CSS Custom Highlight API 着色；无法还原不着色。已实测重复词、格式化、emoji、重叠、键盘、高对比、重开及外部改源冻结；大量记录性能和其他系统仍待测。 |
 | 批注重定位 | 中，最高误绑风险 | 只用字节位置会在外部编辑后漂移；只用引文会碰到重复段落。章节移动也改变字节范围。 | 同摘要先核验字节片段；不同摘要时结合补丁映射、引文上下文和章节线索，只自动接纳唯一高置信候选；其余进入“待定位”并保留便签，手工重选。验收“错贴数为零”。 |
 | `.annotations.yaml` sidecar | 中 | YAML 可有别名、自定义标签、重复 ID 或不稳定序列化；Git 的文本 diff 也不自动保证无冲突。 | 每份 `example.md` 对应 `example.md.annotations.yaml`；受限 schema、大小/深度/别名限制、稳定 ID/顺序、原子写和磁盘摘要校验。测非法输入、同 ID 冲突、两实例写入、只读目录及小改动 Git diff。 |
 | 中英文混排表格/列表 | 高；A3 Windows 样本已视觉实测 | 实际字宽由字体回退、字形与缩放决定；把中文当两个半角、按空格补列会在表格/列表中错位。 | 阅读表格保留语义 `<table>`、浏览器列布局和 GFM 单元格对齐；外层容器横向滚动。列表使用原生 marker 与统一缩进，代码块独立横向滚动。已用混排、全半角标点、emoji、组合字符、长 URL、两位数列表在窄窗口及实际 Electron 100%/125%/150% 缩放验收，`.md` 未变；其他平台/字体仍待复核。 |
@@ -51,4 +52,5 @@
 - [mdast 节点模型](https://github.com/syntax-tree/mdast)、[CommonMark Setext 标题](https://spec.commonmark.org/0.31.2/#setext-headings)、[引用定义规则](https://spec.commonmark.org/0.31.2/#link-reference-definitions)、[remark-frontmatter](https://github.com/remarkjs/remark-frontmatter)
 - [React Flow 子流程](https://reactflow.dev/learn/layouting/sub-flows)、[布局指南](https://reactflow.dev/learn/layouting/layouting)、[图像示例的版本提示](https://reactflow.dev/examples/misc/download-image)
 - [W3C Web Annotation 文本引用与位置选择器](https://www.w3.org/TR/annotation-model/#text-quote-selector)、[Selection API](https://www.w3.org/TR/selection-api/)、[WHATWG DOM 字符数据与 UTF-16 偏移](https://dom.spec.whatwg.org/#interface-characterdata)、[YAML 1.2.2](https://yaml.org/spec/1.2.2/)
+- [CSS Custom Highlight API Level 1](https://drafts.csswg.org/css-highlight-api-1/)
 - [Unicode East Asian Width](https://www.unicode.org/reports/tr11/)、[CSS 表格布局](https://www.w3.org/TR/css-tables-3/)、[CSS 列表标记](https://www.w3.org/TR/css-lists-3/)

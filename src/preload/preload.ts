@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import type { AnnotationSelectionInput, MerMarkdApi } from '../types/reader-api';
+import type { CreateHighlightInput, MerMarkdApi, RecolorHighlightInput } from '../types/reader-api';
 
 const api: MerMarkdApi = Object.freeze({
   appName: 'MerMarkd',
@@ -18,8 +18,10 @@ const api: MerMarkdApi = Object.freeze({
   },
   readDocumentImage: (relativePath: string) =>
     ipcRenderer.invoke('document:read-image', relativePath),
-  loadAnnotationSummary: () => ipcRenderer.invoke('annotations:load-summary'),
-  saveSelectionProbe: (input: AnnotationSelectionInput) => ipcRenderer.invoke('annotations:save-probe', input),
+  loadAnnotations: () => ipcRenderer.invoke('annotations:load'),
+  createHighlight: (input: CreateHighlightInput) => ipcRenderer.invoke('annotations:create-highlight', input),
+  recolorHighlight: (input: RecolorHighlightInput) => ipcRenderer.invoke('annotations:recolor-highlight', input),
+  deleteHighlight: (id: string) => ipcRenderer.invoke('annotations:delete-highlight', id),
   openExternal: (url: string) => ipcRenderer.invoke('external:open', url),
 });
 
