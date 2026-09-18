@@ -25,13 +25,13 @@ export function selectedMarkdownPath(selection: FileSelection): string | null {
   return selectedPath;
 }
 
-export async function validatedDroppedMarkdownPath(value: unknown): Promise<string> {
+export async function validatedLocalMarkdownPath(value: unknown): Promise<string> {
   if (
     typeof value !== 'string' ||
     !path.isAbsolute(value) ||
     path.extname(value).toLowerCase() !== '.md'
   ) {
-    throw new Error('请拖入单个本地 .md 文件。');
+    throw new Error('请选择单个本地 .md 文件。');
   }
 
   let resolvedPath: string;
@@ -39,14 +39,17 @@ export async function validatedDroppedMarkdownPath(value: unknown): Promise<stri
     resolvedPath = await realpath(value);
     const fileStat = await stat(resolvedPath);
     if (!fileStat.isFile() || path.extname(resolvedPath).toLowerCase() !== '.md') {
-      throw new Error('请拖入单个本地 .md 文件。');
+      throw new Error('请选择单个本地 .md 文件。');
     }
   } catch {
-    throw new Error('无法打开拖入的文件，请确认它是可读取的 .md 文件。');
+    throw new Error('无法打开文件，请确认它是可读取的 .md 文件。');
   }
 
   return resolvedPath;
 }
+
+/** Kept for the drop-specific call site and tests; picker uses the same trust boundary. */
+export const validatedDroppedMarkdownPath = validatedLocalMarkdownPath;
 
 export function decodeUtf8Markdown(bytes: Uint8Array): string {
   try {
