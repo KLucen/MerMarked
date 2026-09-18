@@ -7,11 +7,37 @@ export interface OpenedMarkdownDocument {
   bomByteLength: 0 | 3;
 }
 
+export interface AnnotationSelectionInput {
+  startByte: number;
+  endByte: number;
+  sourceExact: string;
+  displayQuote: string;
+}
+
+export interface AnnotationSummary {
+  status: 'ready' | 'read-only';
+  count: number;
+  unresolvedCount: number;
+  pendingDraftCount: number;
+  unreadableDraftCount?: number;
+  sidecarPath: string;
+  reason?: string;
+}
+
+export interface AnnotationSaveResult {
+  status: 'saved' | 'conflict' | 'pending-draft';
+  reason?: string;
+  draftPath?: string;
+  count?: number;
+}
+
 export interface MerMarkdApi {
   readonly appName: 'MerMarkd';
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
   openDroppedMarkdown(file: File): Promise<OpenedMarkdownDocument>;
   readDocumentImage(relativePath: string): Promise<string | null>;
+  loadAnnotationSummary(): Promise<AnnotationSummary>;
+  saveSelectionProbe(input: AnnotationSelectionInput): Promise<AnnotationSaveResult>;
   openExternal(url: string): Promise<boolean>;
 }
 

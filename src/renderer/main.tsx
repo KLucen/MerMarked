@@ -7,7 +7,7 @@ import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import { extractSections } from '../core/sections';
 import { buildSelectionMap, resolveSelection } from '../core/selection-map';
-import type { OpenedMarkdownDocument } from '../types/reader-api';
+import type { AnnotationSummary, OpenedMarkdownDocument } from '../types/reader-api';
 import './style.css';
 
 type SelectionProbeResult = ReturnType<typeof resolveSelection>;
@@ -79,8 +79,13 @@ function App() {
   const [message, setMessage] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [selectionProbe, setSelectionProbe] = useState<SelectionProbeResult | null>(null);
+  const [annotationSummary, setAnnotationSummary] = useState<AnnotationSummary | null>(null);
+  const [annotationLoading, setAnnotationLoading] = useState(false);
+  const [annotationSaving, setAnnotationSaving] = useState(false);
+  const [annotationError, setAnnotationError] = useState<string | null>(null);
   const [dropActive, setDropActive] = useState(false);
   const dropDepth = useRef(0);
+  const documentEpoch = useRef(0);
 
   const sectionTree = useMemo(
     () => openedDocument ? extractSections(openedDocument.content) : null,
@@ -112,12 +117,32 @@ function App() {
     return result;
   }, [openedDocument, sectionTree]);
 
+  const refreshAnnotationSummary = useCallback(async (epoch: number) => {
+    setAnnotationLoading(true);
+    setAnnotationError(null);
+    try {
+      const summary = await window.mermarkd.loadAnnotationSummary();
+      if (documentEpoch.current === epoch) setAnnotationSummary(summary);
+    } catch (error) {
+      if (documentEpoch.current === epoch) {
+        setAnnotationSummary(null);
+        setAnnotationError(error instanceof Error ? error.message : '读取批注状态失败。');
+      }
+    } finally {
+      if (documentEpoch.current === epoch) setAnnotationLoading(false);
+    }
+  }, []);
+
   const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
+    const epoch = ++documentEpoch.current;
     setOpenedDocument(opened);
     setActiveSection(null);
     setSelectionProbe(null);
+    setAnnotationSummary(null);
+    setAnnotationSaving(false);
     window.scrollTo({ top: 0 });
-  }, []);
+    void refreshAnnotationSummary(epoch);
+  }, [refreshAnnotationSummary]);
 
   const openMarkdown = useCallback(async () => {
     setOpening(true);
@@ -279,6 +304,42 @@ function App() {
     }
   }, [selectionMap]);
 
+  const saveSelectionProbe = useCallback(async () => {
+    if (!selectionProbe?.ok || annotationSummary?.status !== 'ready' ||
+        annotationSummary.pendingDraftCount > 0 || annotationSaving) return;
+    const epoch = documentEpoch.current;
+    setAnnotationSaving(true);
+    setMessage(null);
+    try {
+      const result = await window.mermarkd.saveSelectionProbe({
+        startByte: selectionProbe.startByte,
+        endByte: selectionProbe.endByte,
+        sourceExact: selectionProbe.sourceExact,
+        displayQuote: selectionProbe.displayQuote,
+      });
+      if (documentEpoch.current !== epoch) return;
+      await refreshAnnotationSummary(epoch);
+      if (result.status === 'saved') {
+        setSelectionProbe(null);
+        setMessage('测试高亮锚点已保存到同目录的批注 sidecar。');
+      } else if (result.status === 'conflict') {
+        setSelectionProbe(null);
+        setMessage(result.draftPath
+          ? `文件已发生变化，未覆盖批注文件。待处理草稿：${result.draftPath}`
+          : result.reason ?? '批注状态已变化，请重新打开文档后再试。');
+      } else {
+        setSelectionProbe(null);
+        setMessage(`批注尚未写回同目录。待保存草稿：${result.draftPath ?? '应用数据目录'}`);
+      }
+    } catch (error) {
+      if (documentEpoch.current === epoch) {
+        setMessage(error instanceof Error ? error.message : '保存测试高亮锚点失败。');
+      }
+    } finally {
+      if (documentEpoch.current === epoch) setAnnotationSaving(false);
+    }
+  }, [annotationSaving, annotationSummary, refreshAnnotationSummary, selectionProbe]);
+
   const heading = useCallback((tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', props: ComponentProps<'h1'> & ExtraProps) => {
     const { node, children, ...rest } = props;
     const index = node?.position?.start.offset === undefined ? undefined : headingByOffset.get(node.position.start.offset);
@@ -360,10 +421,21 @@ function App() {
           <main className="reading-main">
             <div className="document-kicker">MARKDOWN 文档</div>
             <div className="document-heading-row"><h1 className="document-name">{openedDocument.name}</h1><span className="read-only-badge">只读</span></div>
+            <div className="annotation-summary" role="status">
+              <strong>批注 sidecar</strong>
+              {annotationLoading ? <span>正在检查…</span> : annotationSummary ? <>
+                <span>{annotationSummary.count} 条记录</span>
+                {annotationSummary.unresolvedCount > 0 && <span>{annotationSummary.unresolvedCount} 条待定位</span>}
+                {annotationSummary.pendingDraftCount > 0 && <span className="annotation-pending">{annotationSummary.pendingDraftCount} 份草稿尚未写回同目录，暂停新增测试锚点</span>}
+                {(annotationSummary.unreadableDraftCount ?? 0) > 0 && <span className="annotation-warning">其中 {annotationSummary.unreadableDraftCount} 份草稿无法读取，请检查应用数据目录</span>}
+                {annotationSummary.status === 'read-only' && <span className="annotation-warning">只读：{annotationSummary.reason ?? '批注文件不可安全修改'}</span>}
+                <span className="annotation-location" title={annotationSummary.sidecarPath}>{annotationSummary.sidecarPath}</span>
+              </> : <span className="annotation-warning">{annotationError ?? '尚未读取批注状态'}</span>}
+            </div>
             <div className="selection-probe-controls">
               <button type="button" className="selection-probe-button" onMouseDown={(event) => event.preventDefault()}
                 onClick={probeSelection}>验证选区</button>
-              <span>选中一段正文后点击 · 映射原型，不保存批注</span>
+              <span>选中一段正文后点击 · 仅保存可核验的测试锚点</span>
             </div>
             {selectionProbe && <div className="selection-probe-result" role="status">
               {selectionProbe.ok ? <>
@@ -371,6 +443,14 @@ function App() {
                 <span>UTF-8 字节范围 [{selectionProbe.startByte}, {selectionProbe.endByte})</span>
                 <span>可见选文：<code>{selectionProbe.displayQuote}</code></span>
                 <span>原文片段：<code>{selectionProbe.sourceExact}</code></span>
+                <div className="selection-save-row">
+                  <button type="button" className="selection-probe-button" onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => void saveSelectionProbe()} disabled={annotationSaving || annotationLoading ||
+                      annotationSummary?.status !== 'ready' || annotationSummary.pendingDraftCount > 0}>
+                    {annotationSaving ? '正在保存…' : '保存测试高亮锚点'}
+                  </button>
+                  <span>当前仅验证 sidecar 持久化，正文着色将在后续批次加入。</span>
+                </div>
               </> : <><strong>无法安全定位</strong><span>{selectionProbe.reason}</span></>}
             </div>}
             <div className="document-divider" />
