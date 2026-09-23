@@ -24,7 +24,7 @@ function validYaml(sourceSha256: string, tag?: string): string {
   return serializeAnnotationYaml({
     schemaVersion: 1,
     source: { sha256: sourceSha256, encoding: 'utf-8', coordinateSystem: 'utf8-byte' },
-    tags: tag ? [{ id: `tag-${tag}`, name: tag }] : [],
+    tags: tag ? [{ id: `tag-${digest(Buffer.from(tag)).slice(0, 12)}`, name: tag }] : [],
     annotations: [],
   });
 }
@@ -236,6 +236,72 @@ test('existing unknown or stale sidecar cannot be overwritten even with its exac
     const reopened = await loadAnnotationFile(f.documentPath, f.draftDirectory);
     assert.equal(reopened.pendingDrafts.length, 2);
     assert.deepEqual(await readFile(f.documentPath), f.markdown);
+  } finally {
+    await rm(f.directory, { recursive: true, force: true });
+  }
+});
+
+test('reviewed relocation can migrate an exact stale sidecar baseline to the current source hash', async () => {
+  const f = await fixture();
+  try {
+    const oldSourceSha256 = digest(f.markdown);
+    const sidecarPath = `${f.documentPath}.annotations.yaml`;
+    const staleText = validYaml(oldSourceSha256, '旧标签');
+    await writeFile(sidecarPath, staleText);
+    const changed = Buffer.from('# 新标题\r\n含有 😀。\r\n', 'utf8');
+    await writeFile(f.documentPath, changed);
+
+    const baseline = await loadAnnotationFile(f.documentPath, f.draftDirectory);
+    const currentSourceSha256 = digest(changed);
+    assert.equal(baseline.sourceSha256, currentSourceSha256);
+    const candidate = validYaml(currentSourceSha256, '已重定位');
+    const result = await saveAnnotationFile({
+      documentPath: f.documentPath,
+      draftDirectory: f.draftDirectory,
+      expectedSourceSha256: currentSourceSha256,
+      expectedSidecarSha256: baseline.sidecarSha256,
+      expectedExistingSourceSha256: oldSourceSha256,
+      text: candidate,
+    });
+
+    assert.equal(result.status, 'saved');
+    assert.equal(await readFile(sidecarPath, 'utf8'), candidate);
+    assert.deepEqual(await readFile(f.documentPath), changed);
+  } finally {
+    await rm(f.directory, { recursive: true, force: true });
+  }
+});
+
+test('reviewed relocation still rejects a wrong old-source claim and preserves its complete draft', async () => {
+  const f = await fixture();
+  try {
+    const oldSourceSha256 = digest(f.markdown);
+    const sidecarPath = `${f.documentPath}.annotations.yaml`;
+    const staleText = validYaml(oldSourceSha256, '旧标签');
+    await writeFile(sidecarPath, staleText);
+    const changed = Buffer.from('# 新标题\r\n含有 😀。\r\n', 'utf8');
+    await writeFile(f.documentPath, changed);
+    const baseline = await loadAnnotationFile(f.documentPath, f.draftDirectory);
+    const currentSourceSha256 = digest(changed);
+    const candidate = validYaml(currentSourceSha256, '候选');
+
+    const result = await saveAnnotationFile({
+      documentPath: f.documentPath,
+      draftDirectory: f.draftDirectory,
+      expectedSourceSha256: currentSourceSha256,
+      expectedSidecarSha256: baseline.sidecarSha256,
+      expectedExistingSourceSha256: '0'.repeat(64),
+      text: candidate,
+    });
+
+    assert.equal(result.status, 'conflict');
+    if (result.status !== 'conflict') return;
+    assert.equal(result.reason, 'sidecar-source-mismatch');
+    assert.equal(await readFile(sidecarPath, 'utf8'), staleText);
+    const draft = (await loadAnnotationFile(f.documentPath, f.draftDirectory)).pendingDrafts.at(-1);
+    assert.equal(draft?.text, candidate);
+    assert.equal(draft?.expectedExistingSourceSha256, '0'.repeat(64));
+    assert.deepEqual(await readFile(f.documentPath), changed);
   } finally {
     await rm(f.directory, { recursive: true, force: true });
   }

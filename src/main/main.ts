@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { randomUUID, createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -7,15 +7,22 @@ import squirrelStartup from 'electron-squirrel-startup';
 import type {
   AnnotationDocumentView, AnnotationSaveResult, AnnotationSelectionInput,
   CreateHighlightInput, CreateNoteInput, NoteTagInput, OpenedMarkdownDocument,
-  RecolorHighlightInput, UpdateNoteInput,
+  ReadingSummaryFilterInput, ReattachAnnotationInput, RecolorHighlightInput, UpdateNoteInput,
 } from '../types/reader-api';
-import { makeAnnotationAnchor } from '../core/annotation-anchor';
-import { classifyAnnotationAnchors, parseAnnotationYaml, serializeAnnotationYaml } from '../core/annotations';
+import {
+  makeAnnotationAnchor, sectionHintForSelection, sectionLocationForSelection,
+} from '../core/annotation-anchor';
+import { extractSections } from '../core/sections';
+import { buildSelectionMap, resolveStoredHighlight } from '../core/selection-map';
+import { parseAnnotationYaml, serializeAnnotationYaml } from '../core/annotations';
 import type { AnnotationColor, AnnotationSidecar } from '../core/annotations';
+import { relocateAnnotationSidecarCandidate } from '../core/annotation-relocation';
+import type { AnnotationRelocationReason } from '../core/annotation-relocation';
+import { formatReadingSummary } from '../core/reading-summary';
 import { loadAnnotationFile, saveAnnotationFile } from './annotation-store';
 import {
   createHighlightCandidate, createNoteCandidate, deleteHighlightCandidate, deleteNoteCandidate,
-  recolorHighlightCandidate, updateNoteCandidate,
+  reattachAnnotationCandidate, recolorHighlightCandidate, updateNoteCandidate,
 } from '../core/annotation-mutations';
 import type { AnnotationMutation } from '../core/annotation-mutations';
 import {
@@ -32,7 +39,12 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 
 interface DocumentSession {
   document: OpenedMarkdownDocument;
-  annotations?: { model: AnnotationSidecar; sidecarSha256: string | null };
+  annotations?: {
+    model: AnnotationSidecar;
+    sidecarSha256: string | null;
+    mode: 'ready' | 'needs-relocation' | 'read-only';
+    expectedExistingSourceSha256?: string;
+  };
   annotationWriteInProgress?: boolean;
   annotationRevision?: number;
 }
@@ -41,6 +53,46 @@ const documentSessions = new Map<number, DocumentSession>();
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder('utf-8', { fatal: true });
 const idPattern = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/;
+
+function documentBytes(document: OpenedMarkdownDocument): Uint8Array {
+  const content = textEncoder.encode(document.content);
+  if (document.bomByteLength === 0) return content;
+  const bytes = new Uint8Array(content.length + 3);
+  bytes.set([0xef, 0xbb, 0xbf]);
+  bytes.set(content, 3);
+  return bytes;
+}
+
+function safeTimestamp(model: AnnotationSidecar): string {
+  const newestRecord = model.annotations.reduce(
+    (latest, item) => Math.max(latest, Date.parse(item.createdAt), Date.parse(item.updatedAt)),
+    0,
+  );
+  return new Date(Math.max(Date.now(), newestRecord)).toISOString();
+}
+
+function relocationView(reason: AnnotationRelocationReason) {
+  if (reason === 'source-exact-missing') return 'source-missing' as const;
+  if (reason === 'source-exact-repeated') return 'source-repeated' as const;
+  if (reason === 'context-mismatch') return 'context-mismatch' as const;
+  if (reason === 'rendered-range-unresolved') return 'rendered-range-unresolved' as const;
+  if (reason === 'target-range-collision') return 'target-range-collision' as const;
+  return 'range-mismatch' as const;
+}
+
+function verifiedAnchorForSelection(document: OpenedMarkdownDocument, selection: AnnotationSelectionInput) {
+  const anchor = makeAnnotationAnchor(
+    document.content,
+    document.bomByteLength,
+    document.sourceSha256,
+    selection,
+    sectionHintForSelection(document.content, document.bomByteLength, selection),
+  );
+  if (!resolveStoredHighlight(buildSelectionMap(document.content, document.bomByteLength), anchor).ok) {
+    throw new Error('选区无法与当前阅读文字精确对应，请重新选择。');
+  }
+  return anchor;
+}
 
 function sessionFor(event: IpcMainInvokeEvent): DocumentSession | null {
   if (!isMainFrame(event) || !BrowserWindow.fromWebContents(event.sender)) return null;
@@ -165,6 +217,25 @@ function validUpdateNote(value: unknown): UpdateNoteInput {
   };
 }
 
+function validReattachAnnotation(value: unknown): ReattachAnnotationInput {
+  const entry = objectWithFields(value, '重新选择', ['id', 'selection']);
+  return { id: validId(entry.id), selection: validSelection(entry.selection) };
+}
+
+function validSummaryFilter(value: unknown): ReadingSummaryFilterInput {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('摘要筛选参数无效。');
+  const mode = (value as Record<string, unknown>).mode;
+  if (mode === 'all' || mode === 'untagged') {
+    objectWithFields(value, '摘要筛选', ['mode']);
+    return { mode };
+  }
+  if (mode === 'tag') {
+    const entry = objectWithFields(value, '摘要筛选', ['mode', 'tagId']);
+    return { mode, tagId: validId(entry.tagId) };
+  }
+  throw new Error('摘要筛选参数无效。');
+}
+
 async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocumentView> {
   const revision = session.annotationRevision ?? 0;
   const setLoadedState = (state: DocumentSession['annotations']): void => {
@@ -174,7 +245,7 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
   };
   if (session.annotationWriteInProgress) {
     return {
-      status: 'read-only', count: 0, unresolvedCount: 0, pendingDraftCount: 0,
+      status: 'read-only', count: 0, unresolvedCount: 0, relocatableCount: 0, pendingDraftCount: 0,
       sidecarPath: `${session.document.path}.annotations.yaml`, tags: [], items: [],
       reason: '批注正在保存，请稍后重新载入。',
     };
@@ -185,13 +256,14 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
   } catch (error) {
     setLoadedState(undefined);
     return {
-      status: 'read-only', count: 0, unresolvedCount: 0, pendingDraftCount: 0, tags: [], items: [],
+      status: 'read-only', count: 0, unresolvedCount: 0, relocatableCount: 0,
+      pendingDraftCount: 0, tags: [], items: [],
       sidecarPath: `${session.document.path}.annotations.yaml`,
       reason: error instanceof Error ? error.message : '无法读取批注文件。',
     };
   }
   const view: AnnotationDocumentView = {
-    status: 'ready', count: 0, unresolvedCount: 0,
+    status: 'ready', count: 0, unresolvedCount: 0, relocatableCount: 0,
     pendingDraftCount: loaded.pendingDrafts.length + loaded.unreadableDraftPaths.length,
     unreadableDraftCount: loaded.unreadableDraftPaths.length,
     sidecarPath: loaded.sidecarPath,
@@ -217,53 +289,87 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
   view.count = model.annotations.length;
   view.tags = model.tags.map((tag) => ({ id: tag.id, name: tag.name }));
   const sourceIsCurrent = currentHash === loaded.sourceSha256 && currentHash === session.document.sourceSha256;
-  const sidecarIsCurrent = model.source.sha256 === currentHash;
-  const anchorStatuses = sourceIsCurrent && sidecarIsCurrent
-    ? await classifyAnnotationAnchors(model.annotations.map((item) => item.anchor), sourceBytes)
+  const relocation = sourceIsCurrent
+    ? await relocateAnnotationSidecarCandidate(model, {
+        bytes: sourceBytes,
+        content: session.document.content,
+        sha256: currentHash,
+      }, safeTimestamp(model))
+    : null;
+  const anchorStatuses = relocation
+    ? relocation.items.map((item) => item.status === 'unchanged' ? 'resolved' as const : 'unresolved' as const)
     : model.annotations.map(() => 'unresolved' as const);
-  view.items = model.annotations.map((item, index) => ({
-    id: item.id,
-    kind: item.kind,
-    ...(item.color && { color: item.color }),
-    ...(item.note !== undefined && { note: item.note }),
-    ...(item.tagId && { tagId: item.tagId }),
-    createdAt: item.createdAt,
-    updatedAt: item.updatedAt,
-    anchor: {
-      startByte: item.anchor.startByte,
-      endByte: item.anchor.endByte,
-      sourceExact: item.anchor.sourceExact,
-      displayQuote: item.anchor.displayQuote,
-    },
-    status: anchorStatuses[index],
-  }));
+  const relocationById = new Map(relocation?.items.map((item) => [item.id, item]));
+  view.items = model.annotations.map((item, index) => {
+    const relocationResult = relocationById.get(item.id);
+    const relocationState = relocationResult?.status === 'relocated'
+      ? 'available' as const
+      : relocationResult?.status === 'unresolved'
+        ? relocationView(relocationResult.reason)
+        : undefined;
+    return {
+      id: item.id,
+      kind: item.kind,
+      ...(item.color && { color: item.color }),
+      ...(item.note !== undefined && { note: item.note }),
+      ...(item.tagId && { tagId: item.tagId }),
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      anchor: {
+        startByte: item.anchor.startByte,
+        endByte: item.anchor.endByte,
+        sourceExact: item.anchor.sourceExact,
+        displayQuote: item.anchor.displayQuote,
+      },
+      status: anchorStatuses[index],
+      ...(relocationState ? { relocation: relocationState } : {}),
+    };
+  });
   view.unresolvedCount = anchorStatuses.filter((status) => status === 'unresolved').length;
+  view.relocatableCount = relocation?.relocatedCount ?? 0;
   if (!sourceIsCurrent) {
     setLoadedState(undefined);
-    return { ...view, status: 'read-only', reason: '原 Markdown 已在外部修改；请重新打开后再保存批注。' };
-  }
-  if (model.source.sha256 !== currentHash) {
-    setLoadedState(undefined);
-    return { ...view, status: 'read-only', reason: '批注文件关联旧版 Markdown；现有锚点已冻结，需先处理版本差异。' };
+    return {
+      ...view,
+      status: 'read-only',
+      canReloadSource: true,
+      reason: '原 Markdown 已在外部修改；请先重新载入原文，再审查批注位置。',
+    };
   }
   if (view.pendingDraftCount > 0) {
-    setLoadedState(undefined);
+    view.canCopySummary = true;
+    setLoadedState({ model, sidecarSha256: loaded.sidecarSha256, mode: 'read-only' });
     return { ...view, status: 'read-only', reason: '存在待处理的批注恢复草稿；请先处理草稿以避免覆盖。' };
   }
-  setLoadedState({ model, sidecarSha256: loaded.sidecarSha256 });
+  if (model.source.sha256 !== currentHash) {
+    view.status = 'needs-relocation';
+    view.canCopySummary = true;
+    view.reason = view.relocatableCount > 0
+      ? `检测到旧版锚点：${view.relocatableCount} 条可安全重定位，其余需人工重新选择。`
+      : '批注来自旧版 Markdown；没有可自动确认的位置，请人工重新选择。';
+    setLoadedState({
+      model,
+      sidecarSha256: loaded.sidecarSha256,
+      mode: 'needs-relocation',
+      expectedExistingSourceSha256: model.source.sha256,
+    });
+    return view;
+  }
+  setLoadedState({ model, sidecarSha256: loaded.sidecarSha256, mode: 'ready' });
+  view.canCopySummary = true;
   return view;
 }
 
-async function persistAnnotationMutation(
+async function persistAnnotationModel(
   event: IpcMainInvokeEvent,
   session: DocumentSession,
   state: NonNullable<DocumentSession['annotations']>,
-  mutation: AnnotationMutation,
+  model: AnnotationSidecar,
+  resultFields: Pick<AnnotationSaveResult, 'id' | 'relocatedCount'> = {},
 ): Promise<AnnotationSaveResult> {
   if (session.annotationWriteInProgress) return { status: 'conflict', reason: '另一项批注操作仍在保存，请稍后重试。' };
   if (documentSessions.get(event.sender.id) !== session) throw new Error('文档已切换，请重新选择文字。');
-  if (!mutation.changed) return { status: 'saved', count: state.model.annotations.length, id: mutation.id };
-  const text = serializeAnnotationYaml(mutation.model);
+  const text = serializeAnnotationYaml(model);
   session.annotationWriteInProgress = true;
   session.annotationRevision = (session.annotationRevision ?? 0) + 1;
   try {
@@ -272,12 +378,15 @@ async function persistAnnotationMutation(
       draftDirectory: annotationDraftDirectory(),
       expectedSourceSha256: session.document.sourceSha256,
       expectedSidecarSha256: state.sidecarSha256,
+      ...(state.expectedExistingSourceSha256
+        ? { expectedExistingSourceSha256: state.expectedExistingSourceSha256 }
+        : {}),
       text,
     });
     if (documentSessions.get(event.sender.id) !== session) throw new Error('文档已切换，请重新查看批注状态。');
     if (result.status === 'saved') {
-      session.annotations = { model: mutation.model, sidecarSha256: result.sidecarSha256 };
-      return { status: 'saved', count: mutation.model.annotations.length, id: mutation.id };
+      session.annotations = { model, sidecarSha256: result.sidecarSha256, mode: 'ready' };
+      return { status: 'saved', count: model.annotations.length, ...resultFields };
     }
     session.annotations = undefined;
     return { status: result.status, reason: result.reason, draftPath: result.draftPath };
@@ -290,6 +399,19 @@ async function persistAnnotationMutation(
   }
 }
 
+async function persistAnnotationMutation(
+  event: IpcMainInvokeEvent,
+  session: DocumentSession,
+  state: NonNullable<DocumentSession['annotations']>,
+  mutation: AnnotationMutation,
+): Promise<AnnotationSaveResult> {
+  if (state.mode !== 'ready') {
+    return { status: 'conflict', reason: '请先确认旧锚点的重定位结果。' };
+  }
+  if (!mutation.changed) return { status: 'saved', count: state.model.annotations.length, id: mutation.id };
+  return persistAnnotationModel(event, session, state, mutation.model, { id: mutation.id });
+}
+
 async function createHighlight(
   event: IpcMainInvokeEvent,
   selection: AnnotationSelectionInput,
@@ -299,9 +421,7 @@ async function createHighlight(
   if (!session) throw new Error('请先打开 Markdown 文档。');
   const state = session.annotations;
   if (!state) return { status: 'conflict', reason: '批注文件尚未就绪或处于只读状态，请重新打开文档。' };
-  const anchor = makeAnnotationAnchor(
-    session.document.content, session.document.bomByteLength, session.document.sourceSha256, selection,
-  );
+  const anchor = verifiedAnchorForSelection(session.document, selection);
   const mutation = createHighlightCandidate(state.model, anchor, color, randomUUID(), new Date().toISOString());
   return persistAnnotationMutation(event, session, state, mutation);
 }
@@ -314,9 +434,7 @@ async function createNote(
   if (!session) throw new Error('请先打开 Markdown 文档。');
   const state = session.annotations;
   if (!state) return { status: 'conflict', reason: '批注文件尚未就绪或处于只读状态，请重新打开文档。' };
-  const anchor = makeAnnotationAnchor(
-    session.document.content, session.document.bomByteLength, session.document.sourceSha256, input.selection,
-  );
+  const anchor = verifiedAnchorForSelection(session.document, input.selection);
   const mutation = createNoteCandidate(
     state.model,
     anchor,
@@ -327,6 +445,115 @@ async function createNote(
     new Date().toISOString(),
   );
   return persistAnnotationMutation(event, session, state, mutation);
+}
+
+async function applyAnnotationRelocations(event: IpcMainInvokeEvent): Promise<AnnotationSaveResult> {
+  const session = sessionFor(event);
+  if (!session) throw new Error('请先打开 Markdown 文档。');
+  const state = session.annotations;
+  if (!state) return { status: 'conflict', reason: '批注审查尚未就绪，请重新载入批注。' };
+  if (state.mode === 'read-only') return { status: 'conflict', reason: '存在待处理草稿，当前不能提交重定位。' };
+  const relocation = await relocateAnnotationSidecarCandidate(state.model, {
+    bytes: documentBytes(session.document),
+    content: session.document.content,
+    sha256: session.document.sourceSha256,
+  }, safeTimestamp(state.model));
+  if (!relocation.changed) {
+    return {
+      status: 'saved', count: state.model.annotations.length, relocatedCount: 0,
+      reason: '没有可安全重定位的批注。',
+    };
+  }
+  return persistAnnotationModel(event, session, state, relocation.model, {
+    relocatedCount: relocation.relocatedCount,
+  });
+}
+
+async function reattachAnnotation(
+  event: IpcMainInvokeEvent,
+  input: ReattachAnnotationInput,
+): Promise<AnnotationSaveResult> {
+  const session = sessionFor(event);
+  if (!session) throw new Error('请先打开 Markdown 文档。');
+  const state = session.annotations;
+  if (!state) return { status: 'conflict', reason: '批注审查尚未就绪，请重新载入批注。' };
+  if (state.mode === 'read-only') return { status: 'conflict', reason: '存在待处理草稿，当前不能重新绑定批注。' };
+  const existingIndex = state.model.annotations.findIndex((item) => item.id === input.id);
+  if (existingIndex < 0) throw new Error('批注不存在，请重新载入批注。');
+  const currentReview = await relocateAnnotationSidecarCandidate(state.model, {
+    bytes: documentBytes(session.document),
+    content: session.document.content,
+    sha256: session.document.sourceSha256,
+  }, safeTimestamp(state.model));
+  if (currentReview.items[existingIndex]?.status === 'unchanged') {
+    throw new Error('这条批注已经定位，无需重新选择。');
+  }
+
+  const anchor = verifiedAnchorForSelection(session.document, input.selection);
+  const occupiedBy = currentReview.items.findIndex((item, index) => {
+    if (index === existingIndex || item.status === 'unresolved') return false;
+    const occupied = currentReview.model.annotations[index].anchor;
+    return occupied.basisSha256 === anchor.basisSha256 && occupied.startByte === anchor.startByte &&
+      occupied.endByte === anchor.endByte;
+  });
+  if (occupiedBy >= 0) {
+    throw new Error('这段文字将由另一条批注占用，请选择不同文字。');
+  }
+  const mutation = reattachAnnotationCandidate(state.model, input.id, anchor, safeTimestamp(state.model));
+  const model = mutation.model.source.sha256 === session.document.sourceSha256
+    ? mutation.model
+    : {
+        ...mutation.model,
+        source: { ...mutation.model.source, sha256: session.document.sourceSha256 },
+      };
+  return persistAnnotationModel(event, session, state, model, { id: input.id });
+}
+
+async function copyReadingSummary(
+  event: IpcMainInvokeEvent,
+  filter: ReadingSummaryFilterInput,
+): Promise<{ count: number }> {
+  const session = sessionFor(event);
+  if (!session) throw new Error('请先打开 Markdown 文档。');
+  const state = session.annotations;
+  if (!state) throw new Error('批注状态尚未就绪，请重新载入后再复制。');
+  const bytes = documentBytes(session.document);
+  const relocation = await relocateAnnotationSidecarCandidate(state.model, {
+    bytes,
+    content: session.document.content,
+    sha256: session.document.sourceSha256,
+  }, safeTimestamp(state.model));
+  const statusByAnnotationId = Object.fromEntries(relocation.items.map((item) => [
+    item.id,
+    item.status === 'unchanged' ? 'resolved' as const : 'unresolved' as const,
+  ]));
+  const sectionTree = extractSections(session.document.content);
+  const sectionByAnnotationId = Object.fromEntries(state.model.annotations.flatMap((item) => {
+    if (statusByAnnotationId[item.id] !== 'resolved') return [];
+    const section = sectionLocationForSelection(
+      session.document.content,
+      session.document.bomByteLength,
+      item.anchor,
+      sectionTree,
+    );
+    return section ? [[item.id, {
+      key: String(section.index),
+      title: section.path.join(' / '),
+    }]] : [];
+  }));
+  const summary = formatReadingSummary(state.model, {
+    documentName: session.document.name,
+    statusByAnnotationId,
+    sectionByAnnotationId,
+    filter,
+  });
+  if (documentSessions.get(event.sender.id) !== session) {
+    throw new Error('文档已切换，请重新复制阅读摘要。');
+  }
+  clipboard.writeText(summary);
+  const count = state.model.annotations.filter((item) => filter.mode === 'all' ||
+    (filter.mode === 'untagged' ? item.tagId === undefined : item.tagId === filter.tagId)).length;
+  return { count };
 }
 
 function isMainFrame(event: IpcMainInvokeEvent): boolean {
@@ -364,6 +591,15 @@ function registerReaderIpc(): void {
     }
 
     const filePath = await validatedDroppedMarkdownPath(droppedPath);
+    const document = await loadMarkdownDocument(filePath);
+    documentSessions.set(event.sender.id, { document });
+    return document;
+  });
+
+  ipcMain.handle('document:reload', async (event): Promise<OpenedMarkdownDocument> => {
+    const session = sessionFor(event);
+    if (!session) throw new Error('请先打开 Markdown 文档。');
+    const filePath = await validatedLocalMarkdownPath(session.document.path);
     const document = await loadMarkdownDocument(filePath);
     documentSessions.set(event.sender.id, { document });
     return document;
@@ -439,6 +675,18 @@ function registerReaderIpc(): void {
     if (!state) return { status: 'conflict', reason: '批注文件尚未就绪或处于只读状态，请重新打开文档。' };
     const mutation = deleteNoteCandidate(state.model, validId(value));
     return persistAnnotationMutation(event, session, state, mutation);
+  });
+
+  ipcMain.handle('annotations:apply-relocations', async (event): Promise<AnnotationSaveResult> => {
+    return applyAnnotationRelocations(event);
+  });
+
+  ipcMain.handle('annotations:reattach', async (event, value: unknown): Promise<AnnotationSaveResult> => {
+    return reattachAnnotation(event, validReattachAnnotation(value));
+  });
+
+  ipcMain.handle('annotations:copy-summary', async (event, value: unknown): Promise<{ count: number }> => {
+    return copyReadingSummary(event, validSummaryFilter(value));
   });
 
   ipcMain.handle('external:open', async (event, value: unknown): Promise<boolean> => {

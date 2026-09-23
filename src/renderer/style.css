@@ -58,12 +58,22 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .annotation-summary strong { color: #516075; font-weight: 650; }
 .annotation-location { flex-basis: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .annotation-pending, .annotation-warning { color: #8a5b1d; }
+.annotation-inline-action { background: #fff; border: 1px solid #b7c4d7; border-radius: 5px; color: #34517e; cursor: pointer; font-size: 11px; padding: 3px 7px; }
+.annotation-inline-action:hover { background: #f3f6fb; }
+.annotation-inline-action:disabled { cursor: wait; opacity: .55; }
 .selection-probe-controls { align-items: center; color: #788396; display: flex; flex-wrap: wrap; font-size: 12px; gap: 9px; margin-top: 15px; }
 .selection-check-button { background: transparent; border: 0; color: #667a9a; cursor: pointer; font-size: 11px; padding: 4px; text-decoration: underline; text-underline-offset: 2px; }
 .selection-check-button:hover { color: #315eb7; }
 .selection-probe-result { background: #f8fafd; border-left: 2px solid #a7b9d8; color: #4d5b70; display: flex; flex-direction: column; font-size: 12px; gap: 5px; line-height: 1.5; margin-top: 12px; padding: 10px 13px; }
 .selection-probe-result strong { color: #304261; font-size: 12px; }
 .selection-probe-result code { color: #263753; font-family: Consolas, monospace; overflow-wrap: anywhere; white-space: pre-wrap; }
+.reattach-controls { align-items: center; background: #f7f9fc; border: 1px solid #d8e0ec; border-radius: 7px; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 15px; padding: 10px 12px; }
+.reattach-controls div { display: flex; flex: 1 1 18rem; flex-direction: column; gap: 2px; min-width: 0; }
+.reattach-controls strong { color: #34445c; font-size: 12px; }
+.reattach-controls span { color: #69778c; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reattach-controls button { background: #fff; border: 1px solid #c8d2df; border-radius: 5px; color: #506078; cursor: pointer; font-size: 11px; padding: 5px 8px; }
+.reattach-controls button.primary { background: #315eb7; border-color: #315eb7; color: #fff; }
+.reattach-controls button:disabled { cursor: not-allowed; opacity: .5; }
 .highlight-palette { align-items: center; display: flex; flex-wrap: wrap; gap: 7px; margin-top: 6px; }
 .highlight-choice { align-items: center; background: #fff; border: 1px solid #d5dce7; border-radius: 6px; color: #39475a; cursor: pointer; display: inline-flex; font-size: 12px; gap: 6px; padding: 5px 8px; }
 .highlight-choice:hover { background: #f5f7fa; border-color: #a6b5c8; }
@@ -88,9 +98,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .highlight-jump:disabled { color: #798395; cursor: not-allowed; }
 .highlight-unresolved { color: #8a5b1d; white-space: nowrap; }
 .highlight-list select { background: #fff; border: 1px solid #d3dce9; border-radius: 5px; color: #44536a; font: inherit; max-width: 5.5rem; padding: 3px 2px; }
-.highlight-delete { background: transparent; border: 0; color: #586b88; cursor: pointer; padding: 3px 4px; }
+.highlight-delete, .highlight-reattach { background: transparent; border: 0; color: #586b88; cursor: pointer; padding: 3px 4px; }
 .highlight-delete:hover { color: #9b3333; text-decoration: underline; }
-.highlight-list :is(select, .highlight-delete):disabled { cursor: not-allowed; opacity: .55; }
+.highlight-reattach:hover { color: #315eb7; text-decoration: underline; }
+.highlight-list :is(select, .highlight-delete, .highlight-reattach):disabled { cursor: not-allowed; opacity: .55; }
 ::highlight(mermarkd-amber) { background-color: #f6e6b9; color: #253047; }
 ::highlight(mermarkd-sage) { background-color: #dcebd8; color: #253047; }
 ::highlight(mermarkd-blue) { background-color: #dae8f6; color: #253047; }
@@ -135,6 +146,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .note-records-toolbar h3 { color: #35445a; font-size: 13px; margin: 0; }
 .note-records-toolbar label { align-items: center; color: #7c8797; display: flex; font-size: 10px; gap: 5px; }
 .note-records-toolbar select { min-width: 92px; padding: 4px 5px; width: auto; }
+.note-summary-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.note-summary-actions button { background: transparent; border: 1px solid #cad3df; border-radius: 5px; color: #49607f; cursor: pointer; font-size: 10px; padding: 5px 7px; }
+.note-summary-actions button:hover { background: #f1f5fa; }
+.note-summary-actions button:disabled { cursor: not-allowed; opacity: .5; }
 .note-list { list-style: none; margin: 11px 0 0; padding: 0; }
 .note-card { border-top: 1px solid #e7ebf1; padding: 12px 2px; }
 .note-card.selected { background: #f5f8fc; box-shadow: inset 2px 0 #7290bc; padding-left: 9px; padding-right: 7px; }
