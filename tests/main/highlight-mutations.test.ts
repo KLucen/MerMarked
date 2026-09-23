@@ -5,7 +5,7 @@ import {
   createHighlightCandidate,
   deleteHighlightCandidate,
   recolorHighlightCandidate,
-} from '../../src/main/highlight-mutations.ts';
+} from '../../src/core/annotation-mutations.ts';
 
 const sha = 'a'.repeat(64);
 const time = '2026-09-18T00:00:00Z';

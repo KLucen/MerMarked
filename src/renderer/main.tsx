@@ -1,5 +1,5 @@
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ComponentProps, CSSProperties, DragEvent as ReactDragEvent, MouseEvent } from 'react';
+import type { ComponentProps, CSSProperties, DragEvent as ReactDragEvent, FormEvent, MouseEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import Markdown from 'react-markdown';
 import type { Components, ExtraProps } from 'react-markdown';
@@ -8,7 +8,13 @@ import remarkGfm from 'remark-gfm';
 import { extractSections } from '../core/sections';
 import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
 import type { AnnotationColor } from '../core/annotations';
-import type { AnnotationDocumentView, AnnotationSaveResult, OpenedMarkdownDocument } from '../types/reader-api';
+import type {
+  AnnotationDocumentView,
+  AnnotationSaveResult,
+  AnnotationSelectionInput,
+  NoteTagInput,
+  OpenedMarkdownDocument,
+} from '../types/reader-api';
 import './style.css';
 
 type SelectionProbeResult = ReturnType<typeof resolveSelection>;
@@ -19,9 +25,28 @@ const HIGHLIGHT_COLORS: ReadonlyArray<{ value: AnnotationColor; name: string }> 
   { value: 'blue', name: '浅蓝' },
   { value: 'rose', name: '浅玫瑰' },
 ];
-const HIGHLIGHT_NAMES = HIGHLIGHT_COLORS.flatMap(({ value }) => [
+const ANNOTATION_MARK_NAMES = [
+  ...HIGHLIGHT_COLORS.flatMap(({ value }) => [
   `mermarkd-${value}`, `mermarkd-selected-${value}`,
-]);
+  ]),
+  'mermarkd-note',
+  'mermarkd-selected-note',
+];
+
+const NO_TAG = '__none__';
+const NEW_TAG = '__new__';
+const TAG_VALUE_PREFIX = 'tag:';
+
+interface NoteComposer {
+  selection: AnnotationSelectionInput;
+  quote: string;
+}
+
+function noteTagInput(choice: string, newName: string): NoteTagInput {
+  if (choice === NEW_TAG) return { mode: 'new', name: newName };
+  if (choice === NO_TAG) return { mode: 'none' };
+  return { mode: 'existing', id: choice.slice(TAG_VALUE_PREFIX.length) };
+}
 
 function highlightRegistry(): MapLikeHighlightRegistry | null {
   if (typeof CSS === 'undefined' || typeof Highlight === 'undefined') return null;
@@ -127,14 +152,33 @@ function App() {
   const [annotationLoading, setAnnotationLoading] = useState(false);
   const [annotationSaving, setAnnotationSaving] = useState(false);
   const [annotationError, setAnnotationError] = useState<string | null>(null);
-  const [selectedHighlightId, setSelectedHighlightId] = useState<string | null>(null);
+  const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [unpaintableIds, setUnpaintableIds] = useState<readonly string[]>([]);
   const [highlightSupported, setHighlightSupported] = useState(true);
+  const [annotationPanelOpen, setAnnotationPanelOpen] = useState(
+    () => window.matchMedia('(min-width: 1101px)').matches,
+  );
+  const [narrowLayout, setNarrowLayout] = useState(
+    () => window.matchMedia('(max-width: 1100px)').matches,
+  );
+  const [noteFilter, setNoteFilter] = useState('all');
+  const [noteComposer, setNoteComposer] = useState<NoteComposer | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteTagChoice, setNoteTagChoice] = useState(NO_TAG);
+  const [newTagName, setNewTagName] = useState('');
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editNoteDraft, setEditNoteDraft] = useState('');
+  const [editTagChoice, setEditTagChoice] = useState(NO_TAG);
+  const [editNewTagName, setEditNewTagName] = useState('');
   const [dropActive, setDropActive] = useState(false);
   const dropDepth = useRef(0);
   const documentEpoch = useRef(0);
   const paintedRanges = useRef(new Map<string, Range>());
   const mutationInFlight = useRef(false);
+  const noteComposerRef = useRef<HTMLTextAreaElement>(null);
+  const annotationToggleRef = useRef<HTMLButtonElement>(null);
+  const annotationSidebarRef = useRef<HTMLElement>(null);
+  const annotationCloseRef = useRef<HTMLButtonElement>(null);
 
   const sectionTree = useMemo(
     () => openedDocument ? extractSections(openedDocument.content) : null,
@@ -188,24 +232,74 @@ function App() {
     setActiveSection(null);
     setSelectionProbe(null);
     setAnnotationView(null);
-    setSelectedHighlightId(null);
+    setSelectedAnnotationId(null);
     setUnpaintableIds([]);
+    setNoteFilter('all');
+    setNoteComposer(null);
+    setEditingNoteId(null);
+    setAnnotationPanelOpen(window.matchMedia('(min-width: 1101px)').matches);
     setAnnotationSaving(false);
     window.scrollTo({ top: 0 });
     void refreshAnnotations(epoch);
   }, [refreshAnnotations]);
 
   useEffect(() => {
+    const media = window.matchMedia('(min-width: 1101px)');
+    const updatePanelForViewport = (event: MediaQueryListEvent) => {
+      setNarrowLayout(!event.matches);
+      setAnnotationPanelOpen(event.matches);
+    };
+    media.addEventListener('change', updatePanelForViewport);
+    return () => media.removeEventListener('change', updatePanelForViewport);
+  }, []);
+
+  useEffect(() => {
+    if (noteComposer) noteComposerRef.current?.focus();
+  }, [noteComposer]);
+
+  useEffect(() => {
+    if (!annotationPanelOpen) return;
+    if (!narrowLayout) return;
+    const composer = noteComposerRef.current;
+    if (noteComposer && composer && !composer.disabled) composer.focus();
+    else annotationCloseRef.current?.focus();
+    const containDrawerFocus = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setAnnotationPanelOpen(false);
+        annotationToggleRef.current?.focus();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const panel = annotationSidebarRef.current;
+      if (!panel) return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), summary, a[href], [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.offsetParent !== null);
+      if (!focusable.length) {
+        event.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', containDrawerFocus);
+    return () => window.removeEventListener('keydown', containDrawerFocus);
+  }, [annotationPanelOpen, narrowLayout, noteComposer]);
+
+  useEffect(() => {
     const registry = highlightRegistry();
     const article = document.querySelector<HTMLElement>('.markdown-body');
     paintedRanges.current.clear();
-    HIGHLIGHT_NAMES.forEach((name) => registry?.delete(name));
-    if (!registry) {
-      setHighlightSupported(false);
-      setUnpaintableIds([]);
-      return;
-    }
-    setHighlightSupported(true);
+    ANNOTATION_MARK_NAMES.forEach((name) => registry?.delete(name));
+    setHighlightSupported(Boolean(registry));
     const groups = new Map<string, Range[]>();
     const failures: string[] = [];
     if (article && selectionMap && annotationView) {
@@ -215,8 +309,8 @@ function App() {
       });
       const sourceBlocks = new Map(selectionMap.blocks.map((block) => [block.blockStart, block]));
       for (const item of annotationView.items) {
-        if (item.kind !== 'highlight' || item.status !== 'resolved') continue;
-        if (!item.color || !HIGHLIGHT_COLORS.some(({ value }) => value === item.color)) {
+        if (item.status !== 'resolved') continue;
+        if (item.kind === 'highlight' && (!item.color || !HIGHLIGHT_COLORS.some(({ value }) => value === item.color))) {
           failures.push(item.id);
           continue;
         }
@@ -237,25 +331,30 @@ function App() {
           continue;
         }
         paintedRanges.current.set(item.id, range);
-        const name = item.id === selectedHighlightId
-          ? `mermarkd-selected-${item.color}` : `mermarkd-${item.color}`;
-        const group = groups.get(name) ?? [];
-        group.push(range);
-        groups.set(name, group);
+        const baseName = item.color ? item.color : 'note';
+        const name = item.id === selectedAnnotationId
+          ? `mermarkd-selected-${baseName}` : `mermarkd-${baseName}`;
+        if (registry) {
+          const group = groups.get(name) ?? [];
+          group.push(range);
+          groups.set(name, group);
+        }
       }
     }
-    for (const [name, ranges] of groups) {
-      const highlight = new Highlight(...ranges);
-      const colorIndex = HIGHLIGHT_COLORS.findIndex(({ value }) => name.endsWith(value));
-      highlight.priority = name.includes('selected') ? 10 : colorIndex;
-      registry.set(name, highlight);
+    if (registry) {
+      for (const [name, ranges] of groups) {
+        const highlight = new Highlight(...ranges);
+        const colorIndex = HIGHLIGHT_COLORS.findIndex(({ value }) => name.endsWith(value));
+        highlight.priority = name.includes('selected') ? 10 : colorIndex < 0 ? 4 : colorIndex;
+        registry.set(name, highlight);
+      }
     }
     setUnpaintableIds(failures);
     return () => {
-      HIGHLIGHT_NAMES.forEach((name) => registry.delete(name));
+      ANNOTATION_MARK_NAMES.forEach((name) => registry?.delete(name));
       paintedRanges.current.clear();
     };
-  }, [annotationView, openedDocument?.path, openedDocument?.sourceSha256, selectedHighlightId, selectionMap]);
+  }, [annotationView, openedDocument?.path, openedDocument?.sourceSha256, selectedAnnotationId, selectionMap]);
 
   const openMarkdown = useCallback(async () => {
     setOpening(true);
@@ -413,7 +512,7 @@ function App() {
     }
   }, [selectionMap]);
 
-  const runHighlightMutation = useCallback(async (
+  const runAnnotationMutation = useCallback(async (
     action: () => Promise<AnnotationSaveResult>,
     successMessage: string,
     afterSaved?: (result: AnnotationSaveResult) => void,
@@ -442,7 +541,7 @@ function App() {
       }
     } catch (error) {
       if (documentEpoch.current === epoch) {
-        setMessage(error instanceof Error ? error.message : '保存高亮失败。');
+        setMessage(error instanceof Error ? error.message : '保存批注失败。');
       }
     } finally {
       mutationInFlight.current = false;
@@ -451,48 +550,129 @@ function App() {
   }, [annotationLoading, annotationView, refreshAnnotations]);
 
   const createHighlight = useCallback((color: AnnotationColor) => {
-    const selectionProbe = readSelection();
-    setSelectionProbe(selectionProbe);
-    if (!selectionProbe.ok) return;
+    const probe = readSelection();
+    setSelectionProbe(probe);
+    if (!probe.ok) return;
     const selection = {
-      startByte: selectionProbe.startByte,
-      endByte: selectionProbe.endByte,
-      sourceExact: selectionProbe.sourceExact,
-      displayQuote: selectionProbe.displayQuote,
+      startByte: probe.startByte,
+      endByte: probe.endByte,
+      sourceExact: probe.sourceExact,
+      displayQuote: probe.displayQuote,
     };
-    void runHighlightMutation(
+    void runAnnotationMutation(
       () => window.mermarkd.createHighlight({ selection, color }),
       '高亮已保存到批注 sidecar，Markdown 原文未修改。',
       (result) => {
         setSelectionProbe(null);
-        setSelectedHighlightId(result.id ?? null);
+        setSelectedAnnotationId(result.id ?? null);
         window.getSelection()?.removeAllRanges();
       },
     );
-  }, [readSelection, runHighlightMutation]);
+  }, [readSelection, runAnnotationMutation]);
 
   const recolorHighlight = useCallback((id: string, color: AnnotationColor) => {
-    void runHighlightMutation(
+    void runAnnotationMutation(
       () => window.mermarkd.recolorHighlight({ id, color }),
       '高亮颜色已更新。',
     );
-  }, [runHighlightMutation]);
+  }, [runAnnotationMutation]);
 
   const deleteHighlight = useCallback((id: string) => {
-    void runHighlightMutation(
+    void runAnnotationMutation(
       () => window.mermarkd.deleteHighlight(id),
       '高亮已删除。',
-      () => { if (selectedHighlightId === id) setSelectedHighlightId(null); },
+      () => { if (selectedAnnotationId === id) setSelectedAnnotationId(null); },
     );
-  }, [runHighlightMutation, selectedHighlightId]);
+  }, [runAnnotationMutation, selectedAnnotationId]);
 
-  const jumpToHighlight = useCallback((id: string) => {
+  const jumpToAnnotation = useCallback((id: string) => {
     const range = paintedRanges.current.get(id);
     if (!range) return;
-    setSelectedHighlightId(id);
+    setSelectedAnnotationId(id);
+    if (window.matchMedia('(max-width: 1100px)').matches) setAnnotationPanelOpen(false);
     const rect = range.getBoundingClientRect();
     window.scrollBy({ top: rect.top - Math.min(window.innerHeight * .3, 180), behavior: 'smooth' });
+    const block = sourceBlockFor(range.commonAncestorContainer);
+    if (block) {
+      if (!block.hasAttribute('tabindex')) block.setAttribute('tabindex', '-1');
+      block.focus({ preventScroll: true });
+    }
   }, []);
+
+  const openNoteComposer = useCallback(() => {
+    const probe = readSelection();
+    setSelectionProbe(probe);
+    if (!probe.ok) return;
+    setNoteComposer({
+      selection: {
+        startByte: probe.startByte,
+        endByte: probe.endByte,
+        sourceExact: probe.sourceExact,
+        displayQuote: probe.displayQuote,
+      },
+      quote: probe.displayQuote,
+    });
+    setNoteDraft('');
+    setNoteTagChoice(NO_TAG);
+    setNewTagName('');
+    setEditingNoteId(null);
+    setAnnotationPanelOpen(true);
+  }, [readSelection]);
+
+  const createNote = useCallback((event: FormEvent) => {
+    event.preventDefault();
+    if (!noteComposer || !noteDraft.trim() ||
+        (noteTagChoice === NEW_TAG && !newTagName.trim())) return;
+    void runAnnotationMutation(
+      () => window.mermarkd.createNote({
+        selection: noteComposer.selection,
+        note: noteDraft,
+        tag: noteTagInput(noteTagChoice, newTagName),
+      }),
+      '批注已保存到 sidecar，Markdown 原文未修改。',
+      (result) => {
+        setNoteComposer(null);
+        setSelectionProbe(null);
+        setSelectedAnnotationId(result.id ?? null);
+        window.getSelection()?.removeAllRanges();
+      },
+    );
+  }, [newTagName, noteComposer, noteDraft, noteTagChoice, runAnnotationMutation]);
+
+  const beginEditNote = useCallback((id: string) => {
+    const item = annotationView?.items.find((candidate) => candidate.id === id && candidate.kind === 'note');
+    if (!item) return;
+    setEditingNoteId(id);
+    setEditNoteDraft(item.note ?? '');
+    setEditTagChoice(item.tagId ? `${TAG_VALUE_PREFIX}${item.tagId}` : NO_TAG);
+    setEditNewTagName('');
+    setSelectedAnnotationId(id);
+  }, [annotationView]);
+
+  const updateNote = useCallback((event: FormEvent, id: string) => {
+    event.preventDefault();
+    if (!editNoteDraft.trim() || (editTagChoice === NEW_TAG && !editNewTagName.trim())) return;
+    void runAnnotationMutation(
+      () => window.mermarkd.updateNote({
+        id,
+        note: editNoteDraft,
+        tag: noteTagInput(editTagChoice, editNewTagName),
+      }),
+      '批注已更新。',
+      () => setEditingNoteId(null),
+    );
+  }, [editNewTagName, editNoteDraft, editTagChoice, runAnnotationMutation]);
+
+  const deleteNote = useCallback((id: string) => {
+    void runAnnotationMutation(
+      () => window.mermarkd.deleteNote(id),
+      '批注已删除。',
+      () => {
+        if (selectedAnnotationId === id) setSelectedAnnotationId(null);
+        if (editingNoteId === id) setEditingNoteId(null);
+      },
+    );
+  }, [editingNoteId, runAnnotationMutation, selectedAnnotationId]);
 
   const heading = useCallback((tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', props: ComponentProps<'h1'> & ExtraProps) => {
     const { node, children, ...rest } = props;
@@ -528,8 +708,13 @@ function App() {
   }), [openedDocument?.path, heading, openLink]);
 
   const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
+  const noteItems = annotationView?.items.filter((item) => item.kind === 'note') ?? [];
+  const tags = annotationView?.tags ?? [];
+  const tagById = new Map(tags.map((tag) => [tag.id, tag.name]));
+  const filteredNotes = noteItems.filter((item) => noteFilter === 'all' ||
+    (noteFilter === 'untagged' ? !item.tagId : `${TAG_VALUE_PREFIX}${item.tagId ?? ''}` === noteFilter));
   const unpaintableSet = new Set(unpaintableIds);
-  const canChangeHighlights = annotationView?.status === 'ready' &&
+  const canChangeAnnotations = annotationView?.status === 'ready' &&
     annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading;
 
   return (
@@ -565,7 +750,7 @@ function App() {
           <span className="welcome-note">文件以只读方式载入，本次阅读不会修改原文。</span>
         </main>
       ) : (
-        <div className="reading-layout">
+        <div className={annotationPanelOpen ? 'reading-layout annotations-open' : 'reading-layout'}>
           <aside className="toc" aria-label="章节目录"><div className="toc-inner">
             <div className="toc-heading">章节目录 <span>{sectionTree?.sections.length ?? 0}</span></div>
             {sectionTree?.sections.length ? <nav aria-label="文档章节"><ol className="toc-list">
@@ -584,14 +769,22 @@ function App() {
           </div></aside>
           <main className="reading-main">
             <div className="document-kicker">MARKDOWN 文档</div>
-            <div className="document-heading-row"><h1 className="document-name">{openedDocument.name}</h1><span className="read-only-badge">只读</span></div>
+            <div className="document-heading-row">
+              <h1 className="document-name">{openedDocument.name}</h1>
+              <span className="read-only-badge">只读</span>
+              <button ref={annotationToggleRef} type="button" className="annotation-panel-toggle"
+                aria-expanded={annotationPanelOpen} aria-controls="annotation-sidebar"
+                onClick={() => setAnnotationPanelOpen((open) => !open)}>
+                {annotationPanelOpen ? '收起批注' : `批注 ${noteItems.length}`}
+              </button>
+            </div>
             <div className="annotation-summary" role="status">
               <strong>批注 sidecar</strong>
               {annotationLoading ? <span>正在检查…</span> : annotationView ? <>
                 <span>{annotationView.count} 条记录</span>
                 {annotationView.unresolvedCount > 0 && <span>{annotationView.unresolvedCount} 条待定位</span>}
                 {unpaintableIds.length > 0 && <span className="annotation-warning">{unpaintableIds.length} 条无法核验可见位置，未着色</span>}
-                {annotationView.pendingDraftCount > 0 && <span className="annotation-pending">{annotationView.pendingDraftCount} 份草稿尚未写回同目录，暂停修改高亮</span>}
+                {annotationView.pendingDraftCount > 0 && <span className="annotation-pending">{annotationView.pendingDraftCount} 份草稿尚未写回同目录，暂停修改批注</span>}
                 {(annotationView.unreadableDraftCount ?? 0) > 0 && <span className="annotation-warning">其中 {annotationView.unreadableDraftCount} 份草稿无法读取，请检查应用数据目录</span>}
                 {annotationView.status === 'read-only' && <span className="annotation-warning">只读：{annotationView.reason ?? '批注文件不可安全修改'}</span>}
                 {!highlightSupported && <span className="annotation-warning">当前环境不支持正文高亮着色</span>}
@@ -599,15 +792,18 @@ function App() {
               </> : <span className="annotation-warning">{annotationError ?? '尚未读取批注状态'}</span>}
             </div>
             <div className="selection-probe-controls">
-              <span>选中文字后选择高亮颜色</span>
+              <span>选中文字后高亮或添加批注</span>
               <div className="highlight-palette" role="group" aria-label="高亮所选文字">
                 {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button"
                   className="highlight-choice" data-color={value} onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => createHighlight(value)} disabled={!canChangeHighlights || !highlightSupported}
+                  onClick={() => createHighlight(value)} disabled={!canChangeAnnotations || !highlightSupported}
                   aria-label={`用${name}色高亮所选文字`}>
                   <span className="highlight-swatch" aria-hidden="true" />{name}
                 </button>)}
               </div>
+              <button type="button" className="add-note-button" onMouseDown={(event) => event.preventDefault()}
+                onClick={openNoteComposer} disabled={!canChangeAnnotations}
+                aria-controls="annotation-sidebar">添加批注</button>
               <button type="button" className="selection-check-button" onMouseDown={(event) => event.preventDefault()}
                 onClick={() => setSelectionProbe(readSelection())}>检查选区定位</button>
             </div>
@@ -619,30 +815,6 @@ function App() {
                 <span>原文片段：<code>{selectionProbe.sourceExact}</code></span>
               </> : <><strong>无法安全定位</strong><span>{selectionProbe.reason}</span></>}
             </div>}
-            <details className="highlight-records">
-              <summary>高亮记录 <span>{highlightItems.length}</span></summary>
-              {highlightItems.length ? <ol className="highlight-list">{highlightItems.map((item) => {
-                const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
-                  paintedRanges.current.has(item.id) && highlightSupported;
-                const locationLabel = item.status !== 'resolved' ? '待定位'
-                  : !highlightSupported ? '当前环境无法显示'
-                    : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
-                return <li key={item.id} className={selectedHighlightId === item.id ? 'selected' : undefined}>
-                  <span className="highlight-record-swatch" data-color={item.color} aria-hidden="true" />
-                  <button type="button" className="highlight-jump" onClick={() => jumpToHighlight(item.id)}
-                    disabled={!available} aria-pressed={selectedHighlightId === item.id}
-                    title={available ? '跳转到原文' : `${locationLabel}，暂不跳转`}>{item.anchor.displayQuote}</button>
-                  {!available && <span className="highlight-unresolved">{locationLabel}</span>}
-                  <select value={item.color ?? 'amber'} aria-label={`更改“${item.anchor.displayQuote}”的高亮颜色`}
-                    disabled={!canChangeHighlights || !available}
-                    onChange={(event) => recolorHighlight(item.id, event.target.value as AnnotationColor)}>
-                    {HIGHLIGHT_COLORS.map(({ value, name }) => <option key={value} value={value}>{name}</option>)}
-                  </select>
-                  <button type="button" className="highlight-delete" onClick={() => deleteHighlight(item.id)}
-                    disabled={!canChangeHighlights || !available} aria-label={`删除“${item.anchor.displayQuote}”的高亮`}>删除</button>
-                </li>;
-              })}</ol> : <p>还没有高亮。选中文字并选择颜色即可创建。</p>}
-            </details>
             <div className="document-divider" />
             {openedDocument.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文">
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter]} skipHtml components={components}>
@@ -650,6 +822,147 @@ function App() {
               </Markdown>
             </article> : <div className="empty-document"><h2>这份文档目前没有内容</h2><p>可以打开另一份 Markdown 文件继续阅读。</p></div>}
           </main>
+          {annotationPanelOpen && <>
+            <button type="button" className="annotation-drawer-backdrop" aria-label="关闭批注栏"
+              onClick={() => { setAnnotationPanelOpen(false); annotationToggleRef.current?.focus(); }} />
+            <aside ref={annotationSidebarRef} id="annotation-sidebar" className="annotation-sidebar"
+              aria-label="批注边栏" aria-labelledby="annotation-sidebar-title"
+              role={narrowLayout ? 'dialog' : undefined} aria-modal={narrowLayout ? true : undefined} tabIndex={-1}>
+              <div className="annotation-sidebar-inner">
+                <header className="annotation-sidebar-header">
+                  <div><h2 id="annotation-sidebar-title">批注</h2><span>{noteItems.length} 条便签</span></div>
+                  <button ref={annotationCloseRef} type="button" className="annotation-close" aria-label="关闭批注栏"
+                    onClick={() => { setAnnotationPanelOpen(false); annotationToggleRef.current?.focus(); }}>×</button>
+                </header>
+
+                {noteComposer && <form className="note-composer" onSubmit={createNote}>
+                  <div className="note-form-heading">为选文添加批注</div>
+                  <blockquote>{noteComposer.quote}</blockquote>
+                  <label htmlFor="new-note-body">批注内容</label>
+                  <textarea id="new-note-body" ref={noteComposerRef} rows={5} value={noteDraft}
+                    disabled={!canChangeAnnotations}
+                    onChange={(event) => setNoteDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                        event.preventDefault();
+                        event.currentTarget.form?.requestSubmit();
+                      }
+                    }} placeholder="写下这段文字带来的想法…" />
+                  <label htmlFor="new-note-tag">标签</label>
+                  <select id="new-note-tag" value={noteTagChoice} disabled={!canChangeAnnotations}
+                    onChange={(event) => setNoteTagChoice(event.target.value)}>
+                    <option value={NO_TAG}>无标签</option>
+                    {tags.map((tag) => <option key={tag.id} value={`${TAG_VALUE_PREFIX}${tag.id}`}>{tag.name}</option>)}
+                    <option value={NEW_TAG}>新建标签…</option>
+                  </select>
+                  {noteTagChoice === NEW_TAG && <>
+                    <label htmlFor="new-note-tag-name">新标签名称</label>
+                    <input id="new-note-tag-name" value={newTagName} disabled={!canChangeAnnotations}
+                      onChange={(event) => setNewTagName(event.target.value)} />
+                  </>}
+                  <div className="note-form-actions">
+                    <button type="button" onClick={() => setNoteComposer(null)}>取消</button>
+                    <button type="submit" className="primary" disabled={!canChangeAnnotations || !noteDraft.trim() ||
+                      (noteTagChoice === NEW_TAG && !newTagName.trim())}>
+                      {annotationSaving ? '正在保存…' : '保存批注'}
+                    </button>
+                  </div>
+                  <span className="keyboard-hint">Ctrl+Enter 保存</span>
+                </form>}
+
+                <section className="note-records" aria-labelledby="note-records-heading">
+                  <div className="note-records-toolbar">
+                    <h3 id="note-records-heading">便签记录</h3>
+                    <label><span>筛选</span><select value={noteFilter} onChange={(event) => setNoteFilter(event.target.value)}>
+                      <option value="all">全部</option>
+                      <option value="untagged">无标签</option>
+                      {tags.map((tag) => <option key={tag.id} value={`${TAG_VALUE_PREFIX}${tag.id}`}>{tag.name}</option>)}
+                    </select></label>
+                  </div>
+                  {filteredNotes.length ? <ol className="note-list">{filteredNotes.map((item) => {
+                    const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
+                      paintedRanges.current.has(item.id);
+                    const locationLabel = item.status !== 'resolved' ? '待定位'
+                      : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
+                    const selected = selectedAnnotationId === item.id;
+                    const editing = editingNoteId === item.id;
+                    const tagName = item.tagId ? tagById.get(item.tagId) : undefined;
+                    return <li key={item.id} className={selected ? 'note-card selected' : 'note-card'}>
+                      <div className="note-card-topline">
+                        {item.color && <span className="highlight-record-swatch" data-color={item.color} aria-label="保留的高亮颜色" />}
+                        <button type="button" className="note-quote" onClick={() => jumpToAnnotation(item.id)}
+                          disabled={!available} aria-pressed={selected}
+                          title={available ? '跳转到原文' : `${locationLabel}，暂不跳转`}>
+                          “{item.anchor.displayQuote}”
+                        </button>
+                        {!available && <span className="note-location-state">{locationLabel}</span>}
+                      </div>
+                      {editing ? <form className="note-edit-form" onSubmit={(event) => updateNote(event, item.id)}>
+                        <label htmlFor={`note-body-${item.id}`}>批注内容</label>
+                        <textarea id={`note-body-${item.id}`} rows={5} value={editNoteDraft}
+                          disabled={!canChangeAnnotations}
+                          onChange={(event) => setEditNoteDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                              event.preventDefault();
+                              event.currentTarget.form?.requestSubmit();
+                            }
+                          }} />
+                        <label htmlFor={`note-tag-${item.id}`}>标签</label>
+                        <select id={`note-tag-${item.id}`} value={editTagChoice} disabled={!canChangeAnnotations}
+                          onChange={(event) => setEditTagChoice(event.target.value)}>
+                          <option value={NO_TAG}>无标签</option>
+                          {tags.map((tag) => <option key={tag.id} value={`${TAG_VALUE_PREFIX}${tag.id}`}>{tag.name}</option>)}
+                          <option value={NEW_TAG}>新建标签…</option>
+                        </select>
+                        {editTagChoice === NEW_TAG && <>
+                          <label htmlFor={`note-new-tag-${item.id}`}>新标签名称</label>
+                          <input id={`note-new-tag-${item.id}`} value={editNewTagName} disabled={!canChangeAnnotations}
+                            onChange={(event) => setEditNewTagName(event.target.value)} />
+                        </>}
+                        <div className="note-form-actions">
+                          <button type="button" onClick={() => setEditingNoteId(null)}>取消</button>
+                          <button type="submit" className="primary" disabled={!canChangeAnnotations || !editNoteDraft.trim() ||
+                            (editTagChoice === NEW_TAG && !editNewTagName.trim())}>保存</button>
+                        </div>
+                      </form> : <>
+                        {tagName && <span className="note-tag">{tagName}</span>}
+                        <p className="note-body">{item.note}</p>
+                        <div className="note-card-actions">
+                          <button type="button" onClick={() => beginEditNote(item.id)} disabled={!canChangeAnnotations || !available}>编辑</button>
+                          <button type="button" onClick={() => deleteNote(item.id)} disabled={!canChangeAnnotations || !available}>删除</button>
+                        </div>
+                      </>}
+                    </li>;
+                  })}</ol> : <p className="notes-empty">{noteItems.length ? '当前筛选下没有批注。' : '选中文字并选择“添加批注”开始记录。'}</p>}
+                </section>
+
+                <details className="highlight-records">
+                  <summary>高亮记录 <span>{highlightItems.length}</span></summary>
+                  {highlightItems.length ? <ol className="highlight-list">{highlightItems.map((item) => {
+                    const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
+                      paintedRanges.current.has(item.id);
+                    const locationLabel = item.status !== 'resolved' ? '待定位'
+                      : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
+                    return <li key={item.id} className={selectedAnnotationId === item.id ? 'selected' : undefined}>
+                      <span className="highlight-record-swatch" data-color={item.color} aria-hidden="true" />
+                      <button type="button" className="highlight-jump" onClick={() => jumpToAnnotation(item.id)}
+                        disabled={!available} aria-pressed={selectedAnnotationId === item.id}
+                        title={available ? '跳转到原文' : `${locationLabel}，暂不跳转`}>{item.anchor.displayQuote}</button>
+                      {!available && <span className="highlight-unresolved">{locationLabel}</span>}
+                      <select value={item.color ?? 'amber'} aria-label={`更改“${item.anchor.displayQuote}”的高亮颜色`}
+                        disabled={!canChangeAnnotations || !available}
+                        onChange={(event) => recolorHighlight(item.id, event.target.value as AnnotationColor)}>
+                        {HIGHLIGHT_COLORS.map(({ value, name }) => <option key={value} value={value}>{name}</option>)}
+                      </select>
+                      <button type="button" className="highlight-delete" onClick={() => deleteHighlight(item.id)}
+                        disabled={!canChangeAnnotations || !available} aria-label={`删除“${item.anchor.displayQuote}”的高亮`}>删除</button>
+                    </li>;
+                  })}</ol> : <p>还没有单独的高亮。</p>}
+                </details>
+              </div>
+            </aside>
+          </>}
         </div>
       )}
     </div>

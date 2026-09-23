@@ -6,14 +6,18 @@ import path from 'node:path';
 import squirrelStartup from 'electron-squirrel-startup';
 import type {
   AnnotationDocumentView, AnnotationSaveResult, AnnotationSelectionInput,
-  CreateHighlightInput, OpenedMarkdownDocument, RecolorHighlightInput,
+  CreateHighlightInput, CreateNoteInput, NoteTagInput, OpenedMarkdownDocument,
+  RecolorHighlightInput, UpdateNoteInput,
 } from '../types/reader-api';
 import { makeAnnotationAnchor } from '../core/annotation-anchor';
 import { classifyAnnotationAnchors, parseAnnotationYaml, serializeAnnotationYaml } from '../core/annotations';
 import type { AnnotationColor, AnnotationSidecar } from '../core/annotations';
 import { loadAnnotationFile, saveAnnotationFile } from './annotation-store';
-import { createHighlightCandidate, deleteHighlightCandidate, recolorHighlightCandidate } from './highlight-mutations';
-import type { HighlightMutation } from './highlight-mutations';
+import {
+  createHighlightCandidate, createNoteCandidate, deleteHighlightCandidate, deleteNoteCandidate,
+  recolorHighlightCandidate, updateNoteCandidate,
+} from '../core/annotation-mutations';
+import type { AnnotationMutation } from '../core/annotation-mutations';
 import {
   decodeMarkdownSource,
   readDocumentImage,
@@ -34,6 +38,9 @@ interface DocumentSession {
 }
 
 const documentSessions = new Map<number, DocumentSession>();
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder('utf-8', { fatal: true });
+const idPattern = /^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/;
 
 function sessionFor(event: IpcMainInvokeEvent): DocumentSession | null {
   if (!isMainFrame(event) || !BrowserWindow.fromWebContents(event.sender)) return null;
@@ -53,16 +60,49 @@ function emptySidecar(sourceSha256: string): AnnotationSidecar {
   };
 }
 
-function validSelection(value: unknown): AnnotationSelectionInput {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('选区参数无效。');
+function objectWithFields(value: unknown, label: string, fields: readonly string[]): Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label}参数无效。`);
   const entry = value as Record<string, unknown>;
+  if (Object.keys(entry).some((key) => !fields.includes(key)) || fields.some((key) => !Object.hasOwn(entry, key))) {
+    throw new Error(`${label}参数无效。`);
+  }
+  return entry;
+}
+
+function validEncodedText(value: unknown, label: string, maxBytes: number, options?: {
+  trim?: boolean;
+  singleLine?: boolean;
+}): string {
+  if (typeof value !== 'string') throw new Error(`${label}必须是文本。`);
+  const result = options?.trim ? value.trim() : value;
+  if (!result.trim() || result.includes('\0') || (options?.singleLine && /[\r\n]/.test(result))) {
+    throw new Error(`${label}包含不支持的字符或为空。`);
+  }
+  const bytes = textEncoder.encode(result);
+  if (bytes.length > maxBytes || textDecoder.decode(bytes) !== result) {
+    throw new Error(`${label}不能超过 ${maxBytes} 个 UTF-8 字节。`);
+  }
+  return result;
+}
+
+function validSelection(value: unknown): AnnotationSelectionInput {
+  const entry = objectWithFields(value, '选区', ['startByte', 'endByte', 'sourceExact', 'displayQuote']);
   if (!Number.isSafeInteger(entry.startByte) || !Number.isSafeInteger(entry.endByte) ||
       (entry.startByte as number) < 0 || (entry.endByte as number) <= (entry.startByte as number) ||
-      typeof entry.sourceExact !== 'string' || typeof entry.displayQuote !== 'string' ||
-      entry.sourceExact.length > 16_384 || entry.displayQuote.length > 16_384) {
+      typeof entry.sourceExact !== 'string' || typeof entry.displayQuote !== 'string') {
     throw new Error('选区参数无效。');
   }
-  return entry as unknown as AnnotationSelectionInput;
+  const sourceExact = validEncodedText(entry.sourceExact, '选区原文', 16_384);
+  const displayQuote = validEncodedText(entry.displayQuote, '选区文字', 16_384);
+  if (textEncoder.encode(sourceExact).length !== (entry.endByte as number) - (entry.startByte as number)) {
+    throw new Error('选区字节范围与原文不一致。');
+  }
+  return {
+    startByte: entry.startByte as number,
+    endByte: entry.endByte as number,
+    sourceExact,
+    displayQuote,
+  };
 }
 
 function validColor(value: unknown): AnnotationColor {
@@ -73,22 +113,56 @@ function validColor(value: unknown): AnnotationColor {
 }
 
 function validId(value: unknown): string {
-  if (typeof value !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,127}$/.test(value)) {
-    throw new Error('高亮 ID 无效。');
+  if (typeof value !== 'string' || !idPattern.test(value)) {
+    throw new Error('批注 ID 无效。');
   }
   return value;
 }
 
 function validCreateHighlight(value: unknown): CreateHighlightInput {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('高亮参数无效。');
-  const entry = value as Record<string, unknown>;
+  const entry = objectWithFields(value, '高亮', ['selection', 'color']);
   return { selection: validSelection(entry.selection), color: validColor(entry.color) };
 }
 
 function validRecolorHighlight(value: unknown): RecolorHighlightInput {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('高亮参数无效。');
-  const entry = value as Record<string, unknown>;
+  const entry = objectWithFields(value, '高亮', ['id', 'color']);
   return { id: validId(entry.id), color: validColor(entry.color) };
+}
+
+function validNoteTag(value: unknown): NoteTagInput {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new Error('标签参数无效。');
+  const mode = (value as Record<string, unknown>).mode;
+  if (mode === 'none') {
+    objectWithFields(value, '标签', ['mode']);
+    return { mode };
+  }
+  if (mode === 'existing') {
+    const entry = objectWithFields(value, '标签', ['mode', 'id']);
+    return { mode, id: validId(entry.id) };
+  }
+  if (mode === 'new') {
+    const entry = objectWithFields(value, '标签', ['mode', 'name']);
+    return { mode, name: validEncodedText(entry.name, '标签名称', 256, { trim: true, singleLine: true }) };
+  }
+  throw new Error('标签参数无效。');
+}
+
+function validCreateNote(value: unknown): CreateNoteInput {
+  const entry = objectWithFields(value, '便签', ['selection', 'note', 'tag']);
+  return {
+    selection: validSelection(entry.selection),
+    note: validEncodedText(entry.note, '便签正文', 32_768),
+    tag: validNoteTag(entry.tag),
+  };
+}
+
+function validUpdateNote(value: unknown): UpdateNoteInput {
+  const entry = objectWithFields(value, '便签', ['id', 'note', 'tag']);
+  return {
+    id: validId(entry.id),
+    note: validEncodedText(entry.note, '便签正文', 32_768),
+    tag: validNoteTag(entry.tag),
+  };
 }
 
 async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocumentView> {
@@ -101,7 +175,7 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
   if (session.annotationWriteInProgress) {
     return {
       status: 'read-only', count: 0, unresolvedCount: 0, pendingDraftCount: 0,
-      sidecarPath: `${session.document.path}.annotations.yaml`, items: [],
+      sidecarPath: `${session.document.path}.annotations.yaml`, tags: [], items: [],
       reason: '批注正在保存，请稍后重新载入。',
     };
   }
@@ -111,7 +185,7 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
   } catch (error) {
     setLoadedState(undefined);
     return {
-      status: 'read-only', count: 0, unresolvedCount: 0, pendingDraftCount: 0, items: [],
+      status: 'read-only', count: 0, unresolvedCount: 0, pendingDraftCount: 0, tags: [], items: [],
       sidecarPath: `${session.document.path}.annotations.yaml`,
       reason: error instanceof Error ? error.message : '无法读取批注文件。',
     };
@@ -121,6 +195,7 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
     pendingDraftCount: loaded.pendingDrafts.length + loaded.unreadableDraftPaths.length,
     unreadableDraftCount: loaded.unreadableDraftPaths.length,
     sidecarPath: loaded.sidecarPath,
+    tags: [],
     items: [],
   };
   let sourceBytes: Buffer;
@@ -140,6 +215,7 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
     return { ...view, status: 'read-only', reason: error instanceof Error ? error.message : '批注文件无法解析。' };
   }
   view.count = model.annotations.length;
+  view.tags = model.tags.map((tag) => ({ id: tag.id, name: tag.name }));
   const sourceIsCurrent = currentHash === loaded.sourceSha256 && currentHash === session.document.sourceSha256;
   const sidecarIsCurrent = model.source.sha256 === currentHash;
   const anchorStatuses = sourceIsCurrent && sidecarIsCurrent
@@ -149,6 +225,10 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
     id: item.id,
     kind: item.kind,
     ...(item.color && { color: item.color }),
+    ...(item.note !== undefined && { note: item.note }),
+    ...(item.tagId && { tagId: item.tagId }),
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
     anchor: {
       startByte: item.anchor.startByte,
       endByte: item.anchor.endByte,
@@ -178,7 +258,7 @@ async function persistAnnotationMutation(
   event: IpcMainInvokeEvent,
   session: DocumentSession,
   state: NonNullable<DocumentSession['annotations']>,
-  mutation: HighlightMutation,
+  mutation: AnnotationMutation,
 ): Promise<AnnotationSaveResult> {
   if (session.annotationWriteInProgress) return { status: 'conflict', reason: '另一项批注操作仍在保存，请稍后重试。' };
   if (documentSessions.get(event.sender.id) !== session) throw new Error('文档已切换，请重新选择文字。');
@@ -223,6 +303,29 @@ async function createHighlight(
     session.document.content, session.document.bomByteLength, session.document.sourceSha256, selection,
   );
   const mutation = createHighlightCandidate(state.model, anchor, color, randomUUID(), new Date().toISOString());
+  return persistAnnotationMutation(event, session, state, mutation);
+}
+
+async function createNote(
+  event: IpcMainInvokeEvent,
+  input: CreateNoteInput,
+): Promise<AnnotationSaveResult> {
+  const session = sessionFor(event);
+  if (!session) throw new Error('请先打开 Markdown 文档。');
+  const state = session.annotations;
+  if (!state) return { status: 'conflict', reason: '批注文件尚未就绪或处于只读状态，请重新打开文档。' };
+  const anchor = makeAnnotationAnchor(
+    session.document.content, session.document.bomByteLength, session.document.sourceSha256, input.selection,
+  );
+  const mutation = createNoteCandidate(
+    state.model,
+    anchor,
+    input.note,
+    input.tag,
+    randomUUID(),
+    input.tag.mode === 'new' ? randomUUID() : undefined,
+    new Date().toISOString(),
+  );
   return persistAnnotationMutation(event, session, state, mutation);
 }
 
@@ -283,6 +386,7 @@ function registerReaderIpc(): void {
   });
 
   ipcMain.handle('annotations:create-highlight', async (event, value: unknown): Promise<AnnotationSaveResult> => {
+    if (!sessionFor(event)) throw new Error('请先打开 Markdown 文档。');
     const input = validCreateHighlight(value);
     return createHighlight(event, input.selection, input.color);
   });
@@ -303,6 +407,37 @@ function registerReaderIpc(): void {
     const state = session.annotations;
     if (!state) return { status: 'conflict', reason: '批注文件尚未就绪或处于只读状态，请重新打开文档。' };
     const mutation = deleteHighlightCandidate(state.model, validId(value));
+    return persistAnnotationMutation(event, session, state, mutation);
+  });
+
+  ipcMain.handle('annotations:create-note', async (event, value: unknown): Promise<AnnotationSaveResult> => {
+    if (!sessionFor(event)) throw new Error('请先打开 Markdown 文档。');
+    return createNote(event, validCreateNote(value));
+  });
+
+  ipcMain.handle('annotations:update-note', async (event, value: unknown): Promise<AnnotationSaveResult> => {
+    const session = sessionFor(event);
+    if (!session) throw new Error('请先打开 Markdown 文档。');
+    const state = session.annotations;
+    if (!state) return { status: 'conflict', reason: '批注文件尚未就绪或处于只读状态，请重新打开文档。' };
+    const input = validUpdateNote(value);
+    const mutation = updateNoteCandidate(
+      state.model,
+      input.id,
+      input.note,
+      input.tag,
+      input.tag.mode === 'new' ? randomUUID() : undefined,
+      new Date().toISOString(),
+    );
+    return persistAnnotationMutation(event, session, state, mutation);
+  });
+
+  ipcMain.handle('annotations:delete-note', async (event, value: unknown): Promise<AnnotationSaveResult> => {
+    const session = sessionFor(event);
+    if (!session) throw new Error('请先打开 Markdown 文档。');
+    const state = session.annotations;
+    if (!state) return { status: 'conflict', reason: '批注文件尚未就绪或处于只读状态，请重新打开文档。' };
+    const mutation = deleteNoteCandidate(state.model, validId(value));
     return persistAnnotationMutation(event, session, state, mutation);
   });
 
