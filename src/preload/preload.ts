@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type {
-  CreateHighlightInput, CreateNoteInput, MerMarkdApi, RecolorHighlightInput, UpdateNoteInput,
+  CreateHighlightInput, CreateNoteInput, MerMarkdApi, ReadingSummaryFilterInput,
+  ReattachAnnotationInput, RecolorHighlightInput, UpdateNoteInput,
 } from '../types/reader-api';
 
 const api: MerMarkdApi = Object.freeze({
@@ -18,6 +19,7 @@ const api: MerMarkdApi = Object.freeze({
     }
     return ipcRenderer.invoke('document:open-dropped', droppedPath);
   },
+  reloadMarkdown: () => ipcRenderer.invoke('document:reload'),
   readDocumentImage: (relativePath: string) =>
     ipcRenderer.invoke('document:read-image', relativePath),
   loadAnnotations: () => ipcRenderer.invoke('annotations:load'),
@@ -27,6 +29,9 @@ const api: MerMarkdApi = Object.freeze({
   createNote: (input: CreateNoteInput) => ipcRenderer.invoke('annotations:create-note', input),
   updateNote: (input: UpdateNoteInput) => ipcRenderer.invoke('annotations:update-note', input),
   deleteNote: (id: string) => ipcRenderer.invoke('annotations:delete-note', id),
+  applyAnnotationRelocations: () => ipcRenderer.invoke('annotations:apply-relocations'),
+  reattachAnnotation: (input: ReattachAnnotationInput) => ipcRenderer.invoke('annotations:reattach', input),
+  copyReadingSummary: (filter: ReadingSummaryFilterInput) => ipcRenderer.invoke('annotations:copy-summary', filter),
   openExternal: (url: string) => ipcRenderer.invoke('external:open', url),
 });
 

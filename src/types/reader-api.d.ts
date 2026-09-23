@@ -19,14 +19,26 @@ export interface AnnotationSelectionInput {
 }
 
 export interface AnnotationSummary {
-  status: 'ready' | 'read-only';
+  status: 'ready' | 'needs-relocation' | 'read-only';
   count: number;
   unresolvedCount: number;
+  relocatableCount: number;
   pendingDraftCount: number;
   unreadableDraftCount?: number;
   sidecarPath: string;
   reason?: string;
+  canReloadSource?: boolean;
+  canCopySummary?: boolean;
 }
+
+export type AnnotationRelocationState =
+  | 'available'
+  | 'source-missing'
+  | 'source-repeated'
+  | 'context-mismatch'
+  | 'range-mismatch'
+  | 'rendered-range-unresolved'
+  | 'target-range-collision';
 
 export interface AnnotationItemView {
   id: string;
@@ -38,6 +50,7 @@ export interface AnnotationItemView {
   updatedAt: string;
   anchor: Pick<AnnotationSelectionInput, 'startByte' | 'endByte' | 'sourceExact' | 'displayQuote'>;
   status: AnnotationAnchorStatus;
+  relocation?: AnnotationRelocationState;
 }
 
 export interface AnnotationTagView {
@@ -83,12 +96,28 @@ export interface AnnotationSaveResult {
   draftPath?: string;
   count?: number;
   id?: string;
+  relocatedCount?: number;
+}
+
+export interface ReattachAnnotationInput {
+  id: string;
+  selection: AnnotationSelectionInput;
+}
+
+export type ReadingSummaryFilterInput =
+  | { mode: 'all' }
+  | { mode: 'untagged' }
+  | { mode: 'tag'; tagId: string };
+
+export interface ReadingSummaryCopyResult {
+  count: number;
 }
 
 export interface MerMarkdApi {
   readonly appName: 'MerMarkd';
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
   openDroppedMarkdown(file: File): Promise<OpenedMarkdownDocument>;
+  reloadMarkdown(): Promise<OpenedMarkdownDocument>;
   readDocumentImage(relativePath: string): Promise<string | null>;
   loadAnnotations(): Promise<AnnotationDocumentView>;
   createHighlight(input: CreateHighlightInput): Promise<AnnotationSaveResult>;
@@ -97,6 +126,9 @@ export interface MerMarkdApi {
   createNote(input: CreateNoteInput): Promise<AnnotationSaveResult>;
   updateNote(input: UpdateNoteInput): Promise<AnnotationSaveResult>;
   deleteNote(id: string): Promise<AnnotationSaveResult>;
+  applyAnnotationRelocations(): Promise<AnnotationSaveResult>;
+  reattachAnnotation(input: ReattachAnnotationInput): Promise<AnnotationSaveResult>;
+  copyReadingSummary(filter: ReadingSummaryFilterInput): Promise<ReadingSummaryCopyResult>;
   openExternal(url: string): Promise<boolean>;
 }
 

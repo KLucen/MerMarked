@@ -13,6 +13,8 @@ export interface PendingAnnotationDraft {
   text: string;
   expectedSourceSha256: string;
   expectedSidecarSha256: string | null;
+  /** Present when a reviewed relocation migrates a sidecar from an older source hash. */
+  expectedExistingSourceSha256?: string;
   createdAt: string;
 }
 
@@ -31,6 +33,8 @@ export interface SaveAnnotationFileInput {
   draftDirectory: string;
   expectedSourceSha256: string;
   expectedSidecarSha256: string | null;
+  /** Explicitly authorizes replacing a sidecar bound to this older source hash. */
+  expectedExistingSourceSha256?: string;
   text: string;
 }
 
@@ -58,6 +62,11 @@ export interface AnnotationStoreOperations {
 
 function sha256(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
+}
+
+function validSha256(value: string, label: string): string {
+  if (!/^[0-9a-f]{64}$/.test(value)) throw new Error(`${label}无效，未写入任何文件。`);
+  return value;
 }
 
 function decodeUtf8(bytes: Uint8Array, description: string): string {
@@ -157,6 +166,8 @@ async function readPendingDrafts(documentPath: string, draftDirectory: string): 
         !('expectedSourceSha256' in data) || typeof data.expectedSourceSha256 !== 'string' ||
         !('expectedSidecarSha256' in data) ||
         (data.expectedSidecarSha256 !== null && typeof data.expectedSidecarSha256 !== 'string') ||
+        ('expectedExistingSourceSha256' in data &&
+          typeof data.expectedExistingSourceSha256 !== 'string') ||
         !('createdAt' in data) || typeof data.createdAt !== 'string'
       ) {
         throw new Error('草稿格式无效');
@@ -166,6 +177,9 @@ async function readPendingDrafts(documentPath: string, draftDirectory: string): 
         text: data.text,
         expectedSourceSha256: data.expectedSourceSha256,
         expectedSidecarSha256: data.expectedSidecarSha256,
+        ...('expectedExistingSourceSha256' in data
+          ? { expectedExistingSourceSha256: data.expectedExistingSourceSha256 as string }
+          : {}),
         createdAt: data.createdAt,
       });
     } catch {
@@ -189,6 +203,9 @@ async function savePendingDraft(input: SaveAnnotationFileInput, documentPath: st
     documentPath,
     expectedSourceSha256: input.expectedSourceSha256,
     expectedSidecarSha256: input.expectedSidecarSha256,
+    ...(input.expectedExistingSourceSha256
+      ? { expectedExistingSourceSha256: input.expectedExistingSourceSha256 }
+      : {}),
     text: input.text,
     createdAt: new Date().toISOString(),
   }, null, 2);
@@ -240,6 +257,14 @@ export async function saveAnnotationFile(
   if (candidate.source.sha256 !== input.expectedSourceSha256) {
     throw new Error('批注 YAML 的原文摘要与保存基线不一致，未写入任何文件。');
   }
+  validSha256(input.expectedSourceSha256, '原文保存基线');
+  const expectedExistingSourceSha256 = validSha256(
+    input.expectedExistingSourceSha256 ?? input.expectedSourceSha256,
+    '现有批注原文基线',
+  );
+  if (input.expectedExistingSourceSha256 && input.expectedSidecarSha256 === null) {
+    throw new Error('重定位保存缺少现有批注文件基线，未写入任何文件。');
+  }
   const documentPath = await canonicalDocumentPath(input.documentPath);
   const sidecarPath = `${documentPath}.annotations.yaml`;
   const lockPath = `${sidecarPath}.lock`;
@@ -265,7 +290,7 @@ export async function saveAnnotationFile(
 
   if (sourceSha256 !== input.expectedSourceSha256) return conflict('source-changed');
   if (sidecar.sha256 !== input.expectedSidecarSha256) return conflict('sidecar-changed');
-  const initialSidecarIssue = existingSidecarIssue(sidecar.text, input.expectedSourceSha256);
+  const initialSidecarIssue = existingSidecarIssue(sidecar.text, expectedExistingSourceSha256);
   if (initialSidecarIssue) return conflict(initialSidecarIssue);
 
   let lock: Awaited<ReturnType<typeof open>>;
@@ -283,7 +308,7 @@ export async function saveAnnotationFile(
     sidecar = await readSidecar(sidecarPath);
     if (sourceSha256 !== input.expectedSourceSha256) return conflict('source-changed');
     if (sidecar.sha256 !== input.expectedSidecarSha256) return conflict('sidecar-changed');
-    const lockedSidecarIssue = existingSidecarIssue(sidecar.text, input.expectedSourceSha256);
+    const lockedSidecarIssue = existingSidecarIssue(sidecar.text, expectedExistingSourceSha256);
     if (lockedSidecarIssue) return conflict(lockedSidecarIssue);
 
     temporaryPath = `${sidecarPath}.${randomUUID()}.tmp`;
@@ -300,7 +325,7 @@ export async function saveAnnotationFile(
     sidecar = await readSidecar(sidecarPath);
     if (sourceSha256 !== input.expectedSourceSha256) return conflict('source-changed');
     if (sidecar.sha256 !== input.expectedSidecarSha256) return conflict('sidecar-changed');
-    const finalSidecarIssue = existingSidecarIssue(sidecar.text, input.expectedSourceSha256);
+    const finalSidecarIssue = existingSidecarIssue(sidecar.text, expectedExistingSourceSha256);
     if (finalSidecarIssue) return conflict(finalSidecarIssue);
 
     await (operations.replaceSidecar ?? rename)(temporaryPath, sidecarPath);

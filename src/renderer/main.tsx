@@ -48,6 +48,16 @@ function noteTagInput(choice: string, newName: string): NoteTagInput {
   return { mode: 'existing', id: choice.slice(TAG_VALUE_PREFIX.length) };
 }
 
+function relocationLabel(state: AnnotationDocumentView['items'][number]['relocation']): string {
+  if (state === 'available') return '可安全重定位';
+  if (state === 'source-missing') return '原选文已删除或改写';
+  if (state === 'source-repeated') return '当前有多处相同选文';
+  if (state === 'context-mismatch') return '上下文无法确认';
+  if (state === 'rendered-range-unresolved') return '当前阅读视图无法精确映射';
+  if (state === 'target-range-collision') return '新位置与其他批注冲突';
+  return '当前位置无法核验';
+}
+
 function highlightRegistry(): MapLikeHighlightRegistry | null {
   if (typeof CSS === 'undefined' || typeof Highlight === 'undefined') return null;
   const css = CSS as typeof CSS & { highlights?: MapLikeHighlightRegistry };
@@ -151,6 +161,7 @@ function App() {
   const [annotationView, setAnnotationView] = useState<AnnotationDocumentView | null>(null);
   const [annotationLoading, setAnnotationLoading] = useState(false);
   const [annotationSaving, setAnnotationSaving] = useState(false);
+  const [summaryCopying, setSummaryCopying] = useState(false);
   const [annotationError, setAnnotationError] = useState<string | null>(null);
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [unpaintableIds, setUnpaintableIds] = useState<readonly string[]>([]);
@@ -170,6 +181,7 @@ function App() {
   const [editNoteDraft, setEditNoteDraft] = useState('');
   const [editTagChoice, setEditTagChoice] = useState(NO_TAG);
   const [editNewTagName, setEditNewTagName] = useState('');
+  const [reattachTargetId, setReattachTargetId] = useState<string | null>(null);
   const [dropActive, setDropActive] = useState(false);
   const dropDepth = useRef(0);
   const documentEpoch = useRef(0);
@@ -237,25 +249,42 @@ function App() {
     setNoteFilter('all');
     setNoteComposer(null);
     setEditingNoteId(null);
+    setReattachTargetId(null);
     setAnnotationPanelOpen(window.matchMedia('(min-width: 1101px)').matches);
     setAnnotationSaving(false);
+    setSummaryCopying(false);
     window.scrollTo({ top: 0 });
     void refreshAnnotations(epoch);
   }, [refreshAnnotations]);
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1101px)');
-    const updatePanelForViewport = (event: MediaQueryListEvent) => {
-      setNarrowLayout(!event.matches);
-      setAnnotationPanelOpen(event.matches);
+    let lastMatches = media.matches;
+    const updatePanelForViewport = () => {
+      const matches = media.matches;
+      setNarrowLayout(!matches);
+      if (matches !== lastMatches) setAnnotationPanelOpen(matches);
+      lastMatches = matches;
     };
     media.addEventListener('change', updatePanelForViewport);
-    return () => media.removeEventListener('change', updatePanelForViewport);
+    window.addEventListener('resize', updatePanelForViewport);
+    return () => {
+      media.removeEventListener('change', updatePanelForViewport);
+      window.removeEventListener('resize', updatePanelForViewport);
+    };
   }, []);
 
   useEffect(() => {
     if (noteComposer) noteComposerRef.current?.focus();
   }, [noteComposer]);
+
+  useEffect(() => {
+    if (!reattachTargetId || !annotationView) return;
+    const target = annotationView.items.find((item) => item.id === reattachTargetId);
+    if (target && target.status !== 'resolved') return;
+    setReattachTargetId(null);
+    setSelectionProbe(null);
+  }, [annotationView, reattachTargetId]);
 
   useEffect(() => {
     if (!annotationPanelOpen) return;
@@ -383,6 +412,21 @@ function App() {
     }
   }, [opening, showOpenedDocument]);
 
+  const reloadMarkdown = useCallback(async () => {
+    if (opening || !openedDocument) return;
+    setOpening(true);
+    setMessage(null);
+    try {
+      const opened = await window.mermarkd.reloadMarkdown();
+      showOpenedDocument(opened);
+      setMessage('已从磁盘重新载入 Markdown，请审查批注的新位置。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '重新载入文档失败。');
+    } finally {
+      setOpening(false);
+    }
+  }, [openedDocument, opening, showOpenedDocument]);
+
   const onDropTargetEnter = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     if (!hasDraggedFiles(event)) return;
     event.preventDefault();
@@ -430,6 +474,18 @@ function App() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [openMarkdown, opening]);
+
+  useEffect(() => {
+    if (!reattachTargetId) return;
+    const cancelReattach = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setReattachTargetId(null);
+      setSelectionProbe(null);
+      setMessage('已取消重新选择，批注文件未修改。');
+    };
+    window.addEventListener('keydown', cancelReattach);
+    return () => window.removeEventListener('keydown', cancelReattach);
+  }, [reattachTargetId]);
 
   useEffect(() => {
     const preventFileNavigation = (event: DragEvent) => {
@@ -516,8 +572,11 @@ function App() {
     action: () => Promise<AnnotationSaveResult>,
     successMessage: string,
     afterSaved?: (result: AnnotationSaveResult) => void,
+    allowRelocation = false,
   ) => {
-    if (annotationView?.status !== 'ready' || annotationView.pendingDraftCount > 0 ||
+    const allowedStatus = annotationView?.status === 'ready' ||
+      (allowRelocation && annotationView?.status === 'needs-relocation');
+    if (!allowedStatus || annotationView.pendingDraftCount > 0 ||
         annotationLoading || mutationInFlight.current) return;
     const epoch = documentEpoch.current;
     mutationInFlight.current = true;
@@ -674,6 +733,74 @@ function App() {
     );
   }, [editingNoteId, runAnnotationMutation, selectedAnnotationId]);
 
+  const beginReattach = useCallback((id: string) => {
+    const item = annotationView?.items.find((candidate) => candidate.id === id);
+    if (!annotationView || !item || item.status === 'resolved' || annotationView.status === 'read-only' ||
+        annotationView.pendingDraftCount > 0 || annotationSaving || annotationLoading) return;
+    setReattachTargetId(id);
+    setSelectedAnnotationId(id);
+    setSelectionProbe(null);
+    setNoteComposer(null);
+    setEditingNoteId(null);
+    setMessage(`请在当前正文中选择“${item.anchor.displayQuote}”的新位置，然后确认。按 Escape 可取消。`);
+    if (window.matchMedia('(max-width: 1100px)').matches) setAnnotationPanelOpen(false);
+  }, [annotationLoading, annotationSaving, annotationView]);
+
+  const confirmReattach = useCallback(() => {
+    if (!reattachTargetId) return;
+    const probe = readSelection();
+    setSelectionProbe(probe);
+    if (!probe.ok) return;
+    const selection = {
+      startByte: probe.startByte,
+      endByte: probe.endByte,
+      sourceExact: probe.sourceExact,
+      displayQuote: probe.displayQuote,
+    };
+    void runAnnotationMutation(
+      () => window.mermarkd.reattachAnnotation({ id: reattachTargetId, selection }),
+      '新位置已保存，便签、标签和高亮属性保持不变。',
+      () => {
+        setReattachTargetId(null);
+        setSelectionProbe(null);
+        window.getSelection()?.removeAllRanges();
+      },
+      true,
+    );
+  }, [readSelection, reattachTargetId, runAnnotationMutation]);
+
+  const applyRelocations = useCallback(() => {
+    void runAnnotationMutation(
+      () => window.mermarkd.applyAnnotationRelocations(),
+      '已保存可安全确认的重定位结果；其余记录仍保持待定位。',
+      undefined,
+      true,
+    );
+  }, [runAnnotationMutation]);
+
+  const copySummary = useCallback(async () => {
+    if (!annotationView?.canCopySummary || summaryCopying) return;
+    const epoch = documentEpoch.current;
+    setSummaryCopying(true);
+    try {
+      const filter = noteFilter === 'all'
+        ? { mode: 'all' as const }
+        : noteFilter === 'untagged'
+          ? { mode: 'untagged' as const }
+          : { mode: 'tag' as const, tagId: noteFilter.slice(TAG_VALUE_PREFIX.length) };
+      const result = await window.mermarkd.copyReadingSummary(filter);
+      if (documentEpoch.current === epoch) {
+        setMessage(`已复制阅读摘要（${result.count} 条），Markdown 与批注 sidecar 均未修改。`);
+      }
+    } catch (error) {
+      if (documentEpoch.current === epoch) {
+        setMessage(error instanceof Error ? error.message : '复制阅读摘要失败。');
+      }
+    } finally {
+      if (documentEpoch.current === epoch) setSummaryCopying(false);
+    }
+  }, [annotationView, noteFilter, summaryCopying]);
+
   const heading = useCallback((tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', props: ComponentProps<'h1'> & ExtraProps) => {
     const { node, children, ...rest } = props;
     const index = node?.position?.start.offset === undefined ? undefined : headingByOffset.get(node.position.start.offset);
@@ -715,7 +842,13 @@ function App() {
     (noteFilter === 'untagged' ? !item.tagId : `${TAG_VALUE_PREFIX}${item.tagId ?? ''}` === noteFilter));
   const unpaintableSet = new Set(unpaintableIds);
   const canChangeAnnotations = annotationView?.status === 'ready' &&
+    annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading && !reattachTargetId;
+  const canReviewRelocation = (annotationView?.status === 'ready' || annotationView?.status === 'needs-relocation') &&
     annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading;
+  const canStartRelocationAction = canReviewRelocation && !reattachTargetId;
+  const reattachTarget = reattachTargetId
+    ? annotationView?.items.find((item) => item.id === reattachTargetId)
+    : undefined;
 
   return (
     <div className="app-shell">
@@ -778,7 +911,7 @@ function App() {
                 {annotationPanelOpen ? '收起批注' : `批注 ${noteItems.length}`}
               </button>
             </div>
-            <div className="annotation-summary" role="status">
+            <div className="annotation-summary" role="region" aria-label="批注状态与操作">
               <strong>批注 sidecar</strong>
               {annotationLoading ? <span>正在检查…</span> : annotationView ? <>
                 <span>{annotationView.count} 条记录</span>
@@ -787,11 +920,33 @@ function App() {
                 {annotationView.pendingDraftCount > 0 && <span className="annotation-pending">{annotationView.pendingDraftCount} 份草稿尚未写回同目录，暂停修改批注</span>}
                 {(annotationView.unreadableDraftCount ?? 0) > 0 && <span className="annotation-warning">其中 {annotationView.unreadableDraftCount} 份草稿无法读取，请检查应用数据目录</span>}
                 {annotationView.status === 'read-only' && <span className="annotation-warning">只读：{annotationView.reason ?? '批注文件不可安全修改'}</span>}
+                {annotationView.status === 'needs-relocation' && <span className="annotation-warning">{annotationView.reason}</span>}
+                {annotationView.relocatableCount > 0 && <span>{annotationView.relocatableCount} 条可安全重定位</span>}
+                {annotationView.canReloadSource && <button type="button" className="annotation-inline-action"
+                  onClick={() => void reloadMarkdown()} disabled={opening || Boolean(reattachTargetId)}>重新载入原文</button>}
+                {!annotationView.canReloadSource && <button type="button" className="annotation-inline-action"
+                  onClick={() => void refreshAnnotations(documentEpoch.current)}
+                  disabled={annotationLoading || Boolean(reattachTargetId)}>重新检查</button>}
+                {canStartRelocationAction && (annotationView.status === 'needs-relocation' || annotationView.relocatableCount > 0) &&
+                  <button type="button" className="annotation-inline-action" onClick={applyRelocations}>
+                    {annotationView.relocatableCount > 0
+                      ? `应用 ${annotationView.relocatableCount} 条安全重定位`
+                      : '确认当前版本并保留待定位'}
+                  </button>}
                 {!highlightSupported && <span className="annotation-warning">当前环境不支持正文高亮着色</span>}
                 <span className="annotation-location" title={annotationView.sidecarPath}>{annotationView.sidecarPath}</span>
               </> : <span className="annotation-warning">{annotationError ?? '尚未读取批注状态'}</span>}
             </div>
-            <div className="selection-probe-controls">
+            {reattachTarget ? <div className="reattach-controls" role="region" aria-label="人工重新选择批注位置">
+              <div><strong>为待定位批注重新选择</strong><span>旧引文：“{reattachTarget.anchor.displayQuote}”</span></div>
+              <button type="button" className="primary" onMouseDown={(event) => event.preventDefault()}
+                onClick={confirmReattach} disabled={!canReviewRelocation}>确认所选新位置</button>
+              <button type="button" onClick={() => {
+                setReattachTargetId(null);
+                setSelectionProbe(null);
+                setMessage('已取消重新选择，批注文件未修改。');
+              }}>取消</button>
+            </div> : <div className="selection-probe-controls">
               <span>选中文字后高亮或添加批注</span>
               <div className="highlight-palette" role="group" aria-label="高亮所选文字">
                 {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button"
@@ -806,7 +961,7 @@ function App() {
                 aria-controls="annotation-sidebar">添加批注</button>
               <button type="button" className="selection-check-button" onMouseDown={(event) => event.preventDefault()}
                 onClick={() => setSelectionProbe(readSelection())}>检查选区定位</button>
-            </div>
+            </div>}
             {selectionProbe && <div className="selection-probe-result" role="status">
               {selectionProbe.ok ? <>
                 <strong>已定位到原文</strong>
@@ -873,16 +1028,23 @@ function App() {
                 <section className="note-records" aria-labelledby="note-records-heading">
                   <div className="note-records-toolbar">
                     <h3 id="note-records-heading">便签记录</h3>
-                    <label><span>筛选</span><select value={noteFilter} onChange={(event) => setNoteFilter(event.target.value)}>
-                      <option value="all">全部</option>
-                      <option value="untagged">无标签</option>
-                      {tags.map((tag) => <option key={tag.id} value={`${TAG_VALUE_PREFIX}${tag.id}`}>{tag.name}</option>)}
-                    </select></label>
+                    <div className="note-summary-actions">
+                      <label><span>筛选</span><select value={noteFilter} onChange={(event) => setNoteFilter(event.target.value)}>
+                        <option value="all">全部</option>
+                        <option value="untagged">无标签</option>
+                        {tags.map((tag) => <option key={tag.id} value={`${TAG_VALUE_PREFIX}${tag.id}`}>{tag.name}</option>)}
+                      </select></label>
+                      <button type="button" onClick={() => void copySummary()}
+                        disabled={!annotationView?.canCopySummary || summaryCopying}
+                        title="按当前标签筛选并按章节复制 Markdown 摘要">
+                        {summaryCopying ? '复制中…' : '复制摘要'}
+                      </button>
+                    </div>
                   </div>
                   {filteredNotes.length ? <ol className="note-list">{filteredNotes.map((item) => {
                     const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
                       paintedRanges.current.has(item.id);
-                    const locationLabel = item.status !== 'resolved' ? '待定位'
+                    const locationLabel = item.status !== 'resolved' ? relocationLabel(item.relocation)
                       : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
                     const selected = selectedAnnotationId === item.id;
                     const editing = editingNoteId === item.id;
@@ -929,6 +1091,8 @@ function App() {
                         {tagName && <span className="note-tag">{tagName}</span>}
                         <p className="note-body">{item.note}</p>
                         <div className="note-card-actions">
+                          {item.status !== 'resolved' && <button type="button" onClick={() => beginReattach(item.id)}
+                            disabled={!canStartRelocationAction}>重新选择</button>}
                           <button type="button" onClick={() => beginEditNote(item.id)} disabled={!canChangeAnnotations || !available}>编辑</button>
                           <button type="button" onClick={() => deleteNote(item.id)} disabled={!canChangeAnnotations || !available}>删除</button>
                         </div>
@@ -942,7 +1106,7 @@ function App() {
                   {highlightItems.length ? <ol className="highlight-list">{highlightItems.map((item) => {
                     const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
                       paintedRanges.current.has(item.id);
-                    const locationLabel = item.status !== 'resolved' ? '待定位'
+                    const locationLabel = item.status !== 'resolved' ? relocationLabel(item.relocation)
                       : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
                     return <li key={item.id} className={selectedAnnotationId === item.id ? 'selected' : undefined}>
                       <span className="highlight-record-swatch" data-color={item.color} aria-hidden="true" />
@@ -950,6 +1114,8 @@ function App() {
                         disabled={!available} aria-pressed={selectedAnnotationId === item.id}
                         title={available ? '跳转到原文' : `${locationLabel}，暂不跳转`}>{item.anchor.displayQuote}</button>
                       {!available && <span className="highlight-unresolved">{locationLabel}</span>}
+                      {item.status !== 'resolved' && <button type="button" className="highlight-reattach"
+                        onClick={() => beginReattach(item.id)} disabled={!canStartRelocationAction}>重新选择</button>}
                       <select value={item.color ?? 'amber'} aria-label={`更改“${item.anchor.displayQuote}”的高亮颜色`}
                         disabled={!canChangeAnnotations || !available}
                         onChange={(event) => recolorHighlight(item.id, event.target.value as AnnotationColor)}>

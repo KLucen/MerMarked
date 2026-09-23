@@ -4,6 +4,7 @@ import type { AnnotationAnchor, AnnotationRecord, AnnotationSidecar } from '../.
 import {
   createNoteCandidate,
   deleteNoteCandidate,
+  reattachAnnotationCandidate,
   updateNoteCandidate,
 } from '../../src/core/annotation-mutations.ts';
 import type { NoteTagInput } from '../../src/types/reader-api.d.ts';
@@ -196,4 +197,27 @@ test('new tag creation respects the schema tag-count limit', () => {
     () => createNoteCandidate(original, anchor(10, '丁'), '正文', { mode: 'new', name: '额外' }, 'n2', 'tag-extra', later),
     /达到上限/,
   );
+});
+
+test('manual reattachment changes only the chosen anchor and timestamp', () => {
+  const original = sidecar();
+  const snapshot = structuredClone(original);
+  const nextAnchor = { ...anchor(12, '新位置'), sectionHint: '新章节' };
+  const result = reattachAnnotationCandidate(original, 'n1', nextAnchor, later);
+
+  assert.equal(result.changed, true);
+  assert.equal(result.id, 'n1');
+  assert.deepEqual(result.model.annotations[1], {
+    ...snapshot.annotations[1], anchor: nextAnchor, updatedAt: later,
+  });
+  assert.deepEqual(result.model.annotations[0], snapshot.annotations[0]);
+  assert.deepEqual(result.model.annotations[2], snapshot.annotations[2]);
+  assert.deepEqual(result.model.tags, snapshot.tags);
+  assert.deepEqual(original, snapshot);
+});
+
+test('manual reattachment refuses a missing id and another record target', () => {
+  const original = sidecar();
+  assert.throws(() => reattachAnnotationCandidate(original, 'missing', anchor(12, '丁'), later), /不存在/);
+  assert.throws(() => reattachAnnotationCandidate(original, 'n1', anchor(1, '甲'), later), /已绑定其他/);
 });

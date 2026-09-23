@@ -224,3 +224,33 @@ export function deleteNoteCandidate(model: AnnotationSidecar, idValue: string): 
     id,
   };
 }
+
+/** Replace one record's source anchor after an explicit user selection. */
+export function reattachAnnotationCandidate(
+  model: AnnotationSidecar,
+  idValue: string,
+  anchor: AnnotationAnchor,
+  now: string,
+): AnnotationMutation {
+  const id = identifier(idValue, '批注 ID');
+  const current = model.annotations.find((item) => item.id === id);
+  if (!current) throw new Error('批注不存在，请重新载入批注。');
+  if (model.annotations.some((item) => item.id !== id && sameAnchor(item.anchor, anchor))) {
+    throw new Error('这段文字已绑定其他高亮或便签，请选择不同文字。');
+  }
+  if (sameAnchor(current.anchor, anchor) && current.anchor.displayQuote === anchor.displayQuote &&
+      current.anchor.prefix === anchor.prefix && current.anchor.suffix === anchor.suffix &&
+      current.anchor.sectionHint === anchor.sectionHint) {
+    return { model, changed: false, id };
+  }
+  return {
+    model: {
+      ...model,
+      annotations: model.annotations.map((item) => item.id === id
+        ? { ...item, anchor, updatedAt: now }
+        : item),
+    },
+    changed: true,
+    id,
+  };
+}

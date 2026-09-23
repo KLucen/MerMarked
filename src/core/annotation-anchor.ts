@@ -1,4 +1,7 @@
 /** Creates a source anchor from a selection already proven by selection-map. */
+import { extractSections } from './sections.ts';
+import type { Section, SectionTree } from './sections.ts';
+
 export interface AnchorSelection {
   readonly startByte: number;
   readonly endByte: number;
@@ -45,6 +48,55 @@ function sourceOffsets(content: string, bomByteLength: 0 | 3, startByte: number,
     throw new Error('选区未落在完整的 UTF-8 字符边界。');
   }
   return [startOffset, endOffset];
+}
+
+/** Return the deepest source section containing an already validated byte selection. */
+export function sectionHintForSelection(
+  content: string,
+  bomByteLength: 0 | 3,
+  selection: Pick<AnchorSelection, 'startByte' | 'endByte'>,
+): string {
+  return sectionPathForSelection(content, bomByteLength, selection).at(-1) ?? '';
+}
+
+/** Return the containing section path from the root heading to the deepest heading. */
+export function sectionPathForSelection(
+  content: string,
+  bomByteLength: 0 | 3,
+  selection: Pick<AnchorSelection, 'startByte' | 'endByte'>,
+  tree: SectionTree = extractSections(content),
+): readonly string[] {
+  return sectionLocationForSelection(content, bomByteLength, selection, tree)?.path ?? [];
+}
+
+export interface SelectionSectionLocation {
+  readonly index: number;
+  readonly path: readonly string[];
+}
+
+/** Locate a selection in one already parsed section tree. */
+export function sectionLocationForSelection(
+  content: string,
+  bomByteLength: 0 | 3,
+  selection: Pick<AnchorSelection, 'startByte' | 'endByte'>,
+  tree: SectionTree = extractSections(content),
+): SelectionSectionLocation | null {
+  const [startOffset, endOffset] = sourceOffsets(
+    content, bomByteLength, selection.startByte, selection.endByte,
+  );
+  const current = tree.sections
+    .filter((section) => section.headingRange.start <= startOffset && section.subtreeRange.end >= endOffset)
+    .sort((left, right) => right.depth - left.depth || right.headingRange.start - left.headingRange.start)[0]
+    ?.index;
+  if (current === undefined) return null;
+  const result: string[] = [];
+  let index: number | null = current;
+  while (index !== null) {
+    const section: Section = tree.sections[index];
+    result.unshift(section.title);
+    index = section.parentIndex;
+  }
+  return { index: current, path: result };
 }
 
 export function makeAnnotationAnchor(
