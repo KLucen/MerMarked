@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
-import type { CreateHighlightInput, MerMarkdApi, RecolorHighlightInput } from '../types/reader-api';
+import type {
+  CreateHighlightInput, CreateNoteInput, MerMarkdApi, RecolorHighlightInput, UpdateNoteInput,
+} from '../types/reader-api';
 
 const api: MerMarkdApi = Object.freeze({
   appName: 'MerMarkd',
@@ -22,6 +24,9 @@ const api: MerMarkdApi = Object.freeze({
   createHighlight: (input: CreateHighlightInput) => ipcRenderer.invoke('annotations:create-highlight', input),
   recolorHighlight: (input: RecolorHighlightInput) => ipcRenderer.invoke('annotations:recolor-highlight', input),
   deleteHighlight: (id: string) => ipcRenderer.invoke('annotations:delete-highlight', id),
+  createNote: (input: CreateNoteInput) => ipcRenderer.invoke('annotations:create-note', input),
+  updateNote: (input: UpdateNoteInput) => ipcRenderer.invoke('annotations:update-note', input),
+  deleteNote: (id: string) => ipcRenderer.invoke('annotations:delete-note', id),
   openExternal: (url: string) => ipcRenderer.invoke('external:open', url),
 });
 

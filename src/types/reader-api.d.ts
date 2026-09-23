@@ -32,11 +32,21 @@ export interface AnnotationItemView {
   id: string;
   kind: 'highlight' | 'note';
   color?: AnnotationColor;
+  note?: string;
+  tagId?: string;
+  createdAt: string;
+  updatedAt: string;
   anchor: Pick<AnnotationSelectionInput, 'startByte' | 'endByte' | 'sourceExact' | 'displayQuote'>;
   status: AnnotationAnchorStatus;
 }
 
+export interface AnnotationTagView {
+  id: string;
+  name: string;
+}
+
 export interface AnnotationDocumentView extends AnnotationSummary {
+  tags: AnnotationTagView[];
   items: AnnotationItemView[];
 }
 
@@ -48,6 +58,23 @@ export interface CreateHighlightInput {
 export interface RecolorHighlightInput {
   id: string;
   color: AnnotationColor;
+}
+
+export type NoteTagInput =
+  | { mode: 'none' }
+  | { mode: 'existing'; id: string }
+  | { mode: 'new'; name: string };
+
+export interface CreateNoteInput {
+  selection: AnnotationSelectionInput;
+  note: string;
+  tag: NoteTagInput;
+}
+
+export interface UpdateNoteInput {
+  id: string;
+  note: string;
+  tag: NoteTagInput;
 }
 
 export interface AnnotationSaveResult {
@@ -67,6 +94,9 @@ export interface MerMarkdApi {
   createHighlight(input: CreateHighlightInput): Promise<AnnotationSaveResult>;
   recolorHighlight(input: RecolorHighlightInput): Promise<AnnotationSaveResult>;
   deleteHighlight(id: string): Promise<AnnotationSaveResult>;
+  createNote(input: CreateNoteInput): Promise<AnnotationSaveResult>;
+  updateNote(input: UpdateNoteInput): Promise<AnnotationSaveResult>;
+  deleteNote(id: string): Promise<AnnotationSaveResult>;
   openExternal(url: string): Promise<boolean>;
 }
 
