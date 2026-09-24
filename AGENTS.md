@@ -1,6 +1,6 @@
 # MerMarkd workspace rules
 
-Read `docs/PRODUCT_ARCHITECTURE.md`, `docs/DEVELOPMENT_PROCESS.md`, and `docs/FEASIBILITY_REVIEW.md` before changing product behavior. Use `docs/PROGRESS.md` for the current phase and `docs/DECISIONS.md` for major architecture decisions. The user's latest request takes precedence over these files.
+Read `docs/PRODUCT_ARCHITECTURE.md`, `docs/MODE_BOUNDARIES.md`, `docs/DEVELOPMENT_PROCESS.md`, and `docs/FEASIBILITY_REVIEW.md` before changing product behavior. Use `docs/PROGRESS.md` for the current phase and `docs/DECISIONS.md` for major architecture decisions. The user's latest request takes precedence over these files.
 
 ## Core invariants
 
@@ -11,6 +11,8 @@ Read `docs/PRODUCT_ARCHITECTURE.md`, `docs/DEVELOPMENT_PROCESS.md`, and `docs/FE
 - Markdown and companion state must remain recoverable across partial writes. Never silently overwrite external changes or attach a link to an ambiguously matched heading.
 - Treat Markdown, annotation YAML, and canvas JSON as separately versioned files. Source-text changes that affect anchors must be mapped or flagged before any sidecar is committed against the new source hash.
 - Export the full scene bounds, including arrows and labels. Detect and report size limits rather than clipping output.
+- Reading mode shows the semantic result of supported Markdown and must not expose source markers, byte offsets, or raw anchor diagnostics in the normal reading flow. Editing mode shows the complete Markdown source and must not render it as rich text.
+- Switching modes must not write Markdown or either sidecar. While an editor buffer is dirty, do not commit annotations or structural canvas changes against the persisted source hash.
 
 ## Development practice
 
