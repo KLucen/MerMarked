@@ -684,3 +684,30 @@ npm.cmd run test:qa:performance
 最新安装包为 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`，SHA-256 `EFFB5CEF8FD4425DDFBAC31A95EA4F8A11E7407E0629E2F31A83924F90571457`，大小 `154,898,944` 字节。干净 `%LOCALAPPDATA%\\MerMarkd` 静默安装退出码 `0`、耗时 `15,457 ms`，安装版四档 `1/1.25/1.5/2×` DPR 均通过模式切换、视口和 PNG 导出检查；1× PNG 为 `844 × 522`，卡片就绪约 `912–1,120 ms`。卸载退出码 `0`、耗时 `952 ms`，快捷方式和进程清除；Squirrel 仍留下 `.dead`、`Update.exe` 和 `app-0.1.0`，确认无进程后已清理测试安装目录。真实多显示器物理 DPI、自动零残留卸载和数十万短行压力仍未宣称通过。
 
 本次修正和验收代码提交：`2f29f33`，已推送到 `origin/main`；日志提交随后补入远端核验结果。下一批继续处理阅读 inline 映射与右键菜单键盘可达性，并保持每批单独复查和推送。
+
+## 2026-10-02 · B5.2 右键菜单键盘可达性
+
+### 目标
+
+补齐 B4/B5 留下的菜单交互缺口，使源码和阅读正文的选区右键菜单不依赖鼠标：可由 `Shift+F10` 打开，键盘可移动、执行和关闭，并保持现有选区身份校验。
+
+### 修改
+
+- `src/renderer/editor-view.tsx`：源码菜单打开后聚焦第一个可用项；支持方向键、Home/End、Enter/Space、Escape；源码编辑器支持 `Shift+F10` 从当前选区打开菜单。
+- `src/renderer/main.tsx`：阅读菜单复用同样的键盘行为，并支持阅读模式 `Shift+F10`；菜单打开后焦点进入第一个可用操作。
+- `tests/e2e/a7-3b-packaged.mjs`：新增打包版源码菜单键盘打开、焦点移动和关闭断言。
+
+### 验证
+
+```powershell
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+```
+
+结果：类型检查、diff 检查、镜像打包、A7.3b/A8.4/A8.5 打包回归全部通过；A7.3b 的键盘断言覆盖 `Shift+F10`、第一个菜单项焦点、ArrowDown 到下一项和 Escape 关闭。阅读 inline Markdown 映射、跨块编辑和真实中文 IME 设备验收仍未完成。
+
+本批代码提交待最终复查后生成；完成后先推送再进入阅读 inline 映射批次。

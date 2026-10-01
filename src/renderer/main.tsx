@@ -284,6 +284,8 @@ function App() {
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [selectionProbe, setSelectionProbe] = useState<SelectionProbeResult | null>(null);
   const [readerContextMenu, setReaderContextMenu] = useState<ReaderContextMenuState | null>(null);
+  const readerContextMenuRef = useRef<HTMLDivElement>(null);
+  const readerContextMenuTrigger = useRef<HTMLElement | null>(null);
   const [selectionChecking, setSelectionChecking] = useState(false);
   const [selectionToolbarPosition, setSelectionToolbarPosition] = useState<SelectionToolbarPosition | null>(null);
   const [selectionAnnouncement, setSelectionAnnouncement] = useState('');
@@ -337,6 +339,13 @@ function App() {
     setNotice(text ? { kind, text } : null);
   }, []);
 
+  const closeReaderContextMenu = useCallback((restoreFocus = true) => {
+    const trigger = readerContextMenuTrigger.current;
+    readerContextMenuTrigger.current = null;
+    setReaderContextMenu(null);
+    if (restoreFocus) window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
+  }, []);
+
   const refreshRecentDocuments = useCallback(async () => {
     try { setRecentDocuments(await window.mermarkd.listRecentDocuments()); }
     catch { setRecentDocuments([]); }
@@ -357,7 +366,7 @@ function App() {
     selectionTarget.current = null;
     selectionFeedbackRange.current = null;
     setSelectionProbe(null);
-    setReaderContextMenu(null);
+    closeReaderContextMenu(false);
     setSelectionChecking(false);
     setSelectionToolbarPosition(null);
     setSelectionAnnouncement('');
@@ -367,18 +376,27 @@ function App() {
       if (!previous.origin.hasAttribute('tabindex')) previous.origin.setAttribute('tabindex', '-1');
       previous.origin.focus({ preventScroll: true });
     }
-  }, []);
+  }, [closeReaderContextMenu]);
 
   useEffect(() => {
     if (!readerContextMenu) return;
-    const close = () => setReaderContextMenu(null);
-    const closeOnKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    const close = () => closeReaderContextMenu(false);
+    const closeOnKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      closeReaderContextMenu(true);
+    };
     window.addEventListener('pointerdown', close);
     window.addEventListener('keydown', closeOnKey);
     return () => {
       window.removeEventListener('pointerdown', close);
       window.removeEventListener('keydown', closeOnKey);
     };
+  }, [closeReaderContextMenu, readerContextMenu]);
+
+  useEffect(() => {
+    if (!readerContextMenu) return;
+    window.requestAnimationFrame(() => readerContextMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus());
   }, [readerContextMenu]);
 
   const clearReaderSearchPaint = useCallback(() => {
@@ -1083,6 +1101,7 @@ function App() {
     const probe = readSelection();
     if (!probe.ok) return;
     event.preventDefault();
+    readerContextMenuTrigger.current = event.currentTarget;
     setReaderContextMenu({
       left: Math.max(8, Math.min(event.clientX, window.innerWidth - 244)),
       top: Math.max(8, Math.min(event.clientY, window.innerHeight - 310)),
@@ -1091,6 +1110,43 @@ function App() {
       sourceSha256: openedDocument.sourceSha256,
     });
   }, [dirtyPreview, openedDocument, readSelection]);
+
+  const handleReaderContextMenuKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)')];
+    if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeReaderContextMenu(true); return; }
+    if (items.length === 0) return;
+    const current = window.document.activeElement instanceof HTMLButtonElement ? items.indexOf(window.document.activeElement) : -1;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[next]?.focus();
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      (window.document.activeElement as HTMLButtonElement | null)?.click();
+    }
+  }, [closeReaderContextMenu]);
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      if (activeMode !== 'reader' || dirtyPreview || !openedDocument || readerContextMenu ||
+          !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return;
+      const article = window.document.querySelector<HTMLElement>('.markdown-body');
+      if (!article || !(event.target instanceof Node) || !article.contains(event.target)) return;
+      const probe = readSelection();
+      if (!probe.ok) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const box = article?.getBoundingClientRect();
+      readerContextMenuTrigger.current = article;
+      setReaderContextMenu({
+        left: Math.max(8, Math.min((box?.left ?? 12) + 12, window.innerWidth - 244)),
+        top: Math.max(8, Math.min((box?.top ?? 12) + 28, window.innerHeight - 310)),
+        probe, epoch: documentEpoch.current, sourceSha256: openedDocument.sourceSha256,
+      });
+    };
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, [activeMode, dirtyPreview, openedDocument, readSelection, readerContextMenu]);
 
   const copyReaderContextSelection = useCallback(async () => {
     const menu = readerContextMenu;
@@ -1101,15 +1157,15 @@ function App() {
       await navigator.clipboard.writeText(menu.probe.displayQuote);
       if (documentEpoch.current !== menu.epoch) return;
       setMessage('已复制所选正文。');
-      setReaderContextMenu(null);
+      closeReaderContextMenu();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '复制失败。', 'alert');
     }
-  }, [openedDocument, readerContextMenu, setMessage]);
+  }, [closeReaderContextMenu, openedDocument, readerContextMenu, setMessage]);
 
   useEffect(() => {
-    setReaderContextMenu(null);
-  }, [activeMode, openedDocument?.sourceSha256]);
+    closeReaderContextMenu(false);
+  }, [activeMode, closeReaderContextMenu, openedDocument?.sourceSha256]);
 
   useEffect(() => {
     if (activeMode !== 'reader' || !openedDocument || dirtyPreview) return;
@@ -1797,7 +1853,7 @@ function App() {
               </div>}
             <span className="sr-only" aria-live="polite">{selectionAnnouncement}</span>
             <div className="document-divider" />
-            {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" onContextMenu={openReaderContextMenu}>
+            {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0} onContextMenu={openReaderContextMenu}>
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter, remarkReadingDangerousHtmlPolicy]}
                 rehypePlugins={[rehypeRaw, rehypeReadingHtmlPolicy, [rehypeSanitize, readingSanitizeSchema]]}
                 components={components}>
@@ -1806,8 +1862,8 @@ function App() {
                   : readerDocument!.content}
               </Markdown>
             </article> : <div className="empty-document"><h2>这份文档目前没有内容</h2><p>可以打开另一份 Markdown 文件继续阅读。</p></div>}
-            {readerContextMenu && <div className="editor-context-menu reader-context-menu" role="menu" aria-label="正文选区操作" data-reader-context-menu="true"
-              style={{ left: readerContextMenu.left, top: readerContextMenu.top }} onPointerDown={(event) => event.stopPropagation()}>
+            {readerContextMenu && <div ref={readerContextMenuRef} className="editor-context-menu reader-context-menu" role="menu" aria-label="正文选区操作" data-reader-context-menu="true" tabIndex={-1}
+              style={{ left: readerContextMenu.left, top: readerContextMenu.top }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={handleReaderContextMenuKeyDown}>
               <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
                 onClick={() => void copyReaderContextSelection()}>复制正文</button>
               <span className="editor-context-separator" role="separator" />
@@ -1816,11 +1872,11 @@ function App() {
                 {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button" role="menuitem"
                   className="reader-context-color" data-color={value} aria-label={`用${name}色高亮所选正文`}
                   onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => { const probe = readerContextMenu.probe; setReaderContextMenu(null); createHighlight(value, probe); }}
+                  onClick={() => { const probe = readerContextMenu.probe; closeReaderContextMenu(); createHighlight(value, probe); }}
                   disabled={!canChangeAnnotations || !highlightSupported}><span className="highlight-swatch" aria-hidden="true" />{name}</button>)}
               </div>
               <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
-                onClick={() => { const probe = readerContextMenu.probe; setReaderContextMenu(null); openNoteComposer(probe); }} disabled={!canChangeAnnotations}>添加批注</button>
+                onClick={() => { const probe = readerContextMenu.probe; closeReaderContextMenu(); openNoteComposer(probe); }} disabled={!canChangeAnnotations}>添加批注</button>
               <span className="reader-context-note">格式编辑请在源码视图完成</span>
             </div>}
           </main>
