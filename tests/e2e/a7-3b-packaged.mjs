@@ -260,7 +260,7 @@ const firstContent = [
 ].join('\r\n').replace(/\r\n$/, '');
 const firstBytes = sourceBytes(firstContent, true);
 const secondContent = '# 冲突测试\n\nANCHOR_TWO 与 CANDIDATE_MARKER\n';
-const thirdContent = '# 阅读编辑\n\n普通阅读段落\n';
+const thirdContent = '# 阅读编辑\n\n这是 **重点** 与 [旧文字](https://example.test)。\n';
 const secondBytes = sourceBytes(secondContent);
 const firstSidecarText = annotationText(firstContent, firstBytes, 3, 'ASCII_CURSOR', 'roundtrip-highlight');
 const secondSidecarText = annotationText(secondContent, secondBytes, 0, 'ANCHOR_TWO', 'conflict-highlight');
@@ -497,12 +497,33 @@ try {
   await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false' &&
-    document.querySelector('[data-editor-textarea]')?.value.includes('普通阅读段落')`, 'reader edit shared undo');
+    document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与 [旧文字](https://example.test)。')`, 'reader edit shared undo');
   await pressShortcut(cdp, 'y');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true' &&
     document.querySelector('[data-editor-textarea]')?.value.includes('阅读中已修改')`, 'reader edit shared redo');
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader edit return to baseline');
+
+  await click(cdp, '[data-mode="reader"]');
+  await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader inline edit');
+  const inlineEditResult = await cdp.evaluate(`(() => {
+    const block = [...document.querySelectorAll('[data-reader-editable="true"]')]
+      .find((element) => element.textContent?.includes('重点'));
+    if (!(block instanceof HTMLElement)) return false;
+    block.focus();
+    block.textContent = '这是 核心 与 旧文字。';
+    block.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: '核心' }));
+    block.blur();
+    return true;
+  })()`);
+  assert.equal(inlineEditResult, true, 'reader inline contenteditable input');
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader inline edit dirty');
+  await click(cdp, '[data-mode="editor"]');
+  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('**核心**') &&
+    document.querySelector('[data-editor-textarea]')?.value.includes('[旧文字](https://example.test)')`, 'reader inline source mapping');
+  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await pressShortcut(cdp, 'z');
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader inline undo');
 
   await dropFile(cdp, secondPath);
   await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-3b-conflict.md' &&

@@ -226,6 +226,7 @@ export function MarkdownEditorView({
   const history = useRef<EditorHistory>({ past: [], future: [] });
   const selectionFrame = useRef<number | null>(null);
   const editRevision = useRef(0);
+  const wasActive = useRef(false);
   const [historyRevision, setHistoryRevision] = useState(0);
   const [cursor, setCursor] = useState<SourceEditorCursor>(() => cursorFor(value, selection.current));
   const [searchOpen, setSearchOpen] = useState(false);
@@ -244,6 +245,19 @@ export function MarkdownEditorView({
   const [contextMenu, setContextMenu] = useState<EditorContextMenuState | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const usesSharedHistory = sharedEditSession !== undefined;
+
+  // Keep the source buffer immediately keyboard-ready after switching from
+  // reading or canvas mode. The editor stays mounted while hidden, so focus
+  // must follow the active mode transition rather than initial mount only.
+  useEffect(() => {
+    if (active && !wasActive.current) {
+      const frame = window.requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
+      wasActive.current = active;
+      return () => window.cancelAnimationFrame(frame);
+    }
+    wasActive.current = active;
+    return undefined;
+  }, [active]);
 
   useEffect(() => {
     setAnnotationImpact(null);

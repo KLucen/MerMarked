@@ -42,6 +42,9 @@ export type SelectionResolution =
       /** Original Markdown syntax between the selected visible characters. */
       readonly sourceExact: string;
       readonly displayQuote: string;
+      /** UTF-16 offsets within the BOM-stripped source string. */
+      readonly sourceStart: number;
+      readonly sourceEnd: number;
     }
   | { readonly ok: false; readonly reason: string };
 
@@ -236,6 +239,8 @@ export function resolveSelection(
     endByte: map.bomByteLength + encoder.encode(map.source.slice(0, sourceEnd)).length,
     sourceExact: map.source.slice(sourceStart, sourceEnd),
     displayQuote: block.visibleText.slice(visibleStart, visibleEnd),
+    sourceStart,
+    sourceEnd,
   };
 }
 

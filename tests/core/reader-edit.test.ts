@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyReaderPlainTextEdit } from '../../src/core/reader-edit.ts';
+import { applyReaderMappedTextEdit, applyReaderPlainTextEdit } from '../../src/core/reader-edit.ts';
 
 test('edits a plain paragraph while preserving BOM and CRLF bytes', () => {
   const source = '\uFEFF# 标题\r\n\r\n原始正文\r\n';
@@ -31,4 +31,37 @@ test('rejects a stale block identity even when its parser offset still exists', 
     replacement: '新的正文',
   });
   assert.equal(result.ok, false);
+});
+
+test('edits one exact inline leaf while preserving emphasis and link syntax', () => {
+  const bold = applyReaderMappedTextEdit('这是 **重点**。', 0, {
+    blockStart: 0,
+    sourceText: '这是 重点。',
+    replacement: '这是 核心。',
+  });
+  assert.equal(bold.ok, true);
+  if (bold.ok) assert.equal(bold.content, '这是 **核心**。');
+
+  const link = applyReaderMappedTextEdit('[旧文字](https://example.test)', 0, {
+    blockStart: 0,
+    sourceText: '旧文字',
+    replacement: '新文字',
+  });
+  assert.equal(link.ok, true);
+  if (link.ok) assert.equal(link.content, '[新文字](https://example.test)');
+});
+
+test('rejects encoded text and edits spanning multiple inline leaves', () => {
+  const entity = applyReaderMappedTextEdit('A &amp; B', 0, {
+    blockStart: 0,
+    sourceText: 'A & B',
+    replacement: 'A 和 B',
+  });
+  assert.equal(entity.ok, false);
+  const leaves = applyReaderMappedTextEdit('**粗体** 普通', 0, {
+    blockStart: 0,
+    sourceText: '粗体 普通',
+    replacement: '核心内容',
+  });
+  assert.equal(leaves.ok, false);
 });

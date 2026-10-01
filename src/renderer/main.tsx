@@ -18,7 +18,7 @@ import { markdownToEditorText } from '../core/editor-text';
 import { activeSectionAtMarker, countGraphemes } from '../core/reader-navigation';
 import { extractSections, sectionFragmentIds } from '../core/sections';
 import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
-import { applyReaderPlainTextEdit, isReaderPlainTextBlock } from '../core/reader-edit';
+import { applyReaderMappedTextEdit, isReaderMappedTextBlock } from '../core/reader-edit';
 import type { AnnotationColor } from '../core/annotations';
 import type {
   AnnotationDocumentView,
@@ -462,7 +462,7 @@ function App() {
     const sourcePath = openedDocument.path;
     const sourceSha256 = openedDocument.sourceSha256;
     const sourceContent = openedDocument.content;
-    const result = applyReaderPlainTextEdit(sourceContent, openedDocument.bomByteLength, {
+    const result = applyReaderMappedTextEdit(sourceContent, openedDocument.bomByteLength, {
       blockStart,
       sourceText,
       replacement,
@@ -1533,7 +1533,7 @@ function App() {
     const index = blockStart === undefined ? undefined : headingByOffset.get(blockStart);
     const id = index === undefined ? undefined : sectionIds[index];
     const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-    if (activeMode === 'reader' && !dirtyPreview && blockStart !== undefined && block && isReaderPlainTextBlock(selectionMap!, block)) {
+    if (activeMode === 'reader' && !dirtyPreview && blockStart !== undefined && block && isReaderMappedTextBlock(selectionMap!, block)) {
       return <ReaderEditableBlock as={tag} blockStart={blockStart} sourceText={block.visibleText} enabled
         onCommit={commitReaderTextEdit} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
         {children}
@@ -1554,7 +1554,7 @@ function App() {
     p: ({ node, children, ...props }) => {
       const blockStart = node?.position?.start.offset;
       const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-      if (activeMode === 'reader' && !dirtyPreview && block && blockStart !== undefined && isReaderPlainTextBlock(selectionMap!, block)) {
+      if (activeMode === 'reader' && !dirtyPreview && block && blockStart !== undefined && isReaderMappedTextBlock(selectionMap!, block)) {
         return <ReaderEditableBlock as="p" blockStart={blockStart} sourceText={block.visibleText} enabled
           onCommit={commitReaderTextEdit} className={props.className}>{children}</ReaderEditableBlock>;
       }
