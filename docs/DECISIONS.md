@@ -257,3 +257,12 @@
 - 理由：DOM 渲染结果无法在未完成完整映射前安全反向生成 Markdown；把阅读格式编辑提前开放会破坏重复文本、链接、emoji、BOM/CRLF 和 sidecar 锚点合同。先固定共同命令边界，可让后续 B5 只增加经过证明的映射和编辑器承载。
 - 未完成：当前 UI 仍由 `MarkdownEditorView` 持有本地撤销历史，命令核心尚未接入 `useMarkdownEditor` 的跨模式 session；阅读模式加粗/斜体/引用和完整键盘菜单导航留待 B5/B4 后续切片。
 - 验证：新增 `markdown-selection-commands` 核心 6 项测试；全量单测 `233/233`、类型检查、Windows x64 打包及 A7.3b/A8.4/A8.5 打包回归通过。
+
+## ADR-029：阅读编辑只开放可证明的单块纯文本并复用共享 session
+
+- 日期：2026-10-02；状态：B5 当前切片通过打包验证。
+- 决定：renderer 侧由 `useMarkdownEditor` 持有一份 LF 规范化的 `MarkdownEditSession`，源码输入、选区命令、查找替换、结构确认和阅读块编辑都通过同一 past/future；主进程的 `MarkdownEditorView.revision` 仍独立递增，异步 IPC 不以 renderer 历史取代主进程冲突校验。保存、放弃、恢复和文档切换建立新 baseline，历史最多保留 500 项。
+- 决定：阅读所见编辑仅允许段落或 ATX 标题在源码中与可见文本完全相同的单行纯文本块。组件处理纯文本粘贴、IME 组合、Enter/格式输入拦截和 Escape 恢复；提交通过源码 block 的 UTF-8 字节到 UTF-16 边界映射进入共享 session。复杂 Markdown、实体、Setext、跨块换行和不确定映射保持只读。
+- 理由：直接把整篇 React Markdown DOM 序列化回源码会丢失标题、链接、强调、引用、表格和批注锚点的原始字节；先验证单块可逆映射，可以满足“打开后即可编辑”的主流程，同时不扩大 Markdown source of truth 的风险面。
+- 未完成：阅读内联格式编辑、跨段落/列表/表格编辑、完整 IME 真机验收、阅读右键菜单键盘导航和最终清洁 Windows 安装/卸载门槛仍待后续批次。
+- 验证：新增 `reader-edit` 核心 3 项测试；全量单测 `236/236`、类型检查、Windows x64 打包及 A7.3b/A8.4/A8.5 打包回归通过。

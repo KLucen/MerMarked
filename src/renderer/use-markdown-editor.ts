@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { editorToMarkdownText } from '../core/editor-text';
+import { editorToMarkdownText, markdownToEditorText } from '../core/editor-text';
+import {
+  applyMarkdownTextEdit,
+  createMarkdownEditSession,
+  redoMarkdownEdit,
+  undoMarkdownEdit,
+  type MarkdownEditSelection,
+  type MarkdownEditSession,
+} from '../core/markdown-edit-transaction';
 import { inspectMarkdownSourceFormat } from '../core/markdown-source';
 import type { EditableMarkdownLineEnding } from '../core/editor-text';
 import type {
@@ -9,14 +17,21 @@ import type {
 } from '../types/reader-api';
 
 const draftDelayMs = 700;
+const maxSharedHistoryEntries = 500;
 
 interface MarkdownEditorController {
   readonly editor: MarkdownEditorView | null;
+  /** The renderer-side transaction shared by the source editor across mode switches. */
+  readonly editSession: MarkdownEditSession | null;
+  readonly canUndo: boolean;
+  readonly canRedo: boolean;
   readonly opening: boolean;
   readonly busy: boolean;
   readonly error: string | null;
   open(): Promise<MarkdownEditorView | null>;
   changeEditorText(editorText: string): void;
+  undo(): MarkdownEditSelection | null;
+  redo(): MarkdownEditSelection | null;
   save(): Promise<MarkdownEditorSaveResult | null>;
   discardChanges(): Promise<void>;
   restoreDraft(id: string): Promise<void>;
@@ -35,6 +50,36 @@ function preferredLineEnding(editor: MarkdownEditorView): EditableMarkdownLineEn
   return ending === 'mixed' ? 'lf' : ending;
 }
 
+function changedRange(before: string, after: string): { start: number; end: number; replacement: string } | null {
+  if (before === after) return null;
+  let start = 0;
+  const shared = Math.min(before.length, after.length);
+  while (start < shared && before.charCodeAt(start) === after.charCodeAt(start)) start += 1;
+  let beforeEnd = before.length;
+  let afterEnd = after.length;
+  while (beforeEnd > start && afterEnd > start &&
+    before.charCodeAt(beforeEnd - 1) === after.charCodeAt(afterEnd - 1)) {
+    beforeEnd -= 1;
+    afterEnd -= 1;
+  }
+  const isHighSurrogate = (value: number) => value >= 0xd800 && value <= 0xdbff;
+  const isLowSurrogate = (value: number) => value >= 0xdc00 && value <= 0xdfff;
+  while (start > 0 && (
+    (isLowSurrogate(before.charCodeAt(start)) && isHighSurrogate(before.charCodeAt(start - 1))) ||
+    (isLowSurrogate(after.charCodeAt(start)) && isHighSurrogate(after.charCodeAt(start - 1)))
+  )) start -= 1;
+  while (beforeEnd < before.length && isLowSurrogate(before.charCodeAt(beforeEnd)) &&
+    isHighSurrogate(before.charCodeAt(beforeEnd - 1))) beforeEnd += 1;
+  while (afterEnd < after.length && isLowSurrogate(after.charCodeAt(afterEnd)) &&
+    isHighSurrogate(after.charCodeAt(afterEnd - 1))) afterEnd += 1;
+  return { start, end: beforeEnd, replacement: after.slice(start, afterEnd) };
+}
+
+function boundHistory(session: MarkdownEditSession): MarkdownEditSession {
+  if (session.past.length <= maxSharedHistoryEntries) return session;
+  return { ...session, past: session.past.slice(-maxSharedHistoryEntries) };
+}
+
 /**
  * Keeps renderer edits ordered against the main-process session. The optimistic
  * view makes typing immediate, while the promise chain preserves monotonic
@@ -47,10 +92,12 @@ export function useMarkdownEditor(
   onStatus: (message: string, alert?: boolean) => void,
 ): MarkdownEditorController {
   const [editor, setEditor] = useState<MarkdownEditorView | null>(null);
+  const [editSession, setEditSession] = useState<MarkdownEditSession | null>(null);
   const [opening, setOpening] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<MarkdownEditorView | null>(null);
+  const editSessionRef = useRef<MarkdownEditSession | null>(null);
   const documentRef = useRef(document);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const draftTimerRef = useRef<number | null>(null);
@@ -59,6 +106,11 @@ export function useMarkdownEditor(
   const publish = useCallback((next: MarkdownEditorView | null) => {
     editorRef.current = next;
     setEditor(next);
+  }, []);
+
+  const publishSession = useCallback((next: MarkdownEditSession | null) => {
+    editSessionRef.current = next;
+    setEditSession(next);
   }, []);
 
   const clearDraftTimer = useCallback(() => {
@@ -73,10 +125,11 @@ export function useMarkdownEditor(
     clearDraftTimer();
     queueRef.current = Promise.resolve();
     publish(null);
+    publishSession(null);
     setOpening(false);
     setBusy(false);
     setError(null);
-  }, [clearDraftTimer, publish]);
+  }, [clearDraftTimer, publish, publishSession]);
 
   useEffect(() => {
     documentRef.current = document;
@@ -87,8 +140,15 @@ export function useMarkdownEditor(
   const acceptServerView = useCallback((next: MarkdownEditorView, generation: number) => {
     if (generationRef.current !== generation) return;
     const current = editorRef.current;
-    if (!current || current.epoch !== next.epoch || next.revision >= current.revision) publish(next);
-  }, [publish]);
+    if (!current || current.epoch !== next.epoch || next.revision >= current.revision) {
+      publish(next);
+      const session = editSessionRef.current;
+      const normalized = markdownToEditorText(next.content);
+      if (!session || session.current.content !== normalized) {
+        publishSession(createMarkdownEditSession(normalized));
+      }
+    }
+  }, [publish, publishSession]);
 
   const enqueue = useCallback((operation: () => Promise<void>): Promise<void> => {
     const next = queueRef.current.catch(() => undefined).then(operation);
@@ -133,6 +193,7 @@ export function useMarkdownEditor(
       const next = await window.mermarkd.openMarkdownEditor();
       if (generationRef.current !== generation) return null;
       publish(next);
+      publishSession(createMarkdownEditSession(markdownToEditorText(next.content)));
       return next;
     } catch (caught) {
       if (generationRef.current === generation) {
@@ -144,14 +205,26 @@ export function useMarkdownEditor(
     } finally {
       if (generationRef.current === generation) setOpening(false);
     }
-  }, [clearDraftTimer, onStatus, opening, publish]);
+  }, [clearDraftTimer, onStatus, opening, publish, publishSession]);
 
   const changeEditorText = useCallback((editorText: string) => {
     const current = editorRef.current;
     const persisted = documentRef.current;
     if (!current || !persisted || !current.editable || busy) return;
     const content = editorToMarkdownText(editorText, preferredLineEnding(current));
-    if (content === current.content) return;
+    const normalized = markdownToEditorText(content);
+    let session = editSessionRef.current;
+    if (!session || session.current.content !== markdownToEditorText(current.content)) {
+      session = createMarkdownEditSession(markdownToEditorText(current.content));
+    }
+    const change = changedRange(session.current.content, normalized);
+    if (!change) return;
+    const nextSession = boundHistory(applyMarkdownTextEdit(session, {
+      expectedRevision: session.revision,
+      selection: { start: change.start, end: change.end },
+      replacement: change.replacement,
+    }));
+    publishSession(nextSession);
     const revision = current.revision + 1;
     const optimistic: MarkdownEditorView = {
       ...current,
@@ -180,7 +253,62 @@ export function useMarkdownEditor(
       }
     });
     checkpoint(generation);
-  }, [acceptServerView, busy, checkpoint, enqueue, onStatus, publish]);
+  }, [acceptServerView, busy, checkpoint, enqueue, onStatus, publish, publishSession]);
+
+  const applySessionContent = useCallback((nextSession: MarkdownEditSession, generation: number) => {
+    const current = editorRef.current;
+    if (!current || !current.editable || generationRef.current !== generation) return;
+    const content = editorToMarkdownText(nextSession.current.content, preferredLineEnding(current));
+    if (content === current.content) {
+      publishSession(nextSession);
+      return;
+    }
+    const revision = current.revision + 1;
+    const persisted = documentRef.current;
+    const optimistic: MarkdownEditorView = {
+      ...current,
+      revision,
+      content,
+      dirty: Boolean(persisted && content !== persisted.content),
+      format: inspectMarkdownSourceFormat(content, persisted?.bomByteLength ?? current.sourceFormat.bomByteLength),
+      draftPersisted: false,
+    };
+    publishSession(nextSession);
+    publish(optimistic);
+    setError(null);
+    void enqueue(async () => {
+      try {
+        const next = await window.mermarkd.updateMarkdownEditor({ epoch: optimistic.epoch, revision, content });
+        acceptServerView(next, generation);
+      } catch (caught) {
+        if (generationRef.current !== generation) return;
+        const message = errorMessage(caught, '源码编辑未被主进程接受。');
+        setError(message);
+        onStatus(message, true);
+      }
+    });
+    checkpoint(generation);
+  }, [acceptServerView, checkpoint, enqueue, onStatus, publish, publishSession]);
+
+  const undo = useCallback((): MarkdownEditSelection | null => {
+    const current = editSessionRef.current;
+    const editorView = editorRef.current;
+    if (!current || !editorView || busy || !editorView.editable) return null;
+    const next = undoMarkdownEdit(current);
+    if (next === current) return null;
+    applySessionContent(next, generationRef.current);
+    return next.current.selection;
+  }, [applySessionContent, busy]);
+
+  const redo = useCallback((): MarkdownEditSelection | null => {
+    const current = editSessionRef.current;
+    const editorView = editorRef.current;
+    if (!current || !editorView || busy || !editorView.editable) return null;
+    const next = redoMarkdownEdit(current);
+    if (next === current) return null;
+    applySessionContent(next, generationRef.current);
+    return next.current.selection;
+  }, [applySessionContent, busy]);
 
   const save = useCallback(async (): Promise<MarkdownEditorSaveResult | null> => {
     const generation = generationRef.current;
@@ -200,7 +328,10 @@ export function useMarkdownEditor(
       });
       if (generationRef.current !== generation) return null;
       publish(result.editor);
-      if (result.status === 'saved') onDocumentSaved(result.document);
+      if (result.status === 'saved') {
+        publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
+        onDocumentSaved(result.document);
+      }
       else setError(result.message);
       onStatus(result.message, result.status !== 'saved');
       return result;
@@ -214,7 +345,7 @@ export function useMarkdownEditor(
     } finally {
       if (generationRef.current === generation) setBusy(false);
     }
-  }, [busy, clearDraftTimer, onDocumentSaved, onStatus, publish]);
+  }, [busy, clearDraftTimer, onDocumentSaved, onStatus, publish, publishSession]);
 
   const confirmStructure = useCallback(async (token: string, onAccepted: (content: string) => void) => {
     if (busy) return false;
@@ -227,6 +358,19 @@ export function useMarkdownEditor(
       onStatus(result.message, result.status !== 'staged');
       if (result.status !== 'staged') return false;
       // The editor records the single undo command before the new prop arrives.
+      const currentSession = editSessionRef.current;
+      if (currentSession) {
+        const normalized = markdownToEditorText(result.editor.content);
+        const change = changedRange(currentSession.current.content, normalized);
+        if (change) {
+          const nextSession = boundHistory(applyMarkdownTextEdit(currentSession, {
+            expectedRevision: currentSession.revision,
+            selection: { start: change.start, end: change.end },
+            replacement: change.replacement,
+          }));
+          publishSession(nextSession);
+        }
+      } else publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
       onAccepted(result.editor.content);
       publish(result.editor); setError(null); checkpoint(generation);
       return true;
@@ -234,7 +378,7 @@ export function useMarkdownEditor(
       const message = errorMessage(caught, '无法确认章节结构变更。');
       setError(message); onStatus(message, true); return false;
     } finally { if (generationRef.current === generation) setBusy(false); }
-  }, [busy, checkpoint, clearDraftTimer, onStatus, publish]);
+  }, [busy, checkpoint, clearDraftTimer, onStatus, publish, publishSession]);
 
   const discardChanges = useCallback(async () => {
     const current = editorRef.current;
@@ -246,6 +390,7 @@ export function useMarkdownEditor(
       const result = await window.mermarkd.discardMarkdownEditorChanges(current.epoch);
       onDocumentDiscarded(result.document);
       publish(result.editor);
+      publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
       setError(null);
       onStatus('已放弃未保存编辑，并从磁盘重新载入 Markdown。');
     } catch (caught) {
@@ -255,7 +400,7 @@ export function useMarkdownEditor(
     } finally {
       setBusy(false);
     }
-  }, [busy, clearDraftTimer, onDocumentDiscarded, onStatus, publish]);
+  }, [busy, clearDraftTimer, onDocumentDiscarded, onStatus, publish, publishSession]);
 
   const runRecoveryAction = useCallback(async (
     action: (current: MarkdownEditorView) => Promise<MarkdownEditorView>,
@@ -269,6 +414,7 @@ export function useMarkdownEditor(
       await queueRef.current;
       const next = await action(current);
       publish(next);
+      publishSession(createMarkdownEditSession(markdownToEditorText(next.content)));
       setError(null);
       onStatus(success);
     } catch (caught) {
@@ -278,7 +424,7 @@ export function useMarkdownEditor(
     } finally {
       setBusy(false);
     }
-  }, [busy, clearDraftTimer, onStatus, publish]);
+  }, [busy, clearDraftTimer, onStatus, publish, publishSession]);
 
   const restoreDraft = useCallback(async (id: string) => {
     await runRecoveryAction(
@@ -300,11 +446,16 @@ export function useMarkdownEditor(
 
   return {
     editor,
+    editSession,
+    canUndo: Boolean(editSession?.past.length),
+    canRedo: Boolean(editSession?.future.length),
     opening,
     busy,
     error,
     open,
     changeEditorText,
+    undo,
+    redo,
     save,
     discardChanges,
     restoreDraft,

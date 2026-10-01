@@ -1,6 +1,6 @@
 # MerMarkd 开发进度
 
-> 2026-10-02。当前阶段：P0 可行性原型，进行中；A1–A8.5 已完成对应切片验证，A8.6 已完成首轮测量但质量门槛仍有缺口。B0 核心合同、B1 工作区外壳与 B1.1 内存新建/首次保存、B2 画布 v2 投影、B3 结构拖动候选和 B4 共同选区命令/右键菜单已完成当前切片验证；全量单测 `233/233`、类型检查、打包版和 B1/A7.3b/A8.4/A8.5 回归通过。B4 尚未完成跨模式共享撤销栈和阅读模式格式编辑，B5 可编辑阅读仍未完成。每批收尾重新检查并上传 GitHub；P0 尚未完成。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-02。当前阶段：P0 可行性原型，进行中；A1–A8.5 已完成对应切片验证，A8.6 已完成首轮测量但质量门槛仍有缺口。B0 核心合同、B1 工作区外壳与 B1.1 内存新建/首次保存、B2 画布 v2 投影、B3 结构拖动候选、B4 共同选区命令/右键菜单和 B5 共享编辑会话/纯文本阅读编辑已完成当前切片验证；全量单测 `236/236`、类型检查、生产打包、A7.3b/A8.4/A8.5 回归通过。B5 尚未覆盖阅读内联 Markdown 格式、跨块编辑、完整输入法/键盘菜单验收和最终干净环境门槛。每批收尾重新检查并上传 GitHub；P0 尚未完成。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## 试用反馈与迭代规划（已整理，尚未实施）
 
@@ -56,6 +56,29 @@ git diff --check
 ```
 
 结果：B4 核心测试 `6/6`，全量单测 `233/233`，类型检查、生产打包和三项打包版回归均通过。已重新确认无残留 Electron 进程；未在本批扩大到跨模式撤销、阅读格式编辑、Shift+F10/方向键/Enter 菜单导航。下一批进入 B5，先把编辑 session 提升到共享 hook，再实现阅读模式最小可编辑正文和输入法/撤销边界。
+
+## B5 共享编辑会话与纯文本阅读编辑（当前切片已完成）
+
+`useMarkdownEditor` 现在持有 renderer 侧 `MarkdownEditSession`，源码输入、右键命令、查找替换、结构确认和阅读正文编辑共用同一份撤销/重做历史；保存成功、放弃编辑、恢复草稿和文档切换会重建正确基线，IPC revision 队列仍由主进程合同单独校验，历史最多保留 500 个局部快照。源码视图在收到共享 session 时停用本地历史，模式切换后可以继续撤销或重做。
+
+阅读模式本批只开放安全的单块纯文本编辑：当一个段落或 ATX 标题的源码（去除标题标记后）与渲染可见文字完全相同，且不含实体、内联 Markdown、Setext、跨行或不确定边界时，才使用块级 `contenteditable`。输入法组合、纯文本粘贴、Escape 恢复和 Enter 禁止换段已处理；失焦后仅把该块的可证明源码范围提交到共享 session，不从整篇 DOM 反向生成 Markdown。产生 dirty 缓冲区后阅读回到只读预览，必须切到源码模式显式保存；BOM、CRLF 和标题标记保留。
+
+本批验证了阅读编辑进入源码缓冲区、跨模式单步撤销/重做，以及复杂 Markdown 保持只读。内联加粗/斜体/链接、跨块换行、完整中文输入法验收、右键菜单 Shift+F10/方向键/Enter 焦点导航仍未完成，不把当前切片宣称为 Typora/Obsidian 等价的完整所见即所得编辑器。
+
+本批复查并执行：
+
+```powershell
+node --test tests/core/reader-edit.test.ts tests/core/markdown-edit-transaction.test.ts
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+```
+
+结果：阅读编辑核心与事务测试 `6/6`，全量单测 `236/236`，类型检查、打包和三项打包版回归通过。A7.3b 新增第三份临时 Markdown，验证阅读纯文本块编辑、源码缓冲区同步和共享撤销/重做；样本结束前回到磁盘基线。首次验收脚本因模式切换后未聚焦源码文本框而误报撤销超时，补回真实焦点后复跑通过。已确认没有残留 Electron、MerMarkd、Setup 或 Update 进程。
 
 ## A8.6 安装、性能与高 DPI 验收（已完成测量，P0 仍未闭合）
 

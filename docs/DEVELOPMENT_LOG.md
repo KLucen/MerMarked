@@ -589,3 +589,65 @@ git diff --check
 ### 下一步
 
 进入 B5 前先以本批远端提交为基线重新检查工作区；下一批把编辑 session 提升到共享 hook，随后实现阅读模式最小可编辑正文、输入法处理和单步撤销边界，再按同样流程测试、复查、提交和推送。
+
+## 2026-10-02 · B5 共享编辑会话与纯文本阅读编辑
+
+### 目标
+
+落实 B4 留下的两个关键缺口：让源码编辑器真正消费 renderer 侧共享的 Markdown 撤销会话，并让阅读模式在可证明安全的范围内直接编辑渲染后的正文，同时保持 Markdown 字节、批注锚点和画布 sidecar 的边界。
+
+### 用户反馈/需求来源
+
+用户要求阅读模式像 Typora/Obsidian 一样编辑 Markdown 渲染内容，也要求阅读、编辑和卡片围绕同一文档状态工作；此前 B4 已明确不能把 DOM 全文反向生成 Markdown，需先完成共享事务和保守映射。
+
+### 设计决定
+
+- `useMarkdownEditor` 持有 LF 规范化的 `MarkdownEditSession`，源码输入、右键命令、查找替换、结构确认和阅读块编辑都进同一 past/future；主进程 revision、异步队列和恢复草稿合同保持不变，历史上限为 500 项。
+- 新增 `reader-edit` 核心映射。只有一个 paragraph 或 ATX heading 在源码中去除标题标记后与可见文字完全相同、且为单行纯文本时，才允许替换；UTF-8 字节边界转 UTF-16 位置后再局部写入，保留 BOM/CRLF/标题标记。实体、内联 Markdown、Setext、跨行和不明确位置全部拒绝。
+- 新增块级 `contenteditable`，支持输入法组合、纯文本粘贴、Enter/格式输入拦截和 Escape 恢复。失焦只提交该块的文本，不序列化整个渲染树；进入 dirty 预览后阅读编辑关闭，必须切到源码显式保存。
+- 按 Emil Kowalski 规范加入克制的焦点/悬停状态：仅在精确指针设备启用 hover，过渡限定颜色/轮廓且支持 reduced motion 的全局策略，不用持续运动装饰正文。
+
+### 修改文件
+
+- `src/renderer/use-markdown-editor.ts`
+- `src/renderer/editor-view.tsx`
+- `src/renderer/main.tsx`
+- `src/renderer/style.css`
+- `src/core/selection-map.ts`
+- `src/core/reader-edit.ts`
+- `src/renderer/reader-editable-block.tsx`
+- `tests/core/reader-edit.test.ts`
+- `tests/e2e/a7-3b-packaged.mjs`
+- `docs/PROGRESS.md`
+- `docs/DECISIONS.md`
+
+### 测试和命令
+
+```powershell
+node --test tests/core/reader-edit.test.ts tests/core/markdown-edit-transaction.test.ts
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+```
+
+结果：核心阅读编辑/事务测试 `6/6`；全量单测 `236/236`；类型检查、Windows x64 生产打包、A7.3b（新增阅读编辑与跨模式 undo/redo）、A8.4 和 A8.5 打包回归全部通过。第一次 A7.3b 复跑在模式切换后没有聚焦源码文本框，导致测试脚本误报撤销超时；补回真实焦点后复跑通过，未改变产品断言。打包与回归结束后没有残留 Electron、MerMarkd、Setup 或 Update 进程。
+
+### 产物/截图
+
+- 打包应用：`out/MerMarkd-win32-x64/MerMarkd.exe`
+- 本批新增临时阅读编辑验收样本由 `tests/e2e/a7-3b-packaged.mjs` 创建并在 `finally` 清理，没有提交用户文档或 sidecar。
+- 重新检查后，B5 实现提交与开发记录提交分开生成；实现提交和日志提交均在本批收尾后推送到 `origin/main`，远端 SHA 以随后 `git ls-remote` 结果补入。
+
+### 失败与限制
+
+- 阅读编辑暂只支持单行纯文本段落和 ATX 标题；含粗体、斜体、链接、实体、引用、列表、表格、代码、Setext 或跨行内容的块仍只读。
+- 尚未完成真实中文 IME 设备验收、阅读模式内联格式编辑、跨块编辑和右键菜单 Shift+F10/方向键/Enter 的完整键盘导航。
+- 共享 session 是 renderer 侧历史投影，主进程持有的 source revision/保存恢复合同仍是最终真相；不宣称任意第三方编辑器级别的全文协同历史。
+
+### 下一步
+
+本批收尾重新检查了源映射、dirty/sidecar 冻结、共享撤销边界、打包产物和三项回归；下一批优先推进干净环境安装/卸载、性能基线和高 DPI 验收，再回到阅读 inline 映射与右键菜单键盘可达性。

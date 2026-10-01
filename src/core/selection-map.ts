@@ -17,6 +17,9 @@ interface TextLeaf {
 export interface SelectionBlock {
   /** UTF-16 offset in the BOM-stripped Markdown passed to the parser. */
   readonly blockStart: number;
+  /** End offset of the parsed block, used by the narrow reader edit mapper. */
+  readonly blockEnd: number;
+  readonly kind: 'heading' | 'paragraph';
   readonly visibleText: string;
   readonly supported: boolean;
   readonly reason?: string;
@@ -111,7 +114,7 @@ function buildBlock(node: Heading | Paragraph, source: string): SelectionBlock {
   const blockStart = node.position?.start.offset;
   const blockEnd = node.position?.end.offset;
   if (blockStart === undefined || blockEnd === undefined) {
-    return { blockStart: -1, visibleText: '', supported: false, reason: '解析器未提供块位置。', leaves: [] };
+    return { blockStart: -1, blockEnd: -1, kind: node.type, visibleText: '', supported: false, reason: '解析器未提供块位置。', leaves: [] };
   }
 
   let visibleText = '';
@@ -134,7 +137,7 @@ function buildBlock(node: Heading | Paragraph, source: string): SelectionBlock {
     reason = `当前选区所在块包含暂不支持的 ${inline.type} 内容。`;
   };
   node.children.forEach(visit);
-  return { blockStart, visibleText, supported: !reason && leaves.length > 0, reason, leaves };
+  return { blockStart, blockEnd, kind: node.type, visibleText, supported: !reason && leaves.length > 0, reason, leaves };
 }
 
 /** Build a source map for rendered paragraphs and headings without changing Markdown. */
