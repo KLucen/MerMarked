@@ -530,3 +530,62 @@ npm.cmd run package
 ### 下一步
 
 收尾复查本批核心测试、类型、打包、文件边界和文档一致性；下一批进入 B1 工作区外壳，保持开始页、紧凑导航和左右侧栏改动不触碰 Markdown/YAML/画布保存门槛。
+
+## 2026-10-02 · B4 共同选区命令与右键菜单
+
+### 目标
+
+把用户要求的源码选区操作和阅读正文选区操作推进为一个可验证的小批次：复制、剪切、粘贴、删除、加粗、斜体、引用，以及不污染 Markdown 的颜色高亮和批注入口。先固定选区、revision、异步剪贴板和 sidecar 边界，再进入阅读模式直接编辑。
+
+### 用户反馈/需求来源
+
+用户要求选中文字后右键提供复制、粘贴、剪切、删除、加粗、斜体、引用和不同颜色高亮；阅读模式与源码模式都要服务于同一份 Markdown，同时保留 Markdown、批注 YAML 和画布 JSON 的独立可恢复合同。
+
+### 设计决定
+
+- 新增纯核心 `markdown-selection-commands`：源码命令使用 `MarkdownEditSession` 的局部替换、revision 和 UTF-16 代理对边界校验；复制读取原始 Markdown，引用扩展到完整受影响源码行并保留 CRLF/无尾换行形态。
+- 阅读模式右键复制使用渲染后的可见正文；高亮和批注只把冻结的、已映射选区交给 annotation intent，不写入 `==...==`、HTML 或其他 Markdown 标记。
+- 右键菜单保存文档 epoch/source hash/revision，并在剪贴板异步返回后再次验证；菜单在文档、模式或选区清理时关闭。源码右键命令结果复用现有编辑器 history 入口，当前仍未把 session 提升为跨模式共享 hook。
+
+### 修改文件
+
+- `src/core/markdown-selection-commands.ts`
+- `tests/core/markdown-selection-commands.test.ts`
+- `src/renderer/editor-view.tsx`
+- `src/renderer/main.tsx`
+- `src/renderer/style.css`
+- `tests/e2e/a7-3b-packaged.mjs`
+- `docs/PROGRESS.md`
+- `docs/DECISIONS.md`
+
+### 测试和命令
+
+```powershell
+node --test tests/core/markdown-selection-commands.test.ts
+npm.cmd test
+npm.cmd run typecheck
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+git diff --check
+```
+
+结果：核心测试 `6/6`；全量单测 `233/233`；类型检查、Windows x64 生产打包、A7.3b 源码右键加粗/撤销、A8.4 结构事务和 A8.5 恢复回归全部通过。打包过程中没有残留 Electron 进程。Node 的 `MODULE_TYPELESS_PACKAGE_JSON` 仅是既有警告，不影响退出码。
+
+### 产物/截图
+
+- 打包应用：`out/MerMarkd-win32-x64/MerMarkd.exe`
+- 本批没有新增截图；既有 A8.4/A8.5 QA 截图继续作为结构和恢复回归证据。
+- 代码提交：`043bf22d97b430dea85fc389e3859330d7698b6f`
+- 远端核对：`origin/main` 已指向同一 SHA；仓库地址为 `https://github.com/KLucen/MerMarked`。
+
+### 失败与限制
+
+- `MarkdownEditSession` 尚未真正由 `useMarkdownEditor` 持有，当前菜单结果写入现有源码组件 history，不能宣称阅读/源码跨模式共享同一撤销栈。
+- 阅读模式暂时只提供复制、四色高亮和批注；加粗、斜体、引用要等 B5 完成保守 DOM 到 Markdown 的映射后再开放。
+- 菜单完成 Escape/指针关闭，Shift+F10、方向键、Enter 和完整焦点管理仍待后续切片。
+
+### 下一步
+
+进入 B5 前先以本批远端提交为基线重新检查工作区；下一批把编辑 session 提升到共享 hook，随后实现阅读模式最小可编辑正文、输入法处理和单步撤销边界，再按同样流程测试、复查、提交和推送。
