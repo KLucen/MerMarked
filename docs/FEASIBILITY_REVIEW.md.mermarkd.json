@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "sha256": "31384f09e81a5df67895d86417c96ffec5c64dde634ccd1b40f2a317794606f5",
+    "encoding": "utf-8",
+    "coordinateSystem": "utf8-byte"
+  },
+  "cards": [
+    {
+      "id": "ee3f8b04-d4f4-4018-9930-c278f08bf49c",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "31384f09e81a5df67895d86417c96ffec5c64dde634ccd1b40f2a317794606f5",
+        "titlePath": [
+          "MerMarkd 架构可行性审查（2026-09-17，状态更新 2026-09-30）"
+        ],
+        "depth": 1,
+        "startByte": 0,
+        "endByte": 74,
+        "headingExact": "# MerMarkd 架构可行性审查（2026-09-17，状态更新 2026-09-30）",
+        "bodySha256": "75a11da44c802486bc6f65640aa48a730f0f684c5c07a42ba3cd1735eb3fb070"
+      },
+      "position": {
+        "x": 115.86407766990291,
+        "y": -90.30582524271844
+      },
+      "collapsed": false
+    },
+    {
+      "id": "09fbf468-8327-4eaf-af49-eb077c6a0691",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "31384f09e81a5df67895d86417c96ffec5c64dde634ccd1b40f2a317794606f5",
+        "titlePath": [
+          "MerMarkd 架构可行性审查（2026-09-17，状态更新 2026-09-30）",
+          "结论"
+        ],
+        "depth": 2,
+        "startByte": 76,
+        "endByte": 85,
+        "headingExact": "## 结论",
+        "bodySha256": "7689822ff07552bdb0a565bb1b7d4fa63c412e81cf19c1e9c673ffe086405c86"
+      },
+      "position": {
+        "x": 24,
+        "y": 304.5
+      },
+      "collapsed": false
+    },
+    {
+      "id": "ef2ed5ec-abfa-47d9-aa3f-3e4130d1099d",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "31384f09e81a5df67895d86417c96ffec5c64dde634ccd1b40f2a317794606f5",
+        "titlePath": [
+          "MerMarkd 架构可行性审查（2026-09-17，状态更新 2026-09-30）",
+          "可行性与问题清单"
+        ],
+        "depth": 2,
+        "startByte": 1490,
+        "endByte": 1517,
+        "headingExact": "## 可行性与问题清单",
+        "bodySha256": "ed9f3de1b85ade3745522782a7aa961d03c1741d769402f79ffacae56d3a3e74"
+      },
+      "position": {
+        "x": 362.2482877508801,
+        "y": 176
+      },
+      "collapsed": false
+    },
+    {
+      "id": "87a7bed7-7ef7-4012-b9d1-3d538306f2d1",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "31384f09e81a5df67895d86417c96ffec5c64dde634ccd1b40f2a317794606f5",
+        "titlePath": [
+          "MerMarkd 架构可行性审查（2026-09-17，状态更新 2026-09-30）",
+          "可行性与问题清单",
+          "两项产品规则需修订"
+        ],
+        "depth": 3,
+        "startByte": 12473,
+        "endByte": 12504,
+        "headingExact": "### 两项产品规则需修订",
+        "bodySha256": "409972fe58c8bacacde173f1078eec5bc35ebf94e7955af0e3934b1b6dfadaa2"
+      },
+      "position": {
+        "x": 24,
+        "y": 233
+      },
+      "collapsed": false
+    },
+    {
+      "id": "367d7af7-6c80-453c-a9fe-cabc830adb92",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "31384f09e81a5df67895d86417c96ffec5c64dde634ccd1b40f2a317794606f5",
+        "titlePath": [
+          "MerMarkd 架构可行性审查（2026-09-17，状态更新 2026-09-30）",
+          "关键原型与阶段关口"
+        ],
+        "depth": 2,
+        "startByte": 13367,
+        "endByte": 13397,
+        "headingExact": "## 关键原型与阶段关口",
+        "bodySha256": "46c09cbe0994c75956ea2d151da21fbf5520f84c81e3c298b0b35a588c911b7f"
+      },
+      "position": {
+        "x": 744,
+        "y": 304.5
+      },
+      "collapsed": false
+    },
+    {
+      "id": "405db8f0-2cfa-47ef-a07e-5f7524349e5f",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "31384f09e81a5df67895d86417c96ffec5c64dde634ccd1b40f2a317794606f5",
+        "titlePath": [
+          "MerMarkd 架构可行性审查（2026-09-17，状态更新 2026-09-30）",
+          "已核实的一手资料"
+        ],
+        "depth": 2,
+        "startByte": 17582,
+        "endByte": 17609,
+        "headingExact": "## 已核实的一手资料",
+        "bodySha256": "a859a6593965dbfce22685e749d57294cac7a95b22cfb07b4185dafc3035a668"
+      },
+      "position": {
+        "x": 1080,
+        "y": 322.5
+      },
+      "collapsed": false
+    }
+  ],
+  "links": [
+    {
+      "id": "ec379adb-72f0-438f-ae25-066ed67b22b6",
+      "from": "367d7af7-6c80-453c-a9fe-cabc830adb92",
+      "to": "405db8f0-2cfa-47ef-a07e-5f7524349e5f",
+      "label": ""
+    }
+  ],
+  "viewport": {
+    "x": -1576.3994790036718,
+    "y": -435.8292338496541,
+    "zoom": 2.0436856528661167
+  }
+}

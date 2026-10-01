@@ -1,0 +1,61 @@
+{
+  "name": "mermarkd",
+  "productName": "MerMarkd",
+  "version": "0.1.0",
+  "description": "Local Markdown reader and card canvas",
+  "author": "MerMarkd Contributors",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": ".vite/build/main.js",
+  "scripts": {
+    "start": "electron-forge start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test",
+    "test:e2e:a6": "node tests/e2e/a6-packaged.mjs",
+    "test:e2e:a7-1": "node tests/e2e/a7-1-packaged.mjs",
+    "test:e2e:a7-2": "node tests/e2e/a7-2-packaged.mjs",
+    "test:e2e:a7-3b": "node tests/e2e/a7-3b-packaged.mjs",
+    "test:e2e:a7-4": "node tests/e2e/a7-4-packaged.mjs",
+    "test:e2e:a7-5": "node tests/e2e/a7-5-packaged.mjs",
+    "test:e2e:a8-2": "node tests/e2e/a8-2-packaged.mjs",
+    "test:e2e:a8-3": "node tests/e2e/a8-3-packaged.mjs",
+    "test:e2e:a8-4": "node tests/e2e/a8-4-packaged.mjs",
+    "test:e2e:a8-5": "node tests/e2e/a8-5-packaged.mjs",
+    "package": "electron-forge package",
+    "make": "electron-forge make"
+  },
+  "dependencies": {
+    "@xyflow/react": "12.12.0",
+    "electron-squirrel-startup": "1.0.1",
+    "elkjs": "0.12.0",
+    "lucide-react": "1.49.0",
+    "mdast-util-to-string": "4.0.0",
+    "parse5": "7.3.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-markdown": "10.1.0",
+    "rehype-raw": "7.0.0",
+    "rehype-sanitize": "6.0.0",
+    "remark-frontmatter": "5.0.0",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "7.11.2",
+    "@electron-forge/maker-squirrel": "7.11.2",
+    "@electron-forge/plugin-vite": "7.11.2",
+    "@types/mdast": "4.0.4",
+    "@types/node": "24.13.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "44.4.1",
+    "typescript": "5.9.3",
+    "vite": "7.3.6"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

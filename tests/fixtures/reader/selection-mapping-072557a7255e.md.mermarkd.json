@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "sha256": "40cd23bb1d6a92afea4d1c42ad34a6efa01e0d551f4b3864b94895325999b3ed",
+    "encoding": "utf-8",
+    "coordinateSystem": "utf8-byte"
+  },
+  "cards": [
+    {
+      "id": "84f4ed85-d0b7-4a07-9acb-38db22719c07",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "40cd23bb1d6a92afea4d1c42ad34a6efa01e0d551f4b3864b94895325999b3ed",
+        "titlePath": [
+          "选区映射验收"
+        ],
+        "depth": 1,
+        "startByte": 3,
+        "endByte": 23,
+        "headingExact": "# 选区映射验收",
+        "bodySha256": "e8c21c6e6d0cf8d30036e6f772d0b476dc57ed2489291875ddf9d7ce0423f9c5"
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    }
+  ],
+  "links": [],
+  "viewport": {
+    "x": 562.8637969636459,
+    "y": 130.38191812817246,
+    "zoom": 2.4889430334106737
+  }
+}
