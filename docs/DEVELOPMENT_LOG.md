@@ -267,6 +267,60 @@ git diff --check
 
 进入 B3：删除常驻投放区，加入重叠比例/停留高亮、拖出提升与结构预览候选；收尾前仍运行全量测试、类型检查、打包和旧回归并推送 GitHub。
 
+## 2026-10-02 · B3 重叠候选与拖出提升
+
+### 目标
+
+把卡片结构手势从固定投放区改为可中断的重叠候选，同时让子章节可以拖出父组并进入独立章节预览。
+
+### 用户反馈/需求来源
+
+- 不显示“拖到此处设为子章节”，两张卡片重叠达到比例后再高亮提示。
+- 子章节应能拖出父章节并独立，且结构修改必须继续经过预览、确认、取消和撤销安全门槛。
+
+### 设计决定
+
+- 新增纯核心 `canvas-structure-candidates`：交叠按较小卡片覆盖率计算，`35%` 产生候选，`50% + 280 ms` 进入可移入态。
+- 拖出直接父组使用 `35%/70%` 逃逸比例和同样的停留时间；就绪后生成顶层 `promote` 预览，拖入候选优先。
+- React Flow 只更新候选卡片的视觉数据，不重建拖动节点；松开时按最新停留时间补算就绪状态，避免用户在提示出现后立即释放却被当成普通布局拖动。
+- 使用短时边框、背景和脉冲反馈，并在 `prefers-reduced-motion` 下关闭动画；移除固定投放区和相关命中逻辑。
+
+### 修改文件
+
+- `src/core/canvas-structure-candidates.ts`
+- `tests/core/canvas-structure-candidates.test.ts`
+- `src/renderer/canvas-view.tsx`
+- `src/renderer/style.css`
+- `tests/e2e/a8-4-packaged.mjs`
+- `docs/PROGRESS.md`
+- `docs/DECISIONS.md`
+
+### 测试和命令
+
+```powershell
+node --test tests/core/canvas-structure-candidates.test.ts
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run package
+npm.cmd run test:e2e:b1
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+git diff --check
+```
+
+结果：核心测试 `7/7`、全量单测 `227/227`、类型检查、Windows x64 打包、B1、A8.4 和 A8.5 打包版回归通过。A8.4 现在从实际卡片重叠触发预览，并继续验证取消恢复布局、三份文件独立过期门槛、确认零写入、撤销/重做、BOM/CRLF 与重开。
+
+### 失败与修复
+
+- 首次 UI 接入中，候选状态更新会重建 React Flow 节点并重置拖动位置；改为只更新节点数据后重新打包通过。
+- 首次释放测试在停留计时刚好结束后仍被判为普通拖动；松开事件补算最后一次候选的停留时间后通过。
+
+### 限制与下一步
+
+- 拖出当前默认预览移至文档顶层；“提升为原父章节同级”的细分键盘入口和真正独立组节点拆分留待后续迭代。
+- 真实多显示器物理 DPI、卸载器零残留和行数密集大文件解析仍是 P0 未闭合门槛。
+- B3 提交和远端 SHA 待本批最终复查后补记。
+
 ## 2026-10-01 · A8.6 安装、性能与高 DPI 首轮验收
 
 ### 目标

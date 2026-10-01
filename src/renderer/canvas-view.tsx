@@ -4,6 +4,17 @@ import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react
 import { ArrowDownToLine, ArrowUpToLine, BookOpen, Crosshair, EyeOff, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { canvasCardContent } from '../core/canvas-card-content';
 import { buildCanvasSceneV2 } from '../core/canvas-scene-v2';
+import {
+  classifyDragOutPromotion,
+  evaluateDragOutPromotion,
+  findCanvasOverlapCandidate,
+  updateCanvasOverlapDwell,
+} from '../core/canvas-structure-candidates';
+import type {
+  CanvasOverlapCandidate,
+  DragOutPromotionCandidate,
+  OverlapDwellState,
+} from '../core/canvas-structure-candidates';
 import type { CanvasBinding } from '../core/canvas-state';
 import { arrangeCanvasV2, projectCanvasStateV2ToV1, reconcileCanvasStateV2 } from '../core/canvas-state-v2';
 import type { CanvasBodyDisplay, CanvasStateV2 } from '../core/canvas-state-v2';
@@ -22,6 +33,8 @@ interface CardData extends Record<string, unknown> {
   bodyDisplay: CanvasBodyDisplay;
   contentPosition: { readonly x: number; readonly y: number };
   descendantsCollapsed: boolean;
+  nestStatus?: 'candidate' | 'ready';
+  detachStatus?: 'candidate' | 'ready';
   readOnly: boolean;
   sectionIndex: number | null;
   fold: () => void;
@@ -41,7 +54,9 @@ function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
     actualObserver.observe(element); measure();
     return () => actualObserver.disconnect();
   }, [data.measure]);
-  return <div className={selected ? 'canvas-chapter selected' : 'canvas-chapter'}>
+  const chapterClass = ['canvas-chapter', selected && 'selected', data.nestStatus && `nest-${data.nestStatus}`,
+    data.detachStatus && `detach-${data.detachStatus}`].filter(Boolean).join(' ');
+  return <div className={chapterClass}>
     <Handle type="target" position={Position.Left} isConnectable={!data.readOnly} />
     <div ref={body} className="canvas-card-body" style={{ left: data.contentPosition.x, top: data.contentPosition.y }}><div className="canvas-card-header">
       <strong>{data.title}</strong>
@@ -59,14 +74,33 @@ function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
     </div>
     {data.bodyDisplay !== 'hidden' && <p className={data.bodyDisplay === 'full' ? 'canvas-card-summary canvas-card-full' : 'canvas-card-summary'}>{(data.bodyDisplay === 'full' ? data.fullText : data.summary) || '暂无正文'}</p>}
     <span className="canvas-card-count">{data.hiddenDescendants ? `${data.hiddenDescendants} 个章节已收起` : `${data.childCount} 个直接子章节`}</span>
-    {data.sectionIndex !== null && <div className="canvas-structure-drop nodrag" aria-disabled={data.readOnly}
-      data-canvas-structure-target={data.readOnly ? undefined : data.sectionIndex}>{data.readOnly ? '结构投放已暂停' : '拖到此处设为子章节'}</div>}
+    {data.nestStatus && <div className="canvas-nest-indicator" role="status">
+      {data.nestStatus === 'ready' ? '松开以预览设为子章节' : '继续重叠并短暂停留'}
+    </div>}
+    {data.detachStatus && <div className="canvas-detach-indicator" role="status">
+      {data.detachStatus === 'ready' ? '松开以预览移出父章节' : '移出父章节并短暂停留'}
+    </div>}
     </div>
     <Handle type="source" position={Position.Right} isConnectable={!data.readOnly} />
   </div>;
 }
 
 const nodeTypes: NodeTypes = { chapter: ChapterCard };
+
+function domRectForNode(id: string) {
+  const element = globalThis.document.querySelector<HTMLElement>(`[data-id="${id.replaceAll('"', '\\"')}"]`);
+  if (!element) return null;
+  const rect = element.getBoundingClientRect();
+  return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
+}
+
+function pointerForEvent(event: unknown): { x: number; y: number } | null {
+  if (!event || typeof event !== 'object') return null;
+  const value = event as { clientX?: unknown; clientY?: unknown; changedTouches?: { clientX?: unknown; clientY?: unknown }[]; touches?: { clientX?: unknown; clientY?: unknown }[] };
+  if (typeof value.clientX === 'number' && typeof value.clientY === 'number') return { x: value.clientX, y: value.clientY };
+  const touch = value.changedTouches?.[0] ?? value.touches?.[0];
+  return touch && typeof touch.clientX === 'number' && typeof touch.clientY === 'number' ? { x: touch.clientX, y: touch.clientY } : null;
+}
 
 export interface CanvasViewProps {
   readonly document: OpenedMarkdownDocument;
@@ -100,12 +134,21 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   const [minimumHeights, setMinimumHeights] = useState<Record<string, number>>({});
   const [exporting, setExporting] = useState<'png' | 'jpg' | 'pdf' | null>(null);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [nestCandidate, setNestCandidate] = useState<CanvasOverlapCandidate | null>(null);
+  const [detachCandidate, setDetachCandidate] = useState<DragOutPromotionCandidate | null>(null);
   const [structureSource, setStructureSource] = useState('');
   const [structureTarget, setStructureTarget] = useState('');
   const generation = useRef(0);
   const saveInFlight = useRef(false);
   const initialLayout = useRef(false);
   const sourceVersion = useRef<1 | 2>(1);
+  const dragStart = useRef<{ nodeId: string; sectionIndex: number | null; position: { x: number; y: number }; screenRect?: { x: number; y: number; width: number; height: number }; pointer?: { x: number; y: number }; parentId?: string } | null>(null);
+  const nestDwell = useRef<OverlapDwellState | null>(null);
+  const detachDwell = useRef<OverlapDwellState | null>(null);
+  const feedbackAt = useRef(0);
+  const nestCandidateRef = useRef<CanvasOverlapCandidate | null>(null);
+  const detachCandidateRef = useRef<DragOutPromotionCandidate | null>(null);
   const tree = useMemo(() => extractSections(document.content), [document.content]);
   const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting);
 
@@ -179,6 +222,59 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     setMinimumHeights((previous) => previous[id] === height ? previous : { ...previous, [id]: height });
   }, []);
   const scene = useMemo(() => model ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights) : null, [bindings, document.content, minimumHeights, model, tree]);
+  const updateDragFeedback = useCallback((event: unknown, node: ChapterNode) => {
+    feedbackAt.current = performance.now();
+    const sourceIndex = bindings.find((binding) => binding.id === node.id)?.sectionIndex ?? null;
+    const start = dragStart.current;
+    const sourceDomRect = domRectForNode(node.id);
+    const pointer = pointerForEvent(event);
+    const sourceRect = start?.nodeId === node.id && start.screenRect && pointer && start.pointer
+      ? { ...start.screenRect, x: start.screenRect.x + pointer.x - start.pointer.x,
+          y: start.screenRect.y + pointer.y - start.pointer.y }
+      : start?.nodeId === node.id && start.screenRect
+        ? { ...start.screenRect, x: start.screenRect.x + (node.position.x - start.position.x) * flow.getViewport().zoom,
+            y: start.screenRect.y + (node.position.y - start.position.y) * flow.getViewport().zoom }
+      : sourceDomRect;
+    if (!sourceRect || !scene || sourceIndex === null) return;
+    const isDescendant = (candidateIndex: number): boolean => {
+      let parent = tree.sections[candidateIndex]?.parentIndex ?? null;
+      while (parent !== null) {
+        if (parent === sourceIndex) return true;
+        parent = tree.sections[parent]?.parentIndex ?? null;
+      }
+      return false;
+    };
+    const targets = scene.cards.flatMap((card) => {
+      if (card.id === node.id || card.hidden || card.sectionIndex === null || card.sectionIndex === sourceIndex ||
+          card.sectionIndex === tree.sections[sourceIndex]?.parentIndex || isDescendant(card.sectionIndex)) return [];
+      const rect = domRectForNode(card.id);
+      return rect ? [{ id: card.id, rect, sectionIndex: card.sectionIndex }] : [];
+    });
+    const candidate = findCanvasOverlapCandidate({ id: node.id, rect: sourceRect, sectionIndex: sourceIndex }, targets,
+      { minimumRatio: 0.35, readyRatio: 0.5, dwellMs: 280, minimumArea: 1200 });
+    const overlap = updateCanvasOverlapDwell(nestDwell.current, candidate, performance.now(),
+      { minimumRatio: 0.35, readyRatio: 0.5, dwellMs: 280, minimumArea: 1200 });
+    nestDwell.current = overlap.state;
+    const nextNest = candidate ? { ...candidate, status: overlap.status === 'ready' ? 'ready' as const : 'candidate' as const, dwellMs: overlap.dwellMs } : null;
+    nestCandidateRef.current = nextNest;
+    setNestCandidate(nextNest);
+    if (nextNest || !start?.parentId) {
+      detachDwell.current = null;
+      detachCandidateRef.current = null;
+      setDetachCandidate(null);
+      return;
+    }
+    const parentRect = domRectForNode(start.parentId);
+    if (!parentRect) return;
+    const sample = evaluateDragOutPromotion(tree, sourceIndex, sourceRect, parentRect, { destination: 'top-level' });
+    const promotion = classifyDragOutPromotion(sample, detachDwell.current, node.id, performance.now(),
+      { minimumEscapeRatio: 0.35, readyEscapeRatio: 0.7, dwellMs: 280 });
+    detachDwell.current = promotion.state;
+    const nextDetach = promotion.candidate;
+    detachCandidateRef.current = nextDetach;
+    setDetachCandidate(nextDetach);
+  }, [bindings, flow, scene, tree]);
+
   useEffect(() => {
     if (!model || !scene) { setNodes([]); return; }
     setNodes(scene.cards.map((card): ChapterNode => {
@@ -195,6 +291,14 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     }));
   }, [activeSection, document.content, measured, model, onEditSection, persist, readOnly, scene, tree]);
 
+  useEffect(() => {
+    setNodes((previous) => previous.map((node) => ({ ...node, data: {
+      ...node.data,
+      nestStatus: nestCandidate?.targetId === node.id ? nestCandidate.status : undefined,
+      detachStatus: detachCandidate?.sourceIndex === node.data.sectionIndex ? detachCandidate.status : undefined,
+    } })));
+  }, [detachCandidate, nestCandidate]);
+
   const edges = useMemo((): Edge[] => scene?.links.map((link) => ({ id: link.id, source: link.from, target: link.to,
     label: `${link.label}${link.hiddenEndpoint ? '（隐藏端点）' : ''}`, markerEnd: { type: MarkerType.ArrowClosed },
     selected: selectedLink === link.id, style: { stroke: link.hiddenEndpoint ? '#b27718' : '#327766', strokeWidth: 2 },
@@ -206,11 +310,11 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   }, [label, model, persist, readOnly]);
   const titleFor = (id: string) => nodes.find((node) => node.id === id)?.data.title ?? id;
   const currentCard = nodes.find((node) => node.selected);
-  const requestStructure = useCallback(async (operation: SectionTransformOperation) => {
-    if (readOnly || saveInFlight.current) return;
+  const requestStructure = useCallback(async (operation: SectionTransformOperation): Promise<boolean> => {
+    if (readOnly || saveInFlight.current) return false;
     setBusy(true); setMessage('正在核验结构变更…');
-    try { await onStructurePreview(operation); }
-    catch (error) { setMessage(error instanceof Error ? error.message : '结构预览失败，请重新检查文档。'); }
+    try { await onStructurePreview(operation); return true; }
+    catch (error) { setMessage(error instanceof Error ? error.message : '结构预览失败，请重新检查文档。'); return false; }
     finally { setBusy(false); }
   }, [onStructurePreview, readOnly]);
   const searchMatches = nodes.filter((node) => !node.hidden && node.data.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
@@ -257,7 +361,11 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
       <label className="canvas-search">查找卡片<input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
         if (event.key === 'Enter' && searchMatches[0]) void flow.fitView({ nodes: [{ id: searchMatches[0].id }], padding: 0.4 });
       }} /></label>
-      <output role="status" data-canvas-status="true">{exporting ? `正在导出 ${exporting.toUpperCase()}…` : exportMessage ?? (busy ? '正在保存…' : message)}</output>
+      <output role="status" data-canvas-status="true">{exporting ? `正在导出 ${exporting.toUpperCase()}…` : exportMessage ?? (draggingId && nestCandidate
+        ? `${nestCandidate.status === 'ready' ? '松开' : '继续'}以预览设为子章节 · 重叠 ${Math.round(nestCandidate.overlapRatio * 100)}%`
+        : draggingId && detachCandidate
+          ? `${detachCandidate.status === 'ready' ? '松开' : '继续'}以预览移出父章节 · 已移出 ${Math.round(detachCandidate.escapeRatio * 100)}%`
+          : busy ? '正在保存…' : message)}</output>
     </div>
     {readError && <div className="canvas-warning" role="alert">{readError}
       <button title="放弃当前未保存画布候选并重新载入" onClick={() => setLoadRevision((value) => value + 1)}><RefreshCw size={15} /> 重新载入画布</button>
@@ -270,27 +378,48 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
           panOnDrag={[1, 2]} panActivationKeyCode="Space" selectionOnDrag
           onNodesChange={(changes) => setNodes((previous) => applyNodeChanges(changes, previous))}
           onNodeClick={(_event, node) => onSectionChange(bindings.find((binding) => binding.id === node.id)?.sectionIndex ?? null)}
-          onNodeDragStop={(event, node) => {
+          onNodeDragStart={(event, node) => {
+            const sourceIndex = bindings.find((binding) => binding.id === node.id)?.sectionIndex ?? null;
+            dragStart.current = { nodeId: node.id, sectionIndex: sourceIndex, position: { ...node.position }, screenRect: domRectForNode(node.id) ?? undefined,
+              pointer: pointerForEvent(event) ?? undefined,
+              ...(node.parentId ? { parentId: node.parentId } : {}) };
+            nestDwell.current = null; detachDwell.current = null;
+            nestCandidateRef.current = null; detachCandidateRef.current = null;
+            setNestCandidate(null); setDetachCandidate(null); setDraggingId(node.id);
+          }}
+          onNodeDrag={(event, node) => updateDragFeedback(event, node)}
+          onNodeDragStop={(_event, node) => {
             if (!model || readOnly) return;
             const sourceIndex = bindings.find((binding) => binding.id === node.id)?.sectionIndex;
-            // Rectangle hit testing includes zones beneath the dragged card;
-            // ordinary card overlap never starts a structural command.
-            const pointer = 'clientX' in event ? event : event.changedTouches[0];
-            const target = pointer && Array.from(globalThis.document.querySelectorAll<HTMLElement>('[data-canvas-structure-target]'))
-              .find((element) => {
-                const bounds = element.getBoundingClientRect();
-                return pointer.clientX >= bounds.left && pointer.clientX <= bounds.right && pointer.clientY >= bounds.top && pointer.clientY <= bounds.bottom &&
-                  Number(element.dataset.canvasStructureTarget) !== sourceIndex;
-              });
-            if (target && sourceIndex !== null && sourceIndex !== undefined) {
-              const original = scene?.cards.find((card) => card.id === node.id)?.position;
-              if (original) setNodes((items) => items.map((item) => item.id === node.id ? { ...item, position: original } : item));
-              void requestStructure({ kind: 'move', sourceIndex, targetIndex: Number(target.dataset.canvasStructureTarget) });
+            const start = dragStart.current;
+            const now = performance.now();
+            const candidate = nestCandidateRef.current;
+            const candidateReady = candidate && candidate.overlapRatio >= 0.5 &&
+              candidate.dwellMs + Math.max(0, now - feedbackAt.current) >= 280
+              ? { ...candidate, status: 'ready' as const } : candidate;
+            const detach = detachCandidateRef.current;
+            const detachReady = detach && detach.escapeRatio >= 0.7 &&
+              detach.dwellMs + Math.max(0, now - feedbackAt.current) >= 280
+              ? { ...detach, status: 'ready' as const } : detach;
+            const clearDrag = () => {
+              dragStart.current = null; nestDwell.current = null; detachDwell.current = null;
+              nestCandidateRef.current = null; detachCandidateRef.current = null;
+              setNestCandidate(null); setDetachCandidate(null); setDraggingId(null);
+            };
+            if (sourceIndex !== null && sourceIndex !== undefined && candidateReady?.status === 'ready') {
+              void requestStructure({ kind: 'move', sourceIndex, targetIndex: bindings.find((binding) => binding.id === candidateReady.targetId)?.sectionIndex ?? -1 })
+                .then((accepted) => { if (!accepted && start) setNodes((items) => items.map((item) => item.id === node.id ? { ...item, position: start.position } : item)); clearDrag(); });
+              return;
+            }
+            if (sourceIndex !== null && sourceIndex !== undefined && detachReady?.status === 'ready') {
+              void requestStructure(detachReady.operation)
+                .then((accepted) => { if (!accepted && start) setNodes((items) => items.map((item) => item.id === node.id ? { ...item, position: start.position } : item)); clearDrag(); });
               return;
             }
             void persist({ ...model, cards: model.cards.map((card) => card.id === node.id
               ? { ...card, position: { x: Math.max(card.anchor.kind === 'heading' && node.parentId ? 24 : -1_000_000, node.position.x),
-                y: Math.max(node.parentId ? Math.max(150, minimumHeights[node.parentId] ?? 150) : -1_000_000, node.position.y) } } : card) });
+                y: Math.max(node.parentId ? Math.max(150, minimumHeights[node.parentId] ?? 150) : -1_000_000, node.position.y) } } : card) })
+              .finally(clearDrag);
           }}
           onConnect={addLink} onEdgeClick={(_event, edge) => { setSelectedLink(edge.id); setLabel(model?.links.find((link) => link.id === edge.id)?.label ?? ''); }}
           onPaneClick={() => setSelectedLink(null)}
@@ -300,8 +429,8 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
         </ReactFlow>
       </div>
       <aside className="canvas-properties" aria-label="卡片与关系">
-        <h2>章节结构</h2>
-        <p className="canvas-structure-hint">普通拖动只改布局。投到“设为子章节”区域后预览源码，也可在这里选择章节。</p>
+         <h2>章节结构</h2>
+         <p className="canvas-structure-hint">普通拖动只改布局。让两张卡片重叠约一半并短暂停留后松开，可预览设为子章节；把子卡移出父卡并停留，可预览移出。</p>
         <label>移动章节<select data-canvas-structure-source="true" value={structureSource} disabled={readOnly} onChange={(event) => setStructureSource(event.target.value)}>
           <option value="">选择章节</option>{tree.sections.map((section) => <option key={section.index} value={section.index}>{section.title}</option>)}
         </select></label>

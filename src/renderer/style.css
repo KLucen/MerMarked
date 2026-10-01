@@ -376,8 +376,13 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-link-actions { display: grid; gap: 6px; margin-top: 8px; }
 .canvas-properties p, .canvas-properties li { overflow-wrap: anywhere; }
 .canvas-unresolved { color: #825d20; }
-.canvas-chapter { width: 100%; height: 100%; box-sizing: border-box; border: 1px dashed #bcccd2; border-radius: 7px; background: #fafdfc88; box-shadow: 0 2px 3px #203d4610; position: relative; }
+.canvas-chapter { width: 100%; height: 100%; box-sizing: border-box; border: 1px dashed #bcccd2; border-radius: 7px; background: #fafdfc88; box-shadow: 0 2px 3px #203d4610; position: relative; transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease; }
 .canvas-chapter.selected { border: 2px solid #277865; box-shadow: 0 0 0 2px #d9eee6; }
+.canvas-chapter.nest-candidate { border-color: #c69338; background: #fff9ecaa; box-shadow: 0 0 0 3px #f1d89a, 0 5px 18px #9d731c24; }
+.canvas-chapter.nest-ready { border-color: #b36a20; background: #fff3d5cc; box-shadow: 0 0 0 4px #efc06a, 0 7px 24px #9d731c3d; animation: canvas-nest-pulse 820ms ease-in-out infinite alternate; }
+.canvas-chapter.detach-candidate { border-color: #5681a0; box-shadow: 0 0 0 3px #cbddea; }
+.canvas-chapter.detach-ready { border-color: #315eb7; box-shadow: 0 0 0 4px #b9c9ed, 0 7px 24px #315eb733; }
+@keyframes canvas-nest-pulse { from { transform: translateZ(0); } to { transform: translateZ(0) scale(1.008); } }
 .canvas-card-header { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 14px 14px 5px; max-width: 300px; box-sizing: border-box; }
 .canvas-card-header strong { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; min-width: 0; }
 .canvas-card-body { position: absolute; width: 300px; box-sizing: border-box; border: 1px solid #bcccd2; border-radius: 7px; background: #fafdfc; box-shadow: 0 2px 3px #203d4610; }
@@ -386,7 +391,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-card-summary { font-size: 12px; line-height: 1.5; margin: 4px 14px; max-width: 266px; overflow-wrap: anywhere; }
 .canvas-card-full { max-height: 360px; overflow: auto; white-space: pre-wrap; }
 .canvas-card-count { display: block; margin: 8px 14px; font-size: 11px; color: #58746c; }
-.canvas-structure-drop { border: 1px dashed #829f96; border-radius: 4px; margin: 8px 14px; padding: 6px; font-size: 11px; text-align: center; color: #3b675a; background: #eef7f2; max-width: 252px; }
+.canvas-nest-indicator, .canvas-detach-indicator { border-radius: 4px; margin: 8px 14px; padding: 6px; font-size: 11px; text-align: center; max-width: 252px; }
+.canvas-nest-indicator { border: 1px solid #d9b45f; color: #785314; background: #fff5d8; }
+.canvas-detach-indicator { border: 1px solid #9fb6d0; color: #315273; background: #edf4fb; }
 .canvas-structure-hint { color: #60746d; line-height: 1.5; }
 .document-recovery-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #22304480; padding: 18px; }
 .document-recovery-panel { width: min(900px, 100%); max-height: calc(100vh - 36px); overflow: auto; box-sizing: border-box; background: #fff; color: #253345; border-radius: 8px; padding: 20px; box-shadow: 0 10px 45px #17223340; font-size: 13px; }
@@ -403,6 +410,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-properties h2:not(:first-child) { margin-top: 22px; }
 .canvas-chapter .react-flow__handle { background: #327766; border: 2px solid #fff; width: 9px; height: 9px; }
 .canvas-mode .react-flow__node:focus-visible, .canvas-mode button:focus-visible { outline: 2px solid #275bb5; outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { .canvas-chapter { transition: none; } .canvas-chapter.nest-ready { animation: none; } }
 @media (max-width: 850px) {
   .canvas-workspace { grid-template-columns: minmax(0, 1fr) 180px; }
   .canvas-toolbar { padding: 8px 12px; }
