@@ -396,7 +396,10 @@ function App() {
 
   useEffect(() => {
     if (!readerContextMenu) return;
-    window.requestAnimationFrame(() => readerContextMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus());
+    const focusFirst = () => readerContextMenuRef.current?.querySelector<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)')?.focus({ preventScroll: true });
+    focusFirst();
+    const frame = window.requestAnimationFrame(focusFirst);
+    return () => window.cancelAnimationFrame(frame);
   }, [readerContextMenu]);
 
   const clearReaderSearchPaint = useCallback(() => {
@@ -1126,27 +1129,25 @@ function App() {
     }
   }, [closeReaderContextMenu]);
 
-  useEffect(() => {
-    const handleShortcut = (event: KeyboardEvent) => {
-      if (activeMode !== 'reader' || dirtyPreview || !openedDocument || readerContextMenu ||
-          !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return;
-      const article = window.document.querySelector<HTMLElement>('.markdown-body');
-      if (!article || !(event.target instanceof Node) || !article.contains(event.target)) return;
-      const probe = readSelection();
-      if (!probe.ok) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const box = article?.getBoundingClientRect();
-      readerContextMenuTrigger.current = article;
-      setReaderContextMenu({
-        left: Math.max(8, Math.min((box?.left ?? 12) + 12, window.innerWidth - 244)),
-        top: Math.max(8, Math.min((box?.top ?? 12) + 28, window.innerHeight - 310)),
-        probe, epoch: documentEpoch.current, sourceSha256: openedDocument.sourceSha256,
-      });
-    };
-    window.addEventListener('keydown', handleShortcut);
-    return () => window.removeEventListener('keydown', handleShortcut);
-  }, [activeMode, dirtyPreview, openedDocument, readSelection, readerContextMenu]);
+  const handleReaderContextShortcut = useCallback((event: ReactKeyboardEvent<HTMLElement>) => {
+    if (activeMode !== 'reader' || dirtyPreview || !openedDocument ||
+        !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return;
+    // The context-menu state may lag one render behind after Escape. The
+    // mounted menu is authoritative so a second keyboard invocation is not
+    // dropped during that transition.
+    if (window.document.querySelector('[data-reader-context-menu]')) return;
+    const probe = readSelection();
+    if (!probe.ok) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const box = event.currentTarget.getBoundingClientRect();
+    readerContextMenuTrigger.current = event.currentTarget;
+    setReaderContextMenu({
+      left: Math.max(8, Math.min(box.left + 12, window.innerWidth - 244)),
+      top: Math.max(8, Math.min(box.top + 28, window.innerHeight - 310)),
+      probe, epoch: documentEpoch.current, sourceSha256: openedDocument.sourceSha256,
+    });
+  }, [activeMode, dirtyPreview, openedDocument, readSelection]);
 
   const copyReaderContextSelection = useCallback(async () => {
     const menu = readerContextMenu;
@@ -1853,7 +1854,8 @@ function App() {
               </div>}
             <span className="sr-only" aria-live="polite">{selectionAnnouncement}</span>
             <div className="document-divider" />
-            {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0} onContextMenu={openReaderContextMenu}>
+            {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0}
+              onContextMenu={openReaderContextMenu} onKeyDown={handleReaderContextShortcut}>
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter, remarkReadingDangerousHtmlPolicy]}
                 rehypePlugins={[rehypeRaw, rehypeReadingHtmlPolicy, [rehypeSanitize, readingSanitizeSchema]]}
                 components={components}>
