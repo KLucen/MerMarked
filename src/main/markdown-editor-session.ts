@@ -143,6 +143,21 @@ export class MarkdownEditorSession {
     return this.#writeInProgress;
   }
 
+  /** Rebind an unsaved untitled buffer to the user-selected empty source. */
+  async rebaseDocument(document: OpenedMarkdownDocument): Promise<MarkdownEditorView> {
+    if (this.#writeInProgress) throw new Error('Markdown 正在保存，请稍后继续。');
+    if (!document.temporary && this.#content === this.document.content && this.document.path === document.path) {
+      return this.view();
+    }
+    await this.#discardActiveDraft();
+    this.document = document;
+    this.#structurePlan = undefined;
+    this.#structureTransaction = undefined;
+    this.#latestSourceBackup = undefined;
+    await this.#refreshRecoveryDrafts();
+    return this.view();
+  }
+
   view(): MarkdownEditorView {
     const format = inspectMarkdownSourceFormat(this.#content, this.document.bomByteLength);
     const byteLength = encodeMarkdownBytes(this.#content, this.document.bomByteLength).byteLength;

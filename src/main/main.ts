@@ -1,7 +1,7 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { createHash, randomUUID } from 'node:crypto';
-import { open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import squirrelStartup from 'electron-squirrel-startup';
 import type {
@@ -32,7 +32,9 @@ import { saveAnnotationFile } from './annotation-store';
 import { loadAnnotationDocumentData } from './annotation-document-load';
 import { MarkdownEditorSession } from './markdown-editor-session';
 import { loadCanvasFile, saveCanvasFile } from './canvas-store';
+import { loadCanvasFileV2, saveCanvasFileV2 } from './canvas-store-v2';
 import { parseCanvasJson, validateCanvasState } from '../core/canvas-state';
+import { validateCanvasStateV2 } from '../core/canvas-state-v2';
 import { prepareSectionStructurePlan } from './section-structure-store';
 import { inspectDocumentTransaction, listDocumentTransactions, recoverDocumentTransaction } from './document-transaction';
 import type { DocumentTransactionRef } from './document-transaction';
@@ -136,6 +138,7 @@ function markdownDraftDirectory(): string {
 }
 
 function annotationMutationBlocked(session: DocumentSession): AnnotationSaveResult | null {
+  if (session.document.temporary) return { status: 'conflict', reason: '文档尚未保存；首次保存 Markdown 后才能添加批注。' };
   if (session.document.recoveryPending || session.editor?.pendingStructureTransactionId) return { status: 'conflict', reason: '文档存在未完成保存，请先检查保存恢复。' };
   if (session.canvasWriteInProgress) return { status: 'conflict', reason: '画布正在保存，请稍后重试。' };
   if (session.annotationWriteInProgress) {
@@ -751,6 +754,14 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
       session.annotations = state;
     }
   };
+  if (session.document.temporary) {
+    setLoadedState(undefined);
+    return {
+      status: 'read-only', count: 0, unresolvedCount: 0, relocatableCount: 0, pendingDraftCount: 0,
+      sidecarPath: '', tags: [], items: [],
+      reason: '文档尚未保存；首次保存 Markdown 后才能添加批注。',
+    };
+  }
   if (session.annotationWriteInProgress) {
     return {
       status: 'read-only', count: 0, unresolvedCount: 0, relocatableCount: 0, pendingDraftCount: 0,
@@ -1083,6 +1094,25 @@ async function loadMarkdownDocument(filePath: string): Promise<OpenedMarkdownDoc
   return { path: filePath, name: path.basename(filePath), ...decodeMarkdownSource(bytes), ...(recoveryPending ? { recoveryPending } : {}) };
 }
 
+/**
+ * New documents stay in memory until the first explicit save. The path is an
+ * app-private identity used only for recovery drafts; no source or sidecar is
+ * created there, and it is never added to the recent-document list.
+ */
+async function createTemporaryMarkdownDocument(): Promise<OpenedMarkdownDocument> {
+  await mkdir(app.getPath('userData'), { recursive: true });
+  const pathValue = path.join(app.getPath('userData'), `.mermarkd-untitled-${randomUUID()}.md`);
+  const emptyBytes = new Uint8Array();
+  return {
+    path: pathValue,
+    name: '未命名.md',
+    content: '',
+    sourceSha256: createHash('sha256').update(emptyBytes).digest('hex'),
+    bomByteLength: 0,
+    temporary: true,
+  };
+}
+
 function recentDocumentsPath(): string {
   return path.join(app.getPath('userData'), 'recent-documents.json');
 }
@@ -1133,6 +1163,47 @@ function selectedNewMarkdownPath(value: unknown): string {
     throw new Error('请选择以 .md 结尾的新文件。');
   }
   return path.normalize(value);
+}
+
+async function saveTemporaryMarkdown(
+  owner: BrowserWindow,
+  session: DocumentSession,
+  editor: MarkdownEditorSession,
+  input: MarkdownEditorUpdateInput,
+  event?: IpcMainInvokeEvent,
+): Promise<MarkdownEditorSaveResult> {
+  const selection = await dialog.showSaveDialog(owner, {
+    title: '保存 Markdown 文档',
+    defaultPath: path.join(app.getPath('documents'), '未命名.md'),
+    filters: [{ name: 'Markdown 文档', extensions: ['md'] }],
+  });
+  if (selection.canceled || !selection.filePath) {
+    return { status: 'conflict', editor: editor.view(), message: '首次保存已取消；未保存内容仍保留在编辑缓冲区。' };
+  }
+  const selectedPath = selectedNewMarkdownPath(selection.filePath);
+  let targetPath: string;
+  try {
+    // Establish an empty baseline exclusively. The normal Markdown save path
+    // then performs its existing source/sidecar transaction against it.
+    await writeFile(selectedPath, new Uint8Array(), { flag: 'wx' });
+    targetPath = await validatedLocalMarkdownPath(selectedPath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+      return { status: 'conflict', editor: editor.view(), message: '目标文件已存在，请选择其他名称；未覆盖原文件。' };
+    }
+    throw new Error('无法创建 Markdown 文件，请确认目标目录可写。');
+  }
+  const targetDocument = await loadMarkdownDocument(targetPath);
+  if (event) assertCurrentSession(event, session);
+  else if ((documentSessions.get(owner.webContents.id) ?? null) !== session) throw new Error('文档已切换，请重新执行首次保存。');
+  if (!session.document.temporary) {
+    throw new Error('文档已切换，请重新执行首次保存。');
+  }
+  await editor.rebaseDocument(targetDocument);
+  session.document = targetDocument;
+  const saved = await saveMarkdownWithAnnotationMapping(session, editor, input);
+  if (saved.status === 'saved') await recordOpenedDocument(saved.document);
+  return saved;
 }
 
 async function recoveryPreviewFor(event: IpcMainInvokeEvent, documentPath: string, ref: DocumentTransactionRef): Promise<DocumentRecoveryPreview> {
@@ -1251,30 +1322,13 @@ function registerReaderIpc(): void {
 
   ipcMain.handle('document:new', async (event): Promise<OpenedMarkdownDocument | null> => {
     if (!isMainFrame(event)) return null;
-    const owner = BrowserWindow.fromWebContents(event.sender);
-    if (!owner) return null;
+    if (!BrowserWindow.fromWebContents(event.sender)) return null;
     const existingSession = sessionFor(event);
     assertDocumentCanBeReplaced(existingSession);
-    const selection = await dialog.showSaveDialog(owner, {
-      title: '新建 Markdown 文档',
-      defaultPath: path.join(app.getPath('documents'), '未命名.md'),
-      filters: [{ name: 'Markdown 文档', extensions: ['md'] }],
-    });
-    if (selection.canceled || !selection.filePath) return null;
-    const filePath = selectedNewMarkdownPath(selection.filePath);
-    try {
-      await writeFile(filePath, new Uint8Array(), { flag: 'wx' });
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-        throw new Error('目标文件已存在，请选择其他名称；未覆盖原文件。');
-      }
-      throw new Error('无法创建 Markdown 文件，请确认目标目录可写。');
-    }
-    const document = await loadMarkdownDocument(filePath);
+    const document = await createTemporaryMarkdownDocument();
     assertCurrentSession(event, existingSession);
     assertDocumentCanBeReplaced(existingSession);
     documentSessions.set(event.sender.id, { document });
-    await recordOpenedDocument(document);
     return document;
   });
 
@@ -1322,6 +1376,9 @@ function registerReaderIpc(): void {
     const session = sessionFor(event);
     if (!session) throw new Error('请先打开 Markdown 文档。');
     assertDocumentCanBeReplaced(session);
+    if (session.document.temporary) {
+      throw new Error('尚未保存的 Markdown 没有磁盘版本，请先保存或继续编辑。');
+    }
     const filePath = await validatedLocalMarkdownPath(session.document.path);
     const document = await loadMarkdownDocument(filePath);
     assertCurrentSession(event, session);
@@ -1390,6 +1447,7 @@ function registerReaderIpc(): void {
   ipcMain.handle('section-structure:preview', async (event, value: unknown): Promise<SectionStructurePreview> => {
     const session = sessionFor(event);
     if (!session) throw new Error('请先打开 Markdown 文档。');
+    if (session.document.temporary) throw new Error('文档尚未保存；首次保存 Markdown 后才能调整章节结构。');
     if (session.editor?.dirty) throw new Error('Markdown 有未保存修改；请先保存或放弃源码编辑。');
     assertEditorCanMutate(session);
     session.sectionStructurePreview = undefined;
@@ -1476,6 +1534,13 @@ function registerReaderIpc(): void {
     const editor = currentEditor(session);
     const input = validMarkdownEditorUpdate(value);
     return withMarkdownOperation(session, async () => {
+      if (session.document.temporary) {
+        const owner = BrowserWindow.fromWebContents(event.sender);
+        if (!owner) throw new Error('窗口已关闭。');
+        const result = await saveTemporaryMarkdown(owner, session, editor, input, event);
+        assertCurrentSession(event, session);
+        return result;
+      }
       const result = await saveMarkdownWithAnnotationMapping(session, editor, input);
       assertCurrentSession(event, session);
       return result;
@@ -1512,6 +1577,16 @@ function registerReaderIpc(): void {
     const epoch = validOpaqueId(value, 'Markdown 文档版本');
     assertEditorEpoch(editor, epoch);
     return withMarkdownOperation(session, async () => {
+      if (session.document.temporary) {
+        await editor.discardChanges();
+        const replacement = await MarkdownEditorSession.create(session.document, markdownDraftDirectory());
+        assertCurrentSession(event, session);
+        session.editor = replacement;
+        session.sectionStructurePreview = undefined;
+        session.annotations = undefined;
+        session.annotationRevision = (session.annotationRevision ?? 0) + 1;
+        return { document: session.document, editor: replacement.view() };
+      }
       const filePath = await validatedLocalMarkdownPath(session.document.path);
       const document = await loadMarkdownDocument(filePath);
       assertCurrentSession(event, session);
@@ -1559,6 +1634,7 @@ function registerReaderIpc(): void {
   ipcMain.handle('canvas:load', async (event): Promise<CanvasLoadResult> => {
     const session = sessionFor(event);
     if (!session) throw new Error('请先打开 Markdown 文档。');
+    if (session.document.temporary) return { status: 'missing', model: null, sidecarSha256: null, reason: '文档尚未保存；首次保存 Markdown 后才能使用卡片画布。' };
     try {
       const candidate = session.editor?.structureCanvas;
       if (candidate !== undefined) return { status: candidate === null ? 'missing' : 'ready',
@@ -1576,6 +1652,7 @@ function registerReaderIpc(): void {
   ipcMain.handle('canvas:save', async (event, value: unknown): Promise<CanvasSaveResult> => {
     const session = sessionFor(event);
     if (!session) throw new Error('请先打开 Markdown 文档。');
+    if (session.document.temporary) return { status: 'conflict', reason: '文档尚未保存；首次保存 Markdown 后才能保存卡片布局。' };
     if (session.document.recoveryPending || session.editor?.pendingStructureTransactionId) return { status: 'conflict', reason: '请先检查文档保存恢复。' };
     if (session.editor?.dirty) return { status: 'conflict', reason: 'Markdown 未保存，画布写入已暂停。' };
     if (session.canvasExportInProgress) return { status: 'conflict', reason: '画布正在导出，请稍后再保存布局。' };
@@ -1599,9 +1676,54 @@ function registerReaderIpc(): void {
     } finally { session.canvasWriteInProgress = false; }
   });
 
+  ipcMain.handle('canvas:load-v2', async (event) => {
+    const session = sessionFor(event);
+    if (!session) throw new Error('请先打开 Markdown 文档。');
+    if (session.document.temporary) return { status: 'missing', model: null, sidecarSha256: null, sourceVersion: null,
+      reason: '文档尚未保存；首次保存 Markdown 后才能使用卡片画布。' };
+    try {
+      const loaded = await loadCanvasFileV2(session.document.path);
+      assertCurrentSession(event, session);
+      return { ...loaded, status: loaded.model === null ? 'missing'
+        : loaded.model.source.sha256 === session.document.sourceSha256 ? 'ready' : 'stale' };
+    } catch (error) {
+      console.error('[canvas:load-v2]', error);
+      return { status: 'invalid', model: null, sidecarSha256: null, sourceVersion: null,
+        reason: '画布 v2 文件无法安全读取，原文件保留；请检查后重新载入。' };
+    }
+  });
+
+  ipcMain.handle('canvas:save-v2', async (event, value: unknown) => {
+    const session = sessionFor(event);
+    if (!session) throw new Error('请先打开 Markdown 文档。');
+    if (session.document.temporary) return { status: 'conflict', reason: '文档尚未保存；首次保存 Markdown 后才能保存卡片布局。' };
+    if (session.document.recoveryPending || session.editor?.pendingStructureTransactionId) return { status: 'conflict', reason: '请先检查文档保存恢复。' };
+    if (session.editor?.dirty) return { status: 'conflict', reason: 'Markdown 未保存，画布写入已暂停。' };
+    if (session.canvasExportInProgress) return { status: 'conflict', reason: '画布正在导出，请稍后再保存布局。' };
+    if (session.canvasWriteInProgress || session.annotationWriteInProgress || session.markdownOperationInProgress || session.editor?.writeInProgress) {
+      return { status: 'conflict', reason: '另一项文档保存仍在进行。' };
+    }
+    const entry = objectWithFields(value, '画布 v2 保存', ['sourceSha256', 'expectedSidecarSha256', 'model']);
+    if (entry.sourceSha256 !== session.document.sourceSha256 ||
+      (entry.expectedSidecarSha256 !== null && (typeof entry.expectedSidecarSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(entry.expectedSidecarSha256)))) {
+      return { status: 'conflict', reason: '文档版本已变化，请重新载入画布。' };
+    }
+    const model = validateCanvasStateV2(entry.model);
+    session.canvasWriteInProgress = true;
+    try {
+      const result = await saveCanvasFileV2({ documentPath: session.document.path, sourceSha256: session.document.sourceSha256,
+        expectedSidecarSha256: entry.expectedSidecarSha256 as string | null, model });
+      assertCurrentSession(event, session);
+      return result.status === 'saved' ? result : { ...result, reason: result.status === 'conflict'
+        ? '原文或画布在外部发生变化，未覆盖；当前画布候选仍保留。'
+        : '画布暂未保存，当前候选仍保留；已准备的事务可用于恢复。' };
+    } finally { session.canvasWriteInProgress = false; }
+  });
+
   ipcMain.handle('canvas:export', async (event, value: unknown): Promise<CanvasExportResult> => {
     const session = sessionFor(event);
     if (!session) throw new Error('请先打开 Markdown 文档。');
+    if (session.document.temporary) return { status: 'error', reason: '文档尚未保存；首次保存 Markdown 后才能导出卡片画布。' };
     if (session.canvasExportInProgress) return { status: 'error', reason: '画布仍在导出，请稍后重试。' };
     session.canvasExportInProgress = true;
     try { return await exportCanvasFor(event, value); }
@@ -1777,11 +1899,10 @@ function createWindow(): void {
 
       if (choice.response === 0) {
         const view = editor.view();
-        const result = await withMarkdownOperation(session, () => saveMarkdownWithAnnotationMapping(session, editor, {
-          epoch: view.epoch,
-          revision: view.revision,
-          content: view.content,
-        }));
+        const input = { epoch: view.epoch, revision: view.revision, content: view.content };
+        const result = await withMarkdownOperation(session, () => session.document.temporary
+          ? saveTemporaryMarkdown(window, session, editor, input)
+          : saveMarkdownWithAnnotationMapping(session, editor, input));
         if (result.status !== 'saved') {
           await dialog.showMessageBox(window, {
             type: 'error',

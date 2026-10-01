@@ -660,7 +660,7 @@ function App() {
       const opened = await window.mermarkd.newMarkdown();
       if (opened) {
         showOpenedDocument(opened);
-        setMessage('已创建空白 Markdown；切换到编辑模式开始输入。');
+        setMessage('已创建未命名 Markdown；首次保存时选择文件位置。');
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '新建 Markdown 失败，请重试。', 'alert');

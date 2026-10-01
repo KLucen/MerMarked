@@ -376,13 +376,15 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-link-actions { display: grid; gap: 6px; margin-top: 8px; }
 .canvas-properties p, .canvas-properties li { overflow-wrap: anywhere; }
 .canvas-unresolved { color: #825d20; }
-.canvas-chapter { width: 100%; height: 100%; box-sizing: border-box; border: 1px solid #bcccd2; border-radius: 7px; background: #fafdfc; box-shadow: 0 2px 3px #203d4610; }
+.canvas-chapter { width: 100%; height: 100%; box-sizing: border-box; border: 1px dashed #bcccd2; border-radius: 7px; background: #fafdfc88; box-shadow: 0 2px 3px #203d4610; position: relative; }
 .canvas-chapter.selected { border: 2px solid #277865; box-shadow: 0 0 0 2px #d9eee6; }
 .canvas-card-header { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 14px 14px 5px; max-width: 300px; box-sizing: border-box; }
 .canvas-card-header strong { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; min-width: 0; }
+.canvas-card-body { position: absolute; width: 300px; box-sizing: border-box; border: 1px solid #bcccd2; border-radius: 7px; background: #fafdfc; box-shadow: 0 2px 3px #203d4610; }
 .canvas-card-actions { display: flex; gap: 4px; flex: 0 0 auto; }
 .canvas-card-actions button { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
 .canvas-card-summary { font-size: 12px; line-height: 1.5; margin: 4px 14px; max-width: 266px; overflow-wrap: anywhere; }
+.canvas-card-full { max-height: 360px; overflow: auto; white-space: pre-wrap; }
 .canvas-card-count { display: block; margin: 8px 14px; font-size: 11px; color: #58746c; }
 .canvas-structure-drop { border: 1px dashed #829f96; border-radius: 4px; margin: 8px 14px; padding: 6px; font-size: 11px; text-align: center; color: #3b675a; background: #eef7f2; max-width: 252px; }
 .canvas-structure-hint { color: #60746d; line-height: 1.5; }

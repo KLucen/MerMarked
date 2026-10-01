@@ -1,13 +1,15 @@
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
-import { MAX_CANVAS_JSON_BYTES, parseCanvasJson, serializeCanvasJson } from '../core/canvas-state.ts';
+import { MAX_CANVAS_JSON_BYTES } from '../core/canvas-state.ts';
+import { parseCanvasStateJson, serializeCanvasStateJson } from '../core/canvas-state-v2.ts';
+import type { CanvasStateDocument } from '../core/canvas-state-v2.ts';
 import { commitDocumentTransaction, prepareDocumentTransaction } from './document-transaction.ts';
 
 function digest(bytes: Uint8Array): string { return createHash('sha256').update(bytes).digest('hex'); }
 function sidecarPath(documentPath: string): string { return `${documentPath}.mermarkd.json`; }
 
 export interface LoadedCanvasFile {
-  readonly model: ReturnType<typeof parseCanvasJson> | null;
+  readonly model: CanvasStateDocument | null;
   readonly sidecarSha256: string | null;
 }
 
@@ -15,7 +17,7 @@ export async function loadCanvasFile(documentPath: string): Promise<LoadedCanvas
   try {
     if ((await stat(sidecarPath(documentPath))).size > MAX_CANVAS_JSON_BYTES) throw new Error('Canvas too large');
     const bytes = await readFile(sidecarPath(documentPath));
-    return { model: parseCanvasJson(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), sidecarSha256: digest(bytes) };
+    return { model: parseCanvasStateJson(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), sidecarSha256: digest(bytes) };
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return { model: null, sidecarSha256: null };
     throw error;
@@ -26,9 +28,9 @@ export async function saveCanvasFile(input: {
   readonly documentPath: string;
   readonly sourceSha256: string;
   readonly expectedSidecarSha256: string | null;
-  readonly model: ReturnType<typeof parseCanvasJson>;
+  readonly model: CanvasStateDocument;
 }): Promise<{ status: 'saved' | 'conflict' | 'pending'; sidecarSha256?: string; reason?: string }> {
-  const text = serializeCanvasJson(input.model);
+  const text = serializeCanvasStateJson(input.model);
   const bytes = Buffer.from(text, 'utf8');
   if (input.model.source.sha256 !== input.sourceSha256) return { status: 'conflict', reason: 'source-changed' };
   try {

@@ -167,9 +167,10 @@ export function AppShell({
   };
 
   const displayedFileStatus = fileStatus ?? (document
-    ? activeMode === 'cards' ? dirty ? '结构预览 · 源码未保存' : '卡片画布 · 原文未修改' : activeMode === 'editor'
-      ? dirty ? '源码编辑 · 未保存' : '源码编辑 · 已保存'
-      : dirty ? '阅读预览 · 源码未保存' : '只读 · 未修改'
+    ? document.temporary ? '新建 · 首次保存待处理'
+      : activeMode === 'cards' ? dirty ? '结构预览 · 源码未保存' : '卡片画布 · 原文未修改' : activeMode === 'editor'
+        ? dirty ? '源码编辑 · 未保存' : '源码编辑 · 已保存'
+        : dirty ? '阅读预览 · 源码未保存' : '只读 · 未修改'
     : '本地 Markdown 阅读器');
 
   const documentStatus = dirty ? '未保存' : displayedFileStatus;
@@ -189,8 +190,8 @@ export function AppShell({
         <span className="file-status">打开、创建或继续最近的 Markdown</span>
       </div>}
       {document ? <div className="workspace-topbar-actions">
-        <span className="file-name workspace-current-name" title={document.path}>{document.name}</span>
-        <span className={dirty ? 'file-status dirty' : 'file-status'} title={document.path}>{documentStatus}</span>
+        <span className="file-name workspace-current-name" title={document.temporary ? '尚未保存到磁盘' : document.path}>{document.name}</span>
+        <span className={dirty ? 'file-status dirty' : 'file-status'} title={document.temporary ? '尚未保存到磁盘' : document.path}>{documentStatus}</span>
         <button type="button" className="workspace-icon-button" onClick={onToggleFocusMode}
           aria-label={focusMode ? '退出专注模式' : '进入专注模式'} aria-pressed={focusMode}
           title={focusMode ? '退出专注模式' : '进入专注模式'}>
@@ -283,7 +284,7 @@ export function AppShell({
     {document && !focusMode && rightSidebarOpen && <aside className="workspace-sidebar workspace-sidebar-right" aria-label="文档信息">
       <div className="workspace-sidebar-header"><div><span className="workspace-sidebar-kicker">DOCUMENT</span><h2>文档信息</h2></div>
         <button type="button" className="workspace-close-button" onClick={onToggleRightSidebar} aria-label="收起右侧栏"><X size={15} /></button></div>
-      {rightSidebar ?? <div className="workspace-sidebar-section"><dl className="document-info-list"><div><dt>文件名</dt><dd>{document.name}</dd></div><div><dt>路径</dt><dd title={document.path}>{document.path}</dd></div><div><dt>编码</dt><dd>UTF-8{document.bomByteLength ? ' · BOM' : ''}</dd></div><div><dt>状态</dt><dd className={dirty ? 'dirty' : undefined}>{documentStatus}</dd></div></dl></div>}
+      {rightSidebar ?? <div className="workspace-sidebar-section"><dl className="document-info-list"><div><dt>文件名</dt><dd>{document.name}</dd></div><div><dt>路径</dt><dd title={document.temporary ? undefined : document.path}>{document.temporary ? '尚未保存到磁盘' : document.path}</dd></div><div><dt>编码</dt><dd>UTF-8{document.bomByteLength ? ' · BOM' : ''}</dd></div><div><dt>状态</dt><dd className={dirty || document.temporary ? 'dirty' : undefined}>{document.temporary ? '新建 · 待首次保存' : documentStatus}</dd></div></dl></div>}
     </aside>}
     <div className="workspace-content">{children}</div>
   </div>;

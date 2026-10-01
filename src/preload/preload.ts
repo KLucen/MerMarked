@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type {
-  CanvasExportInput, CanvasSaveInput, CreateHighlightInput, CreateNoteInput, MerMarkdApi, ReadingSummaryFilterInput,
+  CanvasExportInput, CanvasSaveInput, CanvasSaveV2Input, CreateHighlightInput, CreateNoteInput, MerMarkdApi, ReadingSummaryFilterInput,
   MarkdownAnnotationImpactInput, MarkdownEditorUpdateInput, MarkdownRecoveryInput, ReattachAnnotationInput,
   RecolorHighlightInput, UpdateNoteInput,
 } from '../types/reader-api';
@@ -58,6 +58,8 @@ const api: MerMarkdApi = Object.freeze({
     ipcRenderer.invoke('document:read-image', relativePath),
   loadCanvas: () => ipcRenderer.invoke('canvas:load'),
   saveCanvas: (input: CanvasSaveInput) => ipcRenderer.invoke('canvas:save', input),
+  loadCanvasV2: () => ipcRenderer.invoke('canvas:load-v2'),
+  saveCanvasV2: (input: CanvasSaveV2Input) => ipcRenderer.invoke('canvas:save-v2', input),
   exportCanvas: (input: CanvasExportInput) => ipcRenderer.invoke('canvas:export', input),
   loadAnnotations: () => ipcRenderer.invoke('annotations:load'),
   createHighlight: (input: CreateHighlightInput) => ipcRenderer.invoke('annotations:create-highlight', input),
