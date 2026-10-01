@@ -1,6 +1,6 @@
 # MerMarkd 开发进度
 
-> 2026-10-02。当前阶段：P0 可行性原型，进行中；A1–A8.5 已完成对应切片验证，A8.6 已完成首轮测量但质量门槛仍有缺口。B0 核心合同、B1 工作区外壳与 B1.1 内存新建/首次保存、B2 画布 v2 投影、B3 结构拖动候选、B4 共同选区命令/右键菜单和 B5 共享编辑会话/纯文本阅读编辑已完成当前切片验证；全量单测 `236/236`、类型检查、生产打包、A7.3b/A8.4/A8.5 回归通过。B5 尚未覆盖阅读内联 Markdown 格式、跨块编辑、完整输入法/键盘菜单验收和最终干净环境门槛。每批收尾重新检查并上传 GitHub；P0 尚未完成。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-02。当前阶段：P0 可行性原型，进行中；A1–A8.5 已完成对应切片验证，A8.6 已完成首轮测量但质量门槛仍有缺口。B0 核心合同、B1 工作区外壳与 B1.1 内存新建/首次保存、B2 画布 v2 投影、B3 结构拖动候选、B4 共同选区命令/右键菜单和 B5 共享编辑会话/阅读 inline 映射已完成当前切片验证；全量单测 `239/239`、类型检查、生产打包、A7.3b/A8.4/A8.5 回归通过。B5 尚未覆盖阅读内联格式命令、跨块编辑、完整输入法真机验收和最终干净环境门槛。每批收尾重新检查并上传 GitHub；P0 尚未完成。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## 试用反馈与迭代规划（已整理，尚未实施）
 
@@ -440,3 +440,25 @@ npm run make
 - 最新安装包：`out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`，154,454,528 字节；可直接运行的打包应用为 `out/MerMarkd-win32-x64/MerMarkd.exe`。
 
 本批收尾核对了三类独立摘要、失效 token、未知/活动锁、不可读 journal、源路径缺失、同会话 dirty 恢复、历史快照与完成凭据、窄 IPC 和多端对话框。仍未完成干净 Windows 安装/卸载、高 DPI/多屏、5 MB/1000 标题性能与公开发布签名。冲突或不完整事务不自动删除；恢复草稿和历史快照清理仍由显式流程处理。物理断电下目录项原子性与 Windows ACL/ADS 保留没有新增承诺，P0 仍进行中。
+## B5.3 阅读 inline 映射与模式焦点（已完成当前切片）
+
+阅读模式现在可以安全编辑一行内包含精确文本叶的段落和 ATX 标题，同时保留周围的强调、链接目标等 Markdown 语法。实体、转义边界、跨多个 inline leaf、代码、跨行和不确定映射继续只读；编辑仍只提交源码块的局部范围，不序列化整篇阅读 DOM。源码编辑器在从阅读/卡片模式重新进入时自动把焦点交给 textarea，保证跨模式 Ctrl+Z/重做落入共享 Markdown 会话。
+
+本批复核与验证：
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run make
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+```
+
+- 全量单测 `239/239`，包括 6 项阅读编辑映射测试；类型检查和 diff 检查通过。
+- 镜像生产打包和 Squirrel 安装包生成通过。A7.3b 验证 inline 编辑、格式保留、跨模式撤销/重做、右键菜单的 Shift+F10/方向键/Escape；A8.4 和 A8.5 回归分别通过结构保存与事务恢复门槛。
+- 最新 Setup.exe 大小 `154,900,480` 字节，SHA-256 `5FF3FF634A20DF892CF3DB5A2C734DDED202967DBF77D44C8605F869CE6D2BB0`。本批没有重复执行真实安装器卸载；上一批的干净安装、四档 DPR、性能基线与残留限制继续有效。
+
+本批收尾重新检查了源码映射边界、共享历史、焦点生命周期、右键菜单键盘路径、打包产物和结构/恢复回归。下一批进入阅读模式更丰富的安全编辑规划，优先评估单 inline leaf 的加粗/斜体/引用命令是否能在不破坏 source anchor 的前提下开放；跨块和复杂 Markdown 仍保持保守只读。

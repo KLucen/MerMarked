@@ -209,7 +209,11 @@ export function useMarkdownEditor(
   }, [acceptServerView, clearDraftTimer, enqueue, onStatus]);
 
   const open = useCallback(async (): Promise<MarkdownEditorView | null> => {
-    if (!documentRef.current || opening) return editorRef.current;
+    // Opening is idempotent across mode switches and reader-side edits. A
+    // stale mode callback may call this after the editor has already been
+    // created; reopening would rebuild the shared undo session and lose the
+    // reader edit history while leaving the dirty text visible.
+    if (!documentRef.current || opening || editorRef.current) return editorRef.current;
     const generation = generationRef.current + 1;
     generationRef.current = generation;
     clearDraftTimer();

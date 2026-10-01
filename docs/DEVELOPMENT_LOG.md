@@ -711,3 +711,39 @@ npm.cmd run test:e2e:a8-5
 结果：类型检查、diff 检查、镜像打包、A7.3b/A8.4/A8.5 打包回归全部通过；A7.3b 的键盘断言覆盖 `Shift+F10`、第一个菜单项焦点、ArrowDown 到下一项和 Escape 关闭。阅读 inline Markdown 映射、跨块编辑和真实中文 IME 设备验收仍未完成。
 
 本批代码提交：`56e2d0b`，已推送到 `origin/main`；日志核验提交随后补入远端结果，再进入阅读 inline 映射批次。
+
+## 2026-10-02 · B5.3 阅读 inline 映射与模式焦点
+
+### 目标
+
+让阅读模式在不反序列化整篇 DOM 的前提下编辑可证明安全的 inline Markdown 文本，并修复切换回源码模式后共享撤销快捷键失去焦点的问题。
+
+### 修改
+
+- `src/core/selection-map.ts`：为已解析的选择结果保留 BOM 去除源码中的 UTF-16 `sourceStart/sourceEnd`。
+- `src/core/reader-edit.ts`：新增 exact text leaf 判断和局部映射编辑；只改动同一 inline leaf 内的可见文字，保留强调、链接目标等源码语法，实体/转义、跨 leaf、代码和跨行继续拒绝。
+- `src/renderer/main.tsx`：阅读可编辑块从纯文本扩展到可逆 inline block，并继续绑定当前文档身份与 dirty/源摘要门槛。
+- `src/renderer/editor-view.tsx`：源码模式从阅读或卡片模式激活时，把焦点交给 textarea，确保 Ctrl+Z/重做进入共享会话。
+- `src/renderer/use-markdown-editor.ts`：`open()` 对已有 renderer 编辑会话幂等，避免陈旧模式回调重建 shared history。
+- `tests/core/reader-edit.test.ts`、`tests/e2e/a7-3b-packaged.mjs`：新增粗体/链接源码保留、实体/跨 leaf 拒绝、阅读 inline 编辑和跨模式撤销回归；E2E 明确等待源码 textarea 获得焦点。
+
+### 验证
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run make
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+```
+
+全量测试 `239/239`、类型检查、diff 检查、镜像生产打包和 Squirrel 安装包生成通过。A7.3b 通过 inline 映射、格式保留、跨模式 undo/redo、阅读右键菜单的 Shift+F10/方向键/Escape；A8.4/A8.5 回归通过。最新 Setup.exe 为 `154,900,480` 字节，SHA-256 为 `5FF3FF634A20DF892CF3DB5A2C734DDED202967DBF77D44C8605F869CE6D2BB0`。
+
+### 失败与边界
+
+首次 A7.3b 复跑曾在 inline undo 超时，诊断确认是测试在切换模式后焦点停留在 `BODY`；产品补上激活焦点，测试同时等待真实 textarea 焦点后通过。普通阅读块和单 inline leaf 已支持安全编辑，跨块、复杂 inline、实体/转义和完整中文 IME 真机验收仍未开放。真实安装器卸载、四档 DPR 和性能基线沿用上一批已核验结果，本批只重新生成安装包，未重复执行安装/卸载。
+
+本批代码和日志将在收尾复查后独立提交并推送；下一步评估单 inline leaf 的加粗/斜体/引用命令是否能继续保持源码和 sidecar 边界。

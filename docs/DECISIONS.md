@@ -273,3 +273,12 @@
 - 决定：阅读块失焦提交同时携带文档 epoch、路径、source hash、原可见文本和 block 起点；异步等待后重新核对当前模式与文档身份。IME 组合期间放行确认键，组合结束后才处理挂起的失焦提交。renderer 每个源码更新带 mutation token，主进程拒绝时使后续 optimistic 更新失效，并重新读取主进程确认的编辑视图；恢复草稿/备份等不改变正文的操作保留共享撤销历史。
 - 理由：仅比较正文字符串会让同内容文档之间的旧 blur 写入错误会话；旧偏移可能命中另一个块；过期 revision 若继续留在 renderer 会让撤销、重做和保存进入连续失败。组合输入和恢复元数据也必须分别遵守用户输入与历史合同。
 - 验证：新增 stale block 测试；全量 `237/237`、类型检查、镜像打包、A7.3b/A8.4/A8.5 回归，以及干净 Squirrel 安装版的 1×/1.25×/1.5×/2× DPR 验收通过。
+
+## ADR-031：inline 阅读编辑只替换单一精确源码叶并在模式切换时恢复焦点
+
+- 日期：2026-10-02；状态：B5.3 已通过核心、打包和结构/恢复回归。
+- 决定：阅读模式允许 paragraph/ATX heading 由多个可逆 text leaf 组成，但一次编辑的差异必须落在同一个 exact source leaf 内；局部替换使用 `sourceStart/sourceEnd`，保留外围强调、链接目标和标题标记。实体、转义、代码、跨 leaf、跨行和不确定边界保持只读。
+- 决定：源码编辑器保持挂载以共享 Markdown edit session；从阅读或卡片模式进入源码模式时只在 active transition 上聚焦 textarea，不重建历史。`open()` 对已有 renderer session 幂等，避免陈旧模式回调清空 past/future。
+- 理由：把完整渲染 DOM 反序列化回 Markdown 会破坏原始字节和 sidecar 锚点；单 leaf 差分能证明替换范围且不会覆盖相邻语法。模式切换后明确焦点是编辑器可用性的必要条件，且不改变 Markdown 或 sidecar 的写入边界。
+- 未完成：跨多个 inline leaf 的结构化格式编辑、列表/表格/代码/Setext、跨块编辑和真实中文 IME 设备验收仍需单独批次；本 ADR 不放宽复杂 Markdown 的只读策略。
+- 验证：新增 2 项核心映射测试，A7.3b 验证粗体/链接保留、实体/跨 leaf 拒绝、跨模式 undo/redo 与阅读菜单键盘流程；A8.4/A8.5 回归、类型检查、`239/239` 全量单测、镜像 `package/make` 通过。
