@@ -640,7 +640,7 @@ npm.cmd run test:e2e:a8-5
 
 - 打包应用：`out/MerMarkd-win32-x64/MerMarkd.exe`
 - 本批新增临时阅读编辑验收样本由 `tests/e2e/a7-3b-packaged.mjs` 创建并在 `finally` 清理，没有提交用户文档或 sidecar。
-- 重新检查后，B5 实现提交与开发记录提交分开生成；实现提交和日志提交均在本批收尾后推送到 `origin/main`，远端 SHA 以随后 `git ls-remote` 结果补入。
+- B5 实现提交：`f933b34`；已推送到 `origin/main`。本日志随后以独立提交补入最终远端核验 SHA。
 
 ### 失败与限制
 
@@ -650,4 +650,4 @@ npm.cmd run test:e2e:a8-5
 
 ### 下一步
 
-本批收尾重新检查了源映射、dirty/sidecar 冻结、共享撤销边界、打包产物和三项回归；下一批优先推进干净环境安装/卸载、性能基线和高 DPI 验收，再回到阅读 inline 映射与右键菜单键盘可达性。
+本批收尾重新检查了源映射、dirty/sidecar 冻结、共享撤销边界、打包产物和三项回归；下一批优先推进干净环境安装/卸载、性能基线和高 DPI 验收，再回到阅读 inline 映射与右键菜单键盘可达性。日志提交完成后用 `git ls-remote origin refs/heads/main` 核对远端。
