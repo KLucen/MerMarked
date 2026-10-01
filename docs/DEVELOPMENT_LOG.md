@@ -287,6 +287,7 @@ git diff --check
 
 - `tests/e2e/qa-installed.mjs`
 - `tests/qa-performance.mjs`
+- `package.json`（补充可复现的 QA npm scripts）
 - `docs/PROGRESS.md`
 
 ### 测试和命令
@@ -303,6 +304,8 @@ npm.cmd run test:e2e:a8-5
 node tests/e2e/qa-installed.mjs
 node --expose-gc tests/qa-performance.mjs
 ```
+
+同样的安装与性能检查也可分别使用 `npm.cmd run test:e2e:qa-installed` 和 `npm.cmd run test:qa:performance`。
 
 结果：单测 `202/202`，类型检查、打包、安装包生成和 A8.2/A8.3/A8.4/A8.5 打包回归通过。安装版静默安装退出码为 `0`；在重建打包版上补测 `1/1.25/1.5/2` 四档设备像素比，四档均完成视口内检查、模式切换和卡片控件验收，DPR 与目标值一致，1× 导出 PNG 成功。
 
