@@ -3,6 +3,7 @@ import type { SelectionBlock, SelectionMap } from './selection-map.ts';
 
 export interface ReaderPlainTextEdit {
   readonly blockStart: number;
+  readonly sourceText: string;
   readonly replacement: string;
 }
 
@@ -65,7 +66,8 @@ export function applyReaderPlainTextEdit(
   if (content.startsWith('\uFEFF') !== (bomByteLength === 3)) {
     return { ok: false, reason: '正文和 BOM 元数据不一致。' };
   }
-  if (!Number.isSafeInteger(edit.blockStart) || edit.blockStart < 0 || typeof edit.replacement !== 'string') {
+  if (!Number.isSafeInteger(edit.blockStart) || edit.blockStart < 0 ||
+    typeof edit.sourceText !== 'string' || typeof edit.replacement !== 'string') {
     return { ok: false, reason: '阅读编辑范围无效。' };
   }
   if (/\r|\n/u.test(edit.replacement)) {
@@ -80,6 +82,9 @@ export function applyReaderPlainTextEdit(
   const block = map.blocks.find((candidate) => candidate.blockStart === edit.blockStart);
   if (!block || !block.supported) {
     return { ok: false, reason: block?.reason ?? '当前正文块暂不支持直接编辑。' };
+  }
+  if (block.visibleText !== edit.sourceText) {
+    return { ok: false, reason: '正文块在编辑期间已变化，请重新聚焦后再试。' };
   }
   const visibleText = block.visibleText;
   const resolved = resolveSelection(map, block.blockStart, 0, visibleText.length);
