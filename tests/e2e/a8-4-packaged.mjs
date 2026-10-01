@@ -29,12 +29,13 @@ async function waitFor(cdp, expression, label) { const deadline = Date.now() + 1
   throw new Error(`Timed out waiting for ${label}: ${JSON.stringify(last)}`); }
 async function click(cdp, selector) { assert.equal(await cdp.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!(element instanceof HTMLElement) || element.hasAttribute('disabled')) return false; element.click(); return true; })()`), true, `enabled element missing: ${selector}`); }
 async function drop(cdp, filePath) { const rect = await cdp.evaluate(`(() => { document.documentElement.style.scrollBehavior = 'auto'; window.scrollTo(0, 0); const target = document.querySelector('[data-markdown-drop-target]'); const box = target.getBoundingClientRect(); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; })()`); const data = { items: [], files: [filePath], dragOperationsMask: 1 }; await cdp.send('Input.dispatchDragEvent', { type: 'dragEnter', x: rect.x, y: rect.y, data }); await cdp.send('Input.dispatchDragEvent', { type: 'dragOver', x: rect.x, y: rect.y, data }); await cdp.send('Input.dispatchDragEvent', { type: 'drop', x: rect.x, y: rect.y, data }); }
-async function dragToZone(cdp) {
-  const points = await cdp.evaluate(`(() => { const source = document.querySelector('[data-id="card-1"] .canvas-card-header strong').getBoundingClientRect(); const target = document.querySelector('[data-canvas-structure-target="3"]').getBoundingClientRect(); return { sx: source.x + source.width / 2, sy: source.y + source.height / 2, tx: target.x + target.width / 2, ty: target.y + target.height / 2 }; })()`);
+async function dragToOverlap(cdp) {
+  const points = await cdp.evaluate(`(() => { const source = document.querySelector('[data-id="card-1"] .canvas-card-header strong').getBoundingClientRect(); const target = document.querySelector('[data-id="card-3"] .canvas-card-body').getBoundingClientRect(); return { sx: source.x + source.width / 2, sy: source.y + source.height / 2, tx: target.x + target.width / 2, ty: target.y + target.height / 2 }; })()`);
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: points.sx, y: points.sy, button: 'left', clickCount: 1, buttons: 1 });
   for (let i = 1; i <= 15; i++) await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: points.sx + (points.tx - points.sx) * i / 15, y: points.sy + (points.ty - points.sy) * i / 15, buttons: 1 });
+  await new Promise((resolve) => setTimeout(resolve, 360));
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: points.tx, y: points.ty, button: 'left', clickCount: 1, buttons: 0 });
-  try { await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-structure-preview]'))`, 'explicit drop preview'); }
+  try { await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-structure-preview]'))`, 'overlap preview'); }
   catch (error) {
     console.error({ points, state: await cdp.evaluate(`({ mode: document.querySelector('[data-active-mode]')?.dataset.activeMode,
       status: document.querySelector('[data-canvas-status]')?.textContent, notice: document.querySelector('.app-notice')?.textContent,
@@ -81,11 +82,11 @@ try {
   await click(cdp, '[data-mode="cards"]');
   await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 4 && document.querySelector('[data-canvas-save]')?.disabled === false`, 'canvas');
   const originalCanvas = await readFile(paths[2]);
-  await dragToZone(cdp);
+  await dragToOverlap(cdp);
   await click(cdp, '[data-canvas-structure-cancel]'); await click(cdp, '[data-mode="cards"]');
   await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 4 && document.querySelector('[data-canvas-save]')?.disabled === false`, 'cancelled canvas');
   assert.deepEqual(await readFile(paths[2]), originalCanvas);
-  await dragToZone(cdp);
+  await dragToOverlap(cdp);
   const qa = path.join(root, 'out', 'qa'); await mkdir(qa, { recursive: true });
   for (const [name, width, height] of [['wide', 1200, 900], ['narrow', 800, 700]]) {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
@@ -121,7 +122,7 @@ try {
   const annotationView = await cdp.evaluate('window.mermarkd.loadAnnotations()'); assert.equal(annotationView.unresolvedCount, 0);
   await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 4`, 'reopen nested canvas');
   assert.equal(await cdp.evaluate(`document.querySelector('[data-id="card-1"]').classList.contains('react-flow__node')`), true);
-  console.log(JSON.stringify({ status: 'passed', explicitDrop: true, cancelRestoresLayout: true, threeIndependentStaleGates: true,
+  console.log(JSON.stringify({ status: 'passed', overlapCandidate: true, cancelRestoresLayout: true, threeIndependentStaleGates: true,
     confirmationWritesNothing: true, modeSwitchPreservesUndo: true, dirtySidecarsFrozen: true, structuralSave: true,
     repeatedAnnotationsMapped: 2, cardIdsAndArrowPreserved: true, bomCrLfPreserved: true, reopen: true, widths: [1200, 800] }));
 } finally { cdp?.close(); try { execFileSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill('SIGKILL'); } await new Promise((resolve) => setTimeout(resolve, 300)); await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }
