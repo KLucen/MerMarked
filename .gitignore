@@ -1,0 +1,9 @@
+node_modules/
+.vite/
+out/
+dist/
+coverage/
+*.log
+*.tsbuildinfo
+*.mermarkd-txn.*
+*.mermarkd-backup

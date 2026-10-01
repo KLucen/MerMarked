@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "vite/client"],
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  },
+  "include": ["src"],
+  "exclude": [
+    "src/core/annotation-anchor-6a3840f80e72.ts",
+    "src/core/annotation-mutations-aee97cc39ec3.ts",
+    "src/core/annotation-relocation-e1545085906d.ts",
+    "src/core/annotations-e01872129b58.ts",
+    "src/core/markdown-reading-d241a79cf4c5.ts",
+    "src/core/reader-navigation-afe0d9211cb6.ts",
+    "src/core/reading-summary-8f2ee341c928.ts",
+    "src/core/sections-9bcb36d3de43.ts",
+    "src/core/selection-map-9cbc9c0959d8.ts",
+    "src/main/annotation-document-load-a43342cddd9f.ts",
+    "src/main/annotation-store-0b47dfc56557.ts",
+    "src/main/main-d00900005720.ts",
+    "src/main/reader-file-25f45a1fc449.ts",
+    "src/preload/preload-8c6f132712eb.ts",
+    "src/renderer/app-shell-bb4f3f25aa49.tsx",
+    "src/renderer/main-adb64da60f71.tsx",
+    "src/renderer/reader-search-a047bab05c5f.ts",
+    "src/renderer/reader-view-30f5d0c1b262.tsx",
+    "src/types/electron-squirrel-startup.d-c5ce0f209464.ts",
+    "src/types/reader-api.d-e6478b03ade6.ts"
+  ]
+}

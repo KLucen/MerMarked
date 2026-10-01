@@ -1,0 +1,143 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "sha256": "9dcd5755107021c0fa8b3142bb4f3d18a90fe0aada1c311519d2dba2165cf35a",
+    "encoding": "utf-8",
+    "coordinateSystem": "utf8-byte"
+  },
+  "cards": [
+    {
+      "id": "9033d215-85f2-4638-8e19-c3e74ecc206a",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "9dcd5755107021c0fa8b3142bb4f3d18a90fe0aada1c311519d2dba2165cf35a",
+        "titlePath": [
+          "中英文混排与窄窗口验收样本"
+        ],
+        "depth": 1,
+        "startByte": 0,
+        "endByte": 41,
+        "headingExact": "# 中英文混排与窄窗口验收样本",
+        "bodySha256": "9bc8e714cfb46fb8e9ea1533430bab6c5bc7b6ea34c62407c3943e97f8a7488e"
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    },
+    {
+      "id": "d5c31ba8-27d7-446a-b1ef-fd272b0735c0",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "9dcd5755107021c0fa8b3142bb4f3d18a90fe0aada1c311519d2dba2165cf35a",
+        "titlePath": [
+          "中英文混排与窄窗口验收样本",
+          "GFM 表格"
+        ],
+        "depth": 2,
+        "startByte": 234,
+        "endByte": 247,
+        "headingExact": "## GFM 表格",
+        "bodySha256": "136eb12e4c609984897c879132c2eaa270d593be25348e303a3bf6b627111823"
+      },
+      "position": {
+        "x": 24,
+        "y": 179
+      },
+      "collapsed": false
+    },
+    {
+      "id": "6d47e36b-7334-47de-aeb6-8d4055881051",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "e505c3bbbbe309e9a5b697616a0735ee6244b4b633bb7c2f1e9d9dac37bcc709",
+        "titlePath": [
+          "中英文混排与窄窗口验收样本",
+          "GFM 表格",
+          "列表与标记"
+        ],
+        "depth": 3,
+        "startByte": 1038,
+        "endByte": 1057,
+        "headingExact": "### 列表与标记",
+        "bodySha256": "e50554b4664ddff45e78d43c947d06a6386f1dd6dac9905d52e754978398d26e"
+      },
+      "position": {
+        "x": 24,
+        "y": 248.08672578139408
+      },
+      "collapsed": false
+    },
+    {
+      "id": "d862642e-b5f1-4b8e-ad30-2239cb1578f8",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "fb9ad5b2aa522e983fef2c86b1c7c6d737861d540dad925ca7c4697d314c9ccd",
+        "titlePath": [
+          "中英文混排与窄窗口验收样本",
+          "GFM 表格",
+          "代码块与长行"
+        ],
+        "depth": 3,
+        "startByte": 1038,
+        "endByte": 1060,
+        "headingExact": "### 代码块与长行",
+        "bodySha256": "90fbc46e248d2929ea7a70378b843d314dcf39759c664475aec3d65b0b80bebb"
+      },
+      "position": {
+        "x": 375.30518605246004,
+        "y": 233
+      },
+      "collapsed": false
+    },
+    {
+      "id": "60a4cb0c-d93f-4390-a1ce-ce4b58d247d7",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "9dcd5755107021c0fa8b3142bb4f3d18a90fe0aada1c311519d2dba2165cf35a",
+        "titlePath": [
+          "中英文混排与窄窗口验收样本",
+          "列表与标记"
+        ],
+        "depth": 2,
+        "startByte": 1038,
+        "endByte": 1056,
+        "headingExact": "## 列表与标记",
+        "bodySha256": "e50554b4664ddff45e78d43c947d06a6386f1dd6dac9905d52e754978398d26e"
+      },
+      "position": {
+        "x": 1368,
+        "y": 150
+      },
+      "collapsed": false
+    },
+    {
+      "id": "d89ac3fc-f89c-415a-b568-ade11d61f8b8",
+      "anchor": {
+        "kind": "heading",
+        "basisSha256": "9dcd5755107021c0fa8b3142bb4f3d18a90fe0aada1c311519d2dba2165cf35a",
+        "titlePath": [
+          "中英文混排与窄窗口验收样本",
+          "代码块与长行"
+        ],
+        "depth": 2,
+        "startByte": 1874,
+        "endByte": 1895,
+        "headingExact": "## 代码块与长行",
+        "bodySha256": "a538027a99fc0cda10e6686944a8bb9d87c80537340ee96308041ecc54d1c1a0"
+      },
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false
+    }
+  ],
+  "links": [],
+  "viewport": {
+    "x": 20.736032896541985,
+    "y": 41.88801974866652,
+    "zoom": 0.9279680828603503
+  }
+}
