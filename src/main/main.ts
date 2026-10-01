@@ -1,7 +1,7 @@
 import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { createHash, randomUUID } from 'node:crypto';
-import { open, readFile, realpath, rename, rm } from 'node:fs/promises';
+import { open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import squirrelStartup from 'electron-squirrel-startup';
 import type {
@@ -12,7 +12,7 @@ import type {
   MarkdownEditorView, MarkdownRecoveryInput, ReadingSummaryFilterInput,
   ReattachAnnotationInput, RecolorHighlightInput, UpdateNoteInput,
   SectionStructureConfirmResult, SectionStructurePreview,
-  DocumentRecoveryItem, DocumentRecoveryPreview, DocumentRecoveryResult,
+  DocumentRecoveryItem, DocumentRecoveryPreview, DocumentRecoveryResult, RecentMarkdownDocument,
 } from '../types/reader-api';
 import {
   makeAnnotationAnchor, sectionHintForSelection, sectionLocationForSelection,
@@ -39,6 +39,8 @@ import type { DocumentTransactionRef } from './document-transaction';
 import { assertCanvasExportSize, buildCanvasExportScene, canvasSceneToSvg } from '../core/canvas-export';
 import { canvasCardContent } from '../core/canvas-card-content';
 import type { CanvasSceneCard, CanvasSceneLink } from '../core/canvas-scene';
+import { parseRecentDocuments, recordRecentDocument, removeRecentDocument, serializeRecentDocuments } from '../core/recent-documents';
+import type { RecentDocument } from '../core/recent-documents';
 import {
   createHighlightCandidate, createNoteCandidate, deleteHighlightCandidate, deleteNoteCandidate,
   reattachAnnotationCandidate, recolorHighlightCandidate, updateNoteCandidate,
@@ -1081,6 +1083,58 @@ async function loadMarkdownDocument(filePath: string): Promise<OpenedMarkdownDoc
   return { path: filePath, name: path.basename(filePath), ...decodeMarkdownSource(bytes), ...(recoveryPending ? { recoveryPending } : {}) };
 }
 
+function recentDocumentsPath(): string {
+  return path.join(app.getPath('userData'), 'recent-documents.json');
+}
+
+async function readRecentDocuments(): Promise<RecentDocument[]> {
+  try {
+    const text = await readFile(recentDocumentsPath(), 'utf8');
+    return parseRecentDocuments(text);
+  } catch {
+    return [];
+  }
+}
+
+async function writeRecentDocuments(entries: readonly RecentDocument[]): Promise<void> {
+  try {
+    await writeFile(recentDocumentsPath(), serializeRecentDocuments(entries), 'utf8');
+  } catch (error) {
+    // Recent files are a convenience; a preferences failure must never block
+    // opening or saving the user's Markdown document.
+    console.error('[recent-documents]', error);
+  }
+}
+
+async function recordOpenedDocument(document: OpenedMarkdownDocument): Promise<void> {
+  const entries = await readRecentDocuments();
+  await writeRecentDocuments(recordRecentDocument(entries, document.path));
+}
+
+async function recentDocumentViews(): Promise<RecentMarkdownDocument[]> {
+  const entries = await readRecentDocuments();
+  const available: RecentDocument[] = [];
+  let changed = false;
+  for (const entry of entries) {
+    try {
+      const validated = await validatedLocalMarkdownPath(entry.path);
+      available.push(validated === entry.path ? entry : { ...entry, path: validated });
+      changed ||= validated !== entry.path;
+    } catch {
+      changed = true;
+    }
+  }
+  if (changed) await writeRecentDocuments(available);
+  return available.map((entry) => ({ path: entry.path, name: path.basename(entry.path), openedAt: entry.openedAt }));
+}
+
+function selectedNewMarkdownPath(value: unknown): string {
+  if (typeof value !== 'string' || !path.isAbsolute(value) || path.extname(value).toLowerCase() !== '.md') {
+    throw new Error('请选择以 .md 结尾的新文件。');
+  }
+  return path.normalize(value);
+}
+
 async function recoveryPreviewFor(event: IpcMainInvokeEvent, documentPath: string, ref: DocumentTransactionRef): Promise<DocumentRecoveryPreview> {
   const session = sessionFor(event);
   const inspected = await inspectDocumentTransaction(documentPath, ref);
@@ -1170,6 +1224,60 @@ function registerReaderIpc(): void {
       return { status: 'pending', message: '恢复未能完成，文件与快照保留；请重新检查保存恢复。' };
     } finally { if (session) session.markdownOperationInProgress = false; }
   });
+
+  ipcMain.handle('document:recent-list', async (): Promise<readonly RecentMarkdownDocument[]> => recentDocumentViews());
+
+  ipcMain.handle('document:recent-remove', async (event, value: unknown): Promise<void> => {
+    if (!isMainFrame(event)) return;
+    if (typeof value !== 'string' || !path.isAbsolute(value)) throw new Error('最近文件路径无效。');
+    const entries = await readRecentDocuments();
+    await writeRecentDocuments(removeRecentDocument(entries, value));
+  });
+
+  ipcMain.handle('document:open-recent', async (event, value: unknown): Promise<OpenedMarkdownDocument> => {
+    if (!isMainFrame(event) || !BrowserWindow.fromWebContents(event.sender)) {
+      throw new Error('无法从当前窗口打开最近文档。');
+    }
+    const existingSession = sessionFor(event);
+    assertDocumentCanBeReplaced(existingSession);
+    const filePath = await validatedLocalMarkdownPath(value);
+    const document = await loadMarkdownDocument(filePath);
+    assertCurrentSession(event, existingSession);
+    assertDocumentCanBeReplaced(existingSession);
+    documentSessions.set(event.sender.id, { document });
+    await recordOpenedDocument(document);
+    return document;
+  });
+
+  ipcMain.handle('document:new', async (event): Promise<OpenedMarkdownDocument | null> => {
+    if (!isMainFrame(event)) return null;
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    if (!owner) return null;
+    const existingSession = sessionFor(event);
+    assertDocumentCanBeReplaced(existingSession);
+    const selection = await dialog.showSaveDialog(owner, {
+      title: '新建 Markdown 文档',
+      defaultPath: path.join(app.getPath('documents'), '未命名.md'),
+      filters: [{ name: 'Markdown 文档', extensions: ['md'] }],
+    });
+    if (selection.canceled || !selection.filePath) return null;
+    const filePath = selectedNewMarkdownPath(selection.filePath);
+    try {
+      await writeFile(filePath, new Uint8Array(), { flag: 'wx' });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
+        throw new Error('目标文件已存在，请选择其他名称；未覆盖原文件。');
+      }
+      throw new Error('无法创建 Markdown 文件，请确认目标目录可写。');
+    }
+    const document = await loadMarkdownDocument(filePath);
+    assertCurrentSession(event, existingSession);
+    assertDocumentCanBeReplaced(existingSession);
+    documentSessions.set(event.sender.id, { document });
+    await recordOpenedDocument(document);
+    return document;
+  });
+
   ipcMain.handle('document:open', async (event): Promise<OpenedMarkdownDocument | null> => {
     if (!isMainFrame(event)) return null;
     const owner = BrowserWindow.fromWebContents(event.sender);
@@ -1190,6 +1298,7 @@ function registerReaderIpc(): void {
     assertCurrentSession(event, existingSession);
     assertDocumentCanBeReplaced(existingSession);
     documentSessions.set(event.sender.id, { document });
+    await recordOpenedDocument(document);
     return document;
   });
 
@@ -1205,6 +1314,7 @@ function registerReaderIpc(): void {
     assertCurrentSession(event, existingSession);
     assertDocumentCanBeReplaced(existingSession);
     documentSessions.set(event.sender.id, { document });
+    await recordOpenedDocument(document);
     return document;
   });
 
@@ -1217,6 +1327,7 @@ function registerReaderIpc(): void {
     assertCurrentSession(event, session);
     assertDocumentCanBeReplaced(session);
     documentSessions.set(event.sender.id, { document });
+    await recordOpenedDocument(document);
     return document;
   });
 

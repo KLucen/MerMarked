@@ -215,3 +215,12 @@
 - 理由：先把数据身份、双折叠语义和共享撤销边界做成可测试核心，能在不破坏现有 v1 打包应用的情况下验证中文、emoji、BOM/CRLF 和局部修改。把 v2 直接接入 React Flow 或直接安装富文本编辑器会同时扩大持久化和渲染风险。
 - 未采用方案：本批不把 v2 状态替换现有 v1 IPC，不在打开时自动升级磁盘 JSON，不引入 CodeMirror/ProseMirror，不把批注高亮写进 Markdown，也不从整页 HTML 反向生成源码。
 - 验证：新增 `tests/core/canvas-state-v2.test.ts` 5 项和 `tests/core/markdown-edit-transaction.test.ts` 3 项；全量单测 `210/210`、`npm.cmd run typecheck`、`npm.cmd run package` 通过。安装版 UI 和真实阅读富文本编辑尚未由本 ADR 宣称通过。
+
+## ADR-024：B1 工作区外壳保持侧栏瞬时、最近文件主进程持有
+
+- 日期：2026-10-02；状态：B1 工作区外壳切片已通过打包版验证。
+- 决定：最近文档偏好使用 `src/core/recent-documents.ts` 的严格模型，只保存绝对路径和 Unix 毫秒时间；主进程在 `app.getPath('userData')` 下读取、过滤实际存在的 `.md` 文件并写回，preload 只提供列出、打开和移除命令。最近列表不能成为 Markdown、批注 YAML 或画布 JSON 的身份真相。
+- 决定：打开文档后的顶栏使用单行模式导航和最小状态，路径、编码和完整文件状态放入瞬时文档信息侧栏；左侧最近文档栏、右侧信息栏和焦点模式不写内容文件。侧栏互斥打开，避免窄屏同时覆盖正文。
+- 决定：B1 新建先通过原生保存对话框明确目标路径，再以独占创建方式生成空 Markdown 并进入 `DocumentSession`；不在本批引入空路径虚拟文档，以免既有保存、批注和三文件事务把临时路径当成真实文件。无路径新建与首次保存另存为另开 B1.1 合同。
+- 理由：外壳状态可以随时丢弃并重建，不能让 UI 布局污染三类可恢复内容；主进程过滤最近路径可以处理删除、移动和外部替换，同时保留 renderer 安全边界。明确路径创建比伪造一个虚拟路径更符合当前单文件事务合同。
+- 验证：新增最近文件核心 6 项，全量单测 `216/216`、类型检查、Windows 打包、B1 开始页/新建/最近文档/侧栏/焦点模式及 `1200/800/420` CSS px E2E 通过；A8.4/A8.5 回归通过。截图位于 `out/qa/b1-shell-wide.png`、`out/qa/b1-shell-narrow.png`、`out/qa/b1-shell-mobile.png`。

@@ -86,6 +86,67 @@ git ls-remote git@github.com:KLucen/MerMarked.git refs/heads/main
 
 合并提交 `29f19c8` 已推送；后续批次继续在每批收尾重新检查并更新本日志。
 
+## 2026-10-02 · B1 工作区外壳与开始页
+
+### 目标
+
+在不扩大 Markdown、批注 YAML 和画布 JSON 写入边界的前提下，交付可以直接使用的开始页与紧凑工作区：打开、新建、最近文档、单行模式导航、可收起左右侧栏和焦点模式。
+
+### 用户反馈/需求来源
+
+用户要求主体阅读、编辑和卡片空间优先，打开 Markdown 作为进入软件后的开始界面；文件信息、导航和辅助操作通过左右侧栏收起，继续按批次收尾复查并上传 GitHub。
+
+### 设计决定
+
+- 最近文件偏好只保存绝对路径和打开时间；主进程负责存在性、扩展名和真实路径校验，渲染器不直接读写偏好文件。
+- 开始页提供打开、新建和最近文档；新建通过明确的保存对话框创建空 `.md`，创建后进入同一文档会话，避免覆盖已有文件。
+- 打开文档后的顶栏只保留紧凑的模式导航、状态、打开入口、侧栏和焦点按钮；完整路径、编码和状态进入文档信息侧栏。
+- 左右工作区侧栏属于瞬时界面状态，不写三类内容文件；同一窗口打开一侧时自动收起另一侧，避免窄屏重叠；焦点模式同时关闭两侧并隐藏辅助栏。
+- 动效只用于侧栏/按钮状态反馈，使用指定属性和短时长；`prefers-reduced-motion` 下移除过渡。正文、源码编辑和画布仍复用既有写入守卫。
+
+### 修改文件
+
+- `src/core/recent-documents.ts`
+- `tests/core/recent-documents.test.ts`
+- `src/main/main.ts`
+- `src/preload/preload.ts`
+- `src/types/reader-api.d.ts`
+- `src/renderer/app-shell.tsx`
+- `src/renderer/main.tsx`
+- `src/renderer/style.css`
+- `tests/e2e/b1-shell-packaged.mjs`
+- `package.json`
+
+### 测试和命令
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run package
+npm.cmd run test:e2e:b1
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+```
+
+结果：全量单测 `216/216`、类型检查、Electron Windows x64 生产打包、B1 打包版和 A8.4/A8.5 回归均通过。B1 覆盖开始页、新建空 Markdown、最近文档重开/移除、左右侧栏互斥、焦点模式及 `1200/800/420` CSS px 无横向溢出；A8.5 的无文档恢复入口回归也通过。首次直接执行 `npm.cmd run package` 在 Forge 复制 Electron 依赖时因 `20.205.243.166:443` 超时退出 `1`，按既有流程设置 `$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'` 后重试退出 `0`；失败属于下载源网络问题，不是代码构建错误。
+
+### 产物/截图
+
+- `out/qa/b1-shell-wide.png`
+- `out/qa/b1-shell-narrow.png`
+- `out/qa/b1-shell-mobile.png`
+- 打包应用：`out/MerMarkd-win32-x64/MerMarkd.exe`
+
+### 失败与限制
+
+- 新建流程在创建时先由用户选择目标路径并创建空文件，再进入文档会话；无路径临时缓冲区和首次保存另存为仍留待后续 B1.1，避免把虚拟路径带入既有三文件事务。
+- 最近文件偏好写入失败只记录主进程错误，不阻断打开或保存正文；偏好不是正文恢复来源。
+- 本批没有接入卡片 v2 投影、阅读富文本编辑或右键格式命令；这些仍按 B2/B4/B5 顺序推进。
+
+### 下一步
+
+本批代码和记录完成复查后提交并推送 GitHub；下一批先处理无路径新建/首次保存或进入 B2 卡片 v2 投影，仍以每批单独验证为准。
+
 ## 2026-10-01 · A8.6 安装、性能与高 DPI 首轮验收
 
 ### 目标
