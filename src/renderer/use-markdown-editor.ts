@@ -97,11 +97,13 @@ export function useMarkdownEditor(
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editorRef = useRef<MarkdownEditorView | null>(null);
+  const confirmedEditorRef = useRef<MarkdownEditorView | null>(null);
   const editSessionRef = useRef<MarkdownEditSession | null>(null);
   const documentRef = useRef(document);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const draftTimerRef = useRef<number | null>(null);
   const generationRef = useRef(0);
+  const mutationTokenRef = useRef(0);
 
   const publish = useCallback((next: MarkdownEditorView | null) => {
     editorRef.current = next;
@@ -122,9 +124,11 @@ export function useMarkdownEditor(
 
   const reset = useCallback(() => {
     generationRef.current += 1;
+    mutationTokenRef.current += 1;
     clearDraftTimer();
     queueRef.current = Promise.resolve();
     publish(null);
+    confirmedEditorRef.current = null;
     publishSession(null);
     setOpening(false);
     setBusy(false);
@@ -141,6 +145,7 @@ export function useMarkdownEditor(
     if (generationRef.current !== generation) return;
     const current = editorRef.current;
     if (!current || current.epoch !== next.epoch || next.revision >= current.revision) {
+      confirmedEditorRef.current = next;
       publish(next);
       const session = editSessionRef.current;
       const normalized = markdownToEditorText(next.content);
@@ -149,6 +154,28 @@ export function useMarkdownEditor(
       }
     }
   }, [publish, publishSession]);
+
+  const recoverRejectedUpdate = useCallback(async (generation: number, message: string) => {
+    mutationTokenRef.current += 1;
+    try {
+      const next = await window.mermarkd.openMarkdownEditor();
+      if (generationRef.current !== generation) return;
+      confirmedEditorRef.current = next;
+      publish(next);
+      publishSession(createMarkdownEditSession(markdownToEditorText(next.content)));
+      setError(message);
+      onStatus(`${message} 已恢复到主进程确认的版本。`, true);
+    } catch (caught) {
+      if (generationRef.current !== generation) return;
+      const fallback = confirmedEditorRef.current;
+      if (fallback) {
+        publish(fallback);
+        publishSession(createMarkdownEditSession(markdownToEditorText(fallback.content)));
+      }
+      setError(errorMessage(caught, message));
+      onStatus(message, true);
+    }
+  }, [onStatus, publish, publishSession]);
 
   const enqueue = useCallback((operation: () => Promise<void>): Promise<void> => {
     const next = queueRef.current.catch(() => undefined).then(operation);
@@ -192,6 +219,7 @@ export function useMarkdownEditor(
     try {
       const next = await window.mermarkd.openMarkdownEditor();
       if (generationRef.current !== generation) return null;
+      confirmedEditorRef.current = next;
       publish(next);
       publishSession(createMarkdownEditSession(markdownToEditorText(next.content)));
       return next;
@@ -235,9 +263,11 @@ export function useMarkdownEditor(
       draftPersisted: false,
     };
     const generation = generationRef.current;
+    const mutationToken = mutationTokenRef.current;
     publish(optimistic);
     setError(null);
     void enqueue(async () => {
+      if (generationRef.current !== generation || mutationTokenRef.current !== mutationToken) return;
       try {
         const next = await window.mermarkd.updateMarkdownEditor({
           epoch: optimistic.epoch,
@@ -248,12 +278,11 @@ export function useMarkdownEditor(
       } catch (caught) {
         if (generationRef.current !== generation) return;
         const message = errorMessage(caught, '源码编辑未被主进程接受。');
-        setError(message);
-        onStatus(message, true);
+        await recoverRejectedUpdate(generation, message);
       }
     });
     checkpoint(generation);
-  }, [acceptServerView, busy, checkpoint, enqueue, onStatus, publish, publishSession]);
+  }, [acceptServerView, busy, checkpoint, enqueue, onStatus, publish, publishSession, recoverRejectedUpdate]);
 
   const applySessionContent = useCallback((nextSession: MarkdownEditSession, generation: number) => {
     const current = editorRef.current;
@@ -273,22 +302,23 @@ export function useMarkdownEditor(
       format: inspectMarkdownSourceFormat(content, persisted?.bomByteLength ?? current.sourceFormat.bomByteLength),
       draftPersisted: false,
     };
+    const mutationToken = mutationTokenRef.current;
     publishSession(nextSession);
     publish(optimistic);
     setError(null);
     void enqueue(async () => {
+      if (generationRef.current !== generation || mutationTokenRef.current !== mutationToken) return;
       try {
         const next = await window.mermarkd.updateMarkdownEditor({ epoch: optimistic.epoch, revision, content });
         acceptServerView(next, generation);
       } catch (caught) {
         if (generationRef.current !== generation) return;
         const message = errorMessage(caught, '源码编辑未被主进程接受。');
-        setError(message);
-        onStatus(message, true);
+        await recoverRejectedUpdate(generation, message);
       }
     });
     checkpoint(generation);
-  }, [acceptServerView, checkpoint, enqueue, onStatus, publish, publishSession]);
+  }, [acceptServerView, checkpoint, enqueue, onStatus, publish, publishSession, recoverRejectedUpdate]);
 
   const undo = useCallback((): MarkdownEditSelection | null => {
     const current = editSessionRef.current;
@@ -327,6 +357,7 @@ export function useMarkdownEditor(
         content: current.content,
       });
       if (generationRef.current !== generation) return null;
+      confirmedEditorRef.current = result.editor;
       publish(result.editor);
       if (result.status === 'saved') {
         publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
@@ -372,6 +403,7 @@ export function useMarkdownEditor(
         }
       } else publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
       onAccepted(result.editor.content);
+      confirmedEditorRef.current = result.editor;
       publish(result.editor); setError(null); checkpoint(generation);
       return true;
     } catch (caught) {
@@ -389,6 +421,7 @@ export function useMarkdownEditor(
       await queueRef.current;
       const result = await window.mermarkd.discardMarkdownEditorChanges(current.epoch);
       onDocumentDiscarded(result.document);
+      confirmedEditorRef.current = result.editor;
       publish(result.editor);
       publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
       setError(null);
@@ -413,8 +446,11 @@ export function useMarkdownEditor(
     try {
       await queueRef.current;
       const next = await action(current);
+      confirmedEditorRef.current = next;
       publish(next);
-      publishSession(createMarkdownEditSession(markdownToEditorText(next.content)));
+      if (next.content !== current.content) {
+        publishSession(createMarkdownEditSession(markdownToEditorText(next.content)));
+      }
       setError(null);
       onStatus(success);
     } catch (caught) {

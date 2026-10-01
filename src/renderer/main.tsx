@@ -435,10 +435,15 @@ function App() {
     (message, alert) => setMessage(message, alert ? 'alert' : 'status'),
   );
   const dirtyPreview = Boolean(editorController.editor?.dirty);
-  const commitReaderTextEdit = useCallback(async (blockStart: number, replacement: string) => {
+  const commitReaderTextEdit = useCallback(async (blockStart: number, sourceText: string, replacement: string) => {
     if (activeMode !== 'reader' || !openedDocument || dirtyPreview) return;
-    const result = applyReaderPlainTextEdit(openedDocument.content, openedDocument.bomByteLength, {
+    const epoch = documentEpoch.current;
+    const sourcePath = openedDocument.path;
+    const sourceSha256 = openedDocument.sourceSha256;
+    const sourceContent = openedDocument.content;
+    const result = applyReaderPlainTextEdit(sourceContent, openedDocument.bomByteLength, {
       blockStart,
+      sourceText,
       replacement,
     });
     if (!result.ok) {
@@ -447,7 +452,9 @@ function App() {
     }
     const editor = editorController.editor ?? await editorController.open();
     if (!editor) return;
-    if (editor.content !== openedDocument.content) {
+    if (activeMode !== 'reader' || documentEpoch.current !== epoch ||
+      openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
+      openedDocument?.content !== sourceContent || editor.content !== sourceContent || editor.dirty) {
       setMessage('文档在阅读编辑期间发生变化，请重新载入后再试。', 'alert');
       return;
     }

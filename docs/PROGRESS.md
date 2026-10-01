@@ -80,6 +80,8 @@ npm.cmd run test:e2e:a8-5
 
 结果：阅读编辑核心与事务测试 `6/6`，全量单测 `236/236`，类型检查、打包和三项打包版回归通过。A7.3b 新增第三份临时 Markdown，验证阅读纯文本块编辑、源码缓冲区同步和共享撤销/重做；样本结束前回到磁盘基线。首次验收脚本因模式切换后未聚焦源码文本框而误报撤销超时，补回真实焦点后复跑通过。已确认没有残留 Electron、MerMarkd、Setup 或 Update 进程。
 
+B5 收尾复查又修正了旧阅读块 blur 的文档身份校验、旧 block 偏移误写、IME 组合态 Enter/Escape、Ctrl+Enter 提交、恢复元数据操作误清撤销历史，以及主进程拒绝 optimistic revision 后的回滚。新增 stale block 核心回归后全量单测为 `237/237`；类型检查、镜像打包、A7.3b/A8.4/A8.5 打包回归均重新通过。
+
 ## A8.6 安装、性能与高 DPI 验收（已完成测量，P0 仍未闭合）
 
 本批新增 `tests/e2e/qa-installed.mjs` 和 `tests/qa-performance.mjs`，先在真实 Windows 用户目录执行 Squirrel 安装版，再执行卸载、性能基准和 1×/1.25×/1.5×/2×设备像素比复测。验收过程中没有修改 Markdown、批注 YAML 或画布 JSON 样本。
@@ -106,6 +108,8 @@ node --expose-gc tests/qa-performance.mjs
 ```
 
 结果为单测 `202/202`、类型检查、打包、安装包生成和 A8.2/A8.3/A8.4/A8.5 打包回归全部通过；安装/卸载残留策略、行数密集大文件解析和多显示器高 DPI 仍是 P0 后续门槛。
+
+2026-10-02 用包含 B5 修正的最新安装包复测：`Setup.exe` SHA-256 为 `EFFB5CEF8FD4425DDFBAC31A95EA4F8A11E7407E0629E2F31A83924F90571457`，大小 `154,898,944` 字节。干净的 `%LOCALAPPDATA%\\MerMarkd` 安装退出码 `0`、耗时 `15,457 ms`，79 个文件、`527,568,214` 字节；安装版在 `1/1.25/1.5/2×` DPR 下均完成阅读、编辑、卡片和控件视口检查，启动到卡片就绪约 `912–1,120 ms`，1× PNG 为 `844 × 522`。`Update.exe --uninstall -s` 退出码 `0`、耗时 `952 ms`，快捷方式和相关进程均清除；Squirrel 仍先留下 `.dead`、`Update.exe`、`app-0.1.0`，已在确认无进程后清理该安装目录。未删除本轮之前已有的 `%APPDATA%\\MerMarkd`，因此不把卸载器宣称为自动零残留。性能复测为 `extractSections 883.10 ms`、`buildCanvasScene 2.28 ms`、`arrangeCanvas 155.32 ms`、峰值 RSS `273 MiB`；真实多显示器物理 DPI 和数十万短行压力仍未闭合。
 
 ## 已完成
 

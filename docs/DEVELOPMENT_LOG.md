@@ -651,3 +651,36 @@ npm.cmd run test:e2e:a8-5
 ### 下一步
 
 本批收尾重新检查了源映射、dirty/sidecar 冻结、共享撤销边界、打包产物和三项回归；下一批优先推进干净环境安装/卸载、性能基线和高 DPI 验收，再回到阅读 inline 映射与右键菜单键盘可达性。
+
+## 2026-10-02 · B5 收尾修正与 A8.6 安装/性能/DPI 复测
+
+### 复查发现
+
+提交前复核发现阅读块旧 blur 只比较正文内容，可能在切换到同内容文档后写入错误会话；旧 block 起点也可能命中新的段落。IME 组合期间的 Enter/Escape 会被普通键盘处理拦截，Ctrl+Enter 分支不可达；恢复草稿/备份的元数据操作会清空正文撤销历史；主进程拒绝 optimistic revision 后 renderer 仍会沿用无效 revision。
+
+### 修正
+
+- 阅读块提交携带并核验原可见文本、文档 epoch、路径、source hash、当前模式和编辑器 dirty 状态。
+- 组合输入期间放行确认键，失焦在 compositionend 后再提交；Ctrl+Enter 先于普通 Enter 处理。
+- 恢复操作只有正文实际变化时才重建共享 session；编辑 IPC 失败会使后续 optimistic 请求失效，并重新读取主进程确认版本。
+- 新增 stale block 核心回归，保留 BOM/CRLF 与安全单块映射边界。
+
+### 验证
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run make
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+npm.cmd run test:qa:performance
+```
+
+全量单测 `237/237`、类型检查、打包和 A7.3b/A8.4/A8.5 打包回归通过。性能样本为 `5,242,880` 字节、`1,000` 标题和 `200` 张可见卡片：`extractSections 883.10 ms`、`buildCanvasScene 2.28 ms`、`arrangeCanvas 155.32 ms`、峰值 RSS `273 MiB`。
+
+最新安装包为 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`，SHA-256 `EFFB5CEF8FD4425DDFBAC31A95EA4F8A11E7407E0629E2F31A83924F90571457`，大小 `154,898,944` 字节。干净 `%LOCALAPPDATA%\\MerMarkd` 静默安装退出码 `0`、耗时 `15,457 ms`，安装版四档 `1/1.25/1.5/2×` DPR 均通过模式切换、视口和 PNG 导出检查；1× PNG 为 `844 × 522`，卡片就绪约 `912–1,120 ms`。卸载退出码 `0`、耗时 `952 ms`，快捷方式和进程清除；Squirrel 仍留下 `.dead`、`Update.exe` 和 `app-0.1.0`，确认无进程后已清理测试安装目录。真实多显示器物理 DPI、自动零残留卸载和数十万短行压力仍未宣称通过。
+
+本次修正和验收代码提交待最终复查后生成；下一批继续处理阅读 inline 映射与右键菜单键盘可达性，并保持每批单独复查和推送。

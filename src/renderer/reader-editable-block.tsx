@@ -6,7 +6,7 @@ interface ReaderEditableBlockProps {
   readonly blockStart: number;
   readonly sourceText: string;
   readonly enabled: boolean;
-  readonly onCommit: (blockStart: number, text: string) => void;
+  readonly onCommit: (blockStart: number, sourceText: string, text: string) => void;
   readonly children: ReactNode;
   readonly className?: string;
   readonly id?: string;
@@ -47,6 +47,7 @@ export function ReaderEditableBlock({
   const draftRef = useRef(sourceText);
   const editingRef = useRef(false);
   const composingRef = useRef(false);
+  const pendingBlurRef = useRef(false);
 
   useEffect(() => {
     if (editingRef.current) return;
@@ -78,13 +79,27 @@ export function ReaderEditableBlock({
     draftRef.current = event.currentTarget.textContent ?? '';
   };
 
-  const handleBlur = () => {
+  const commitDraft = () => {
     editingRef.current = false;
     const next = draftRef.current;
-    if (next !== originalRef.current) onCommit(blockStart, next);
+    if (next !== originalRef.current) onCommit(blockStart, originalRef.current, next);
+  };
+
+  const handleBlur = () => {
+    if (composingRef.current) {
+      pendingBlurRef.current = true;
+      return;
+    }
+    commitDraft();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (composingRef.current || event.nativeEvent.isComposing) return;
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      elementRef.current?.blur();
+      return;
+    }
     if (event.key === 'Enter') {
       event.preventDefault();
       return;
@@ -94,10 +109,6 @@ export function ReaderEditableBlock({
       restore();
       elementRef.current?.blur();
       return;
-    }
-    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-      event.preventDefault();
-      elementRef.current?.blur();
     }
   };
 
@@ -112,11 +123,17 @@ export function ReaderEditableBlock({
     'data-source-block-start': blockStart,
     title: enabled ? '点击正文直接编辑；Enter 保持在当前段落' : undefined,
     onFocus: () => { editingRef.current = true; },
-    onCompositionStart: () => { composingRef.current = true; },
-    onCompositionEnd: () => { composingRef.current = false; },
+    onCompositionStart: () => { composingRef.current = true; pendingBlurRef.current = false; },
+    onCompositionEnd: () => {
+      composingRef.current = false;
+      if (pendingBlurRef.current && document.activeElement !== elementRef.current) {
+        pendingBlurRef.current = false;
+        commitDraft();
+      }
+    },
     onBeforeInput: (event: FormEvent<HTMLElement>) => {
       const inputType = (event.nativeEvent as InputEvent).inputType;
-      if (inputType === 'insertParagraph' || inputType === 'insertLineBreak' || inputType.startsWith('format')) {
+      if (!composingRef.current && (inputType === 'insertParagraph' || inputType === 'insertLineBreak' || inputType.startsWith('format'))) {
         event.preventDefault();
       }
     },
