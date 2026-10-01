@@ -44,6 +44,14 @@ import './style.css';
 type SelectionProbeResult = ReturnType<typeof resolveSelection>;
 type SuccessfulSelectionProbe = Extract<SelectionProbeResult, { ok: true }>;
 
+interface ReaderContextMenuState {
+  readonly left: number;
+  readonly top: number;
+  readonly probe: SuccessfulSelectionProbe;
+  readonly epoch: number;
+  readonly sourceSha256: string;
+}
+
 interface ValidatedSelectionTarget {
   readonly epoch: number;
   readonly sourceSha256: string;
@@ -273,6 +281,7 @@ function App() {
   const [notice, setNotice] = useState<AppNotice | null>(null);
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [selectionProbe, setSelectionProbe] = useState<SelectionProbeResult | null>(null);
+  const [readerContextMenu, setReaderContextMenu] = useState<ReaderContextMenuState | null>(null);
   const [selectionChecking, setSelectionChecking] = useState(false);
   const [selectionToolbarPosition, setSelectionToolbarPosition] = useState<SelectionToolbarPosition | null>(null);
   const [selectionAnnouncement, setSelectionAnnouncement] = useState('');
@@ -346,6 +355,7 @@ function App() {
     selectionTarget.current = null;
     selectionFeedbackRange.current = null;
     setSelectionProbe(null);
+    setReaderContextMenu(null);
     setSelectionChecking(false);
     setSelectionToolbarPosition(null);
     setSelectionAnnouncement('');
@@ -356,6 +366,18 @@ function App() {
       previous.origin.focus({ preventScroll: true });
     }
   }, []);
+
+  useEffect(() => {
+    if (!readerContextMenu) return;
+    const close = () => setReaderContextMenu(null);
+    const closeOnKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', closeOnKey);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('keydown', closeOnKey);
+    };
+  }, [readerContextMenu]);
 
   const clearReaderSearchPaint = useCallback(() => {
     const registry = highlightRegistry();
@@ -1023,6 +1045,44 @@ function App() {
     return result;
   }, [openedDocument, rememberSelection, resolveRangeSelection]);
 
+  const openReaderContextMenu = useCallback((event: MouseEvent<HTMLElement>) => {
+    if (dirtyPreview || !openedDocument) return;
+    const article = window.document.querySelector<HTMLElement>('.markdown-body');
+    const selection = window.getSelection();
+    if (!article || !selection || selection.rangeCount !== 1 || selection.isCollapsed) return;
+    const range = selection.getRangeAt(0);
+    if (!article.contains(range.startContainer) || !article.contains(range.endContainer)) return;
+    const probe = readSelection();
+    if (!probe.ok) return;
+    event.preventDefault();
+    setReaderContextMenu({
+      left: Math.max(8, Math.min(event.clientX, window.innerWidth - 244)),
+      top: Math.max(8, Math.min(event.clientY, window.innerHeight - 310)),
+      probe,
+      epoch: documentEpoch.current,
+      sourceSha256: openedDocument.sourceSha256,
+    });
+  }, [dirtyPreview, openedDocument, readSelection]);
+
+  const copyReaderContextSelection = useCallback(async () => {
+    const menu = readerContextMenu;
+    if (!menu || menu.epoch !== documentEpoch.current || !openedDocument ||
+        menu.sourceSha256 !== openedDocument.sourceSha256) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('当前环境不支持剪贴板写入。');
+      await navigator.clipboard.writeText(menu.probe.displayQuote);
+      if (documentEpoch.current !== menu.epoch) return;
+      setMessage('已复制所选正文。');
+      setReaderContextMenu(null);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '复制失败。', 'alert');
+    }
+  }, [openedDocument, readerContextMenu, setMessage]);
+
+  useEffect(() => {
+    setReaderContextMenu(null);
+  }, [activeMode, openedDocument?.sourceSha256]);
+
   useEffect(() => {
     if (activeMode !== 'reader' || !openedDocument || dirtyPreview) return;
     const epoch = documentEpoch.current;
@@ -1192,8 +1252,8 @@ function App() {
   }, [activeMode, annotationLoading, annotationView, clearReaderSelection, dirtyPreview,
     refreshAnnotations, setMessage]);
 
-  const createHighlight = useCallback((color: AnnotationColor) => {
-    const probe = readSelection();
+  const createHighlight = useCallback((color: AnnotationColor, frozenProbe?: SuccessfulSelectionProbe) => {
+    const probe = frozenProbe ?? readSelection();
     setSelectionProbe(probe);
     if (!probe.ok) return;
     const selection = {
@@ -1241,8 +1301,8 @@ function App() {
     }
   }, []);
 
-  const openNoteComposer = useCallback(() => {
-    const probe = readSelection();
+  const openNoteComposer = useCallback((frozenProbe?: SuccessfulSelectionProbe) => {
+    const probe = frozenProbe ?? readSelection();
     setSelectionProbe(probe);
     if (!probe.ok) return;
     setNoteComposer({
@@ -1674,7 +1734,7 @@ function App() {
                   </button>)}
                 </div>
                 <button type="button" className="add-note-button" onMouseDown={(event) => event.preventDefault()}
-                  onClick={openNoteComposer} disabled={!canChangeAnnotations}
+                  onClick={() => openNoteComposer()} disabled={!canChangeAnnotations}
                   aria-controls="annotation-sidebar">添加批注</button>
               </div>}
               <button type="button" className="selection-toolbar-close"
@@ -1692,7 +1752,7 @@ function App() {
               </div>}
             <span className="sr-only" aria-live="polite">{selectionAnnouncement}</span>
             <div className="document-divider" />
-            {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文">
+            {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" onContextMenu={openReaderContextMenu}>
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter, remarkReadingDangerousHtmlPolicy]}
                 rehypePlugins={[rehypeRaw, rehypeReadingHtmlPolicy, [rehypeSanitize, readingSanitizeSchema]]}
                 components={components}>
@@ -1701,6 +1761,23 @@ function App() {
                   : readerDocument!.content}
               </Markdown>
             </article> : <div className="empty-document"><h2>这份文档目前没有内容</h2><p>可以打开另一份 Markdown 文件继续阅读。</p></div>}
+            {readerContextMenu && <div className="editor-context-menu reader-context-menu" role="menu" aria-label="正文选区操作" data-reader-context-menu="true"
+              style={{ left: readerContextMenu.left, top: readerContextMenu.top }} onPointerDown={(event) => event.stopPropagation()}>
+              <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+                onClick={() => void copyReaderContextSelection()}>复制正文</button>
+              <span className="editor-context-separator" role="separator" />
+              <span className="reader-context-label">高亮选区</span>
+              <div className="reader-context-palette" role="group" aria-label="选择高亮颜色">
+                {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button" role="menuitem"
+                  className="reader-context-color" data-color={value} aria-label={`用${name}色高亮所选正文`}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => { const probe = readerContextMenu.probe; setReaderContextMenu(null); createHighlight(value, probe); }}
+                  disabled={!canChangeAnnotations || !highlightSupported}><span className="highlight-swatch" aria-hidden="true" />{name}</button>)}
+              </div>
+              <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+                onClick={() => { const probe = readerContextMenu.probe; setReaderContextMenu(null); openNoteComposer(probe); }} disabled={!canChangeAnnotations}>添加批注</button>
+              <span className="reader-context-note">格式编辑请在源码视图完成</span>
+            </div>}
           </main>
           {!dirtyPreview && annotationPanelOpen && <>
             <button type="button" className="annotation-drawer-backdrop" aria-label="关闭批注栏"

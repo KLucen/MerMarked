@@ -3,6 +3,9 @@ import type { ChangeEvent, CSSProperties, KeyboardEvent as ReactKeyboardEvent } 
 import type { MarkdownSourceFormat } from '../core/markdown-source';
 import { countGraphemes } from '../core/reader-navigation';
 import { editorToMarkdownText, markdownToEditorText } from '../core/editor-text';
+import { executeMarkdownSelectionCommand } from '../core/markdown-selection-commands';
+import { createMarkdownEditSession, type MarkdownEditSelection } from '../core/markdown-edit-transaction';
+import type { MarkdownSourceSelectionAction } from '../core/markdown-selection-commands';
 import { previewSectionTransform } from '../core/section-transform';
 import type { SectionTransformPreview } from '../core/section-transform';
 import type { MarkdownAnnotationImpact, MarkdownRecoveryDraftView, SectionStructurePreview } from '../types/reader-api';
@@ -27,6 +30,14 @@ interface EditorHistoryEntry {
 interface EditorHistory {
   past: EditorHistoryEntry[];
   future: EditorHistoryEntry[];
+}
+
+interface EditorContextMenuState {
+  readonly left: number;
+  readonly top: number;
+  readonly selection: MarkdownEditSelection;
+  readonly source: string;
+  readonly revision: number;
 }
 
 export interface SourceEditorSection {
@@ -207,6 +218,7 @@ export function MarkdownEditorView({
   const selection = useRef<EditorSelection>({ start: 0, end: 0, direction: 'none' });
   const history = useRef<EditorHistory>({ past: [], future: [] });
   const selectionFrame = useRef<number | null>(null);
+  const editRevision = useRef(0);
   const [historyRevision, setHistoryRevision] = useState(0);
   const [cursor, setCursor] = useState<SourceEditorCursor>(() => cursorFor(value, selection.current));
   const [searchOpen, setSearchOpen] = useState(false);
@@ -222,6 +234,7 @@ export function MarkdownEditorView({
   const [levelTargetDepth, setLevelTargetDepth] = useState(1);
   const [structurePreview, setStructurePreview] = useState<SectionTransformPreview | null>(null);
   const [annotationImpact, setAnnotationImpact] = useState<MarkdownAnnotationImpact | null>(null);
+  const [contextMenu, setContextMenu] = useState<EditorContextMenuState | null>(null);
 
   useEffect(() => {
     setAnnotationImpact(null);
@@ -281,6 +294,7 @@ export function MarkdownEditorView({
     history.current.past.push(entry);
     if (history.current.past.length > MAX_EDITOR_HISTORY_ENTRIES) history.current.past.shift();
     history.current.future = [];
+    editRevision.current += 1;
     updateHistoryControls();
     setActionMessage(null);
     setConfirmDiscardChanges(false);
@@ -293,6 +307,8 @@ export function MarkdownEditorView({
   }, [updateHistoryControls]);
 
   useEffect(() => {
+    editRevision.current += 1;
+    setContextMenu(null);
     currentValue.current = value;
     pendingValue.current = null;
     selection.current = { start: 0, end: 0, direction: 'none' };
@@ -340,6 +356,7 @@ export function MarkdownEditorView({
       return;
     }
     if (currentValue.current !== value) {
+      editRevision.current += 1;
       currentValue.current = value;
       clearHistory();
       const nextSelection = {
@@ -354,6 +371,18 @@ export function MarkdownEditorView({
   useEffect(() => () => {
     if (selectionFrame.current !== null) window.cancelAnimationFrame(selectionFrame.current);
   }, []);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    const closeOnKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close(); };
+    window.addEventListener('pointerdown', close);
+    window.addEventListener('keydown', closeOnKey);
+    return () => {
+      window.removeEventListener('pointerdown', close);
+      window.removeEventListener('keydown', closeOnKey);
+    };
+  }, [contextMenu]);
 
   useEffect(() => {
     if (!active || focusRequestKey === null || focusOffset === null) return;
@@ -483,6 +512,92 @@ export function MarkdownEditorView({
     recordAndEmit(textarea.value, selectionFor(textarea));
   };
 
+  const sourceIsReadOnly = readOnly || sourceFormat.lineEnding === 'mixed';
+
+  const openContextMenu = (event: React.MouseEvent<HTMLTextAreaElement>) => {
+    event.preventDefault();
+    const nextSelection = selectionFor(event.currentTarget);
+    reportSelection(nextSelection);
+    const left = Math.max(8, Math.min(event.clientX, window.innerWidth - 248));
+    const top = Math.max(8, Math.min(event.clientY, window.innerHeight - 330));
+    setContextMenu({ left, top, selection: nextSelection, source: currentValue.current, revision: editRevision.current });
+  };
+
+  const selectionFromContext = useCallback(() => {
+    const menu = contextMenu;
+    if (!menu || menu.source !== currentValue.current || menu.revision !== editRevision.current) {
+      if (menu) setActionMessage('源码在菜单打开后发生变化，请重新选择文字。');
+      setContextMenu(null);
+      return null;
+    }
+    return menu.selection;
+  }, [contextMenu]);
+
+  const copyContextSelection = useCallback(async (cut = false) => {
+    const menu = contextMenu;
+    const selected = selectionFromContext();
+    if (!menu || !selected || selected.start === selected.end) return;
+    const text = currentValue.current.slice(selected.start, selected.end);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('当前环境不支持剪贴板写入。');
+      await navigator.clipboard.writeText(text);
+      if (menu.revision !== editRevision.current || menu.source !== currentValue.current) {
+        setActionMessage('源码在剪贴板操作期间发生变化，未执行剪切。');
+        setContextMenu(null);
+        return;
+      }
+      if (cut && !sourceIsReadOnly && !saving) {
+        const result = executeMarkdownSelectionCommand(createMarkdownEditSession(currentValue.current), {
+          action: 'cut', expectedRevision: 0, selection: selected,
+        });
+        if (result.kind !== 'markdown') throw new Error('剪切命令未生成 Markdown 事务。');
+        recordAndEmit(result.session.current.content,
+          { ...result.session.current.selection, direction: 'none' });
+        setActionMessage('已剪切所选源码。');
+      } else setActionMessage('已复制所选源码。');
+      setContextMenu(null);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : '剪贴板写入失败，未修改源码。');
+    }
+  }, [contextMenu, recordAndEmit, saving, selectionFromContext, sourceIsReadOnly]);
+
+  const pasteContextSelection = useCallback(async () => {
+    const menu = contextMenu;
+    const selected = selectionFromContext();
+    if (!menu || !selected || sourceIsReadOnly || saving) return;
+    try {
+      if (!navigator.clipboard?.readText) throw new Error('当前环境不支持剪贴板读取。');
+      const text = await navigator.clipboard.readText();
+      if (menu.revision !== editRevision.current || menu.source !== currentValue.current) {
+        setActionMessage('源码在剪贴板操作期间发生变化，未执行粘贴。');
+        setContextMenu(null);
+        return;
+      }
+      const result = executeMarkdownSelectionCommand(createMarkdownEditSession(currentValue.current), {
+        action: 'paste', expectedRevision: 0, selection: selected, text,
+      });
+      if (result.kind !== 'markdown') throw new Error('粘贴命令未生成 Markdown 事务。');
+      recordAndEmit(result.session.current.content,
+        { ...result.session.current.selection, direction: 'forward' });
+      setActionMessage('已粘贴纯文本。');
+      setContextMenu(null);
+    } catch (error) {
+      setActionMessage(error instanceof Error ? error.message : '剪贴板读取失败，未修改源码。');
+    }
+  }, [contextMenu, recordAndEmit, saving, selectionFromContext, sourceIsReadOnly]);
+
+  const applyContextCommand = useCallback((command: Exclude<MarkdownSourceSelectionAction, 'cut' | 'paste'>) => {
+    const selected = selectionFromContext();
+    if (!selected || sourceIsReadOnly || saving) return;
+    const result = executeMarkdownSelectionCommand(createMarkdownEditSession(currentValue.current), {
+      action: command, expectedRevision: 0, selection: selected,
+    });
+    if (result.kind !== 'markdown') throw new Error('源码命令未生成 Markdown 事务。');
+    recordAndEmit(result.session.current.content, { ...result.session.current.selection, direction: 'forward' });
+    setActionMessage(command === 'bold' ? '已切换加粗。' : command === 'italic' ? '已切换斜体。' : command === 'quote' ? '已切换引用块。' : '已删除所选源码。');
+    setContextMenu(null);
+  }, [recordAndEmit, saving, selectionFromContext, sourceIsReadOnly]);
+
   const previewMove = useCallback(() => {
     if (moveSourceIndex === null || moveTargetIndex === null) return;
     setStructurePreview(previewSectionTransform(currentValue.current, {
@@ -550,7 +665,6 @@ export function MarkdownEditorView({
     null,
   );
   const currentTrailingLineEnding = value.endsWith('\n');
-  const sourceIsReadOnly = readOnly || sourceFormat.lineEnding === 'mixed';
   const effectiveReadOnlyReason = readOnlyReason ?? (
     sourceFormat.lineEnding === 'mixed' ? '这份文档包含混合换行，当前仅可查看源码。' : null
   );
@@ -755,9 +869,30 @@ export function MarkdownEditorView({
         <textarea ref={textareaRef} className="source-editor-textarea" data-editor-textarea="true"
           aria-label="Markdown 源码" value={value} readOnly={sourceIsReadOnly || saving}
           onChange={handleTextChange} onKeyDown={handleEditorKeyDown}
+          onContextMenu={openContextMenu}
           onSelect={(event) => reportSelection(selectionFor(event.currentTarget))}
           autoCapitalize="off" autoCorrect="off" spellCheck={false} wrap="off" />
       </div>
+
+      {contextMenu && <div className="editor-context-menu" role="menu" aria-label="源码选区操作" data-editor-context-menu="true"
+        style={{ left: contextMenu.left, top: contextMenu.top }} onPointerDown={(event) => event.stopPropagation()}>
+        <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+          onClick={() => void copyContextSelection()} disabled={contextMenu.selection.start === contextMenu.selection.end}>复制</button>
+        <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+          onClick={() => void copyContextSelection(true)} disabled={sourceIsReadOnly || saving || contextMenu.selection.start === contextMenu.selection.end}>剪切</button>
+        <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+          onClick={() => void pasteContextSelection()} disabled={sourceIsReadOnly || saving}>粘贴</button>
+        <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyContextCommand('delete')} disabled={sourceIsReadOnly || saving || contextMenu.selection.start === contextMenu.selection.end}>删除</button>
+        <span className="editor-context-separator" role="separator" />
+        <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyContextCommand('bold')} disabled={sourceIsReadOnly || saving || contextMenu.selection.start === contextMenu.selection.end}>加粗</button>
+        <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyContextCommand('italic')} disabled={sourceIsReadOnly || saving || contextMenu.selection.start === contextMenu.selection.end}>斜体</button>
+        <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+          onClick={() => applyContextCommand('quote')} disabled={sourceIsReadOnly || saving || contextMenu.selection.start === contextMenu.selection.end}>引用</button>
+        <button type="button" role="menuitem" disabled title="源码选区高亮需要在阅读模式中建立 YAML 锚点">高亮颜色（阅读模式）</button>
+      </div>}
 
       <footer className="source-editor-status" data-editor-status="true" role="status">
         <span className={dirty ? 'dirty' : undefined}>{dirty ? '未保存' : '已保存'}</span>
