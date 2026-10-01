@@ -6,6 +6,7 @@ import test from 'node:test';
 import { makeAnnotationAnchor } from '../../src/core/annotation-anchor.ts';
 import { parseAnnotationYaml, serializeAnnotationYaml } from '../../src/core/annotations.ts';
 import { parseCanvasJson, reconcileCanvasState, serializeCanvasJson } from '../../src/core/canvas-state.ts';
+import { migrateCanvasStateV1ToV2, parseCanvasStateJson, serializeCanvasStateV2Json } from '../../src/core/canvas-state-v2.ts';
 import { encodeMarkdownBytes } from '../../src/core/markdown-source.ts';
 import { listDocumentTransactions } from '../../src/main/document-transaction.ts';
 import { MarkdownEditorSession } from '../../src/main/markdown-editor-session.ts';
@@ -88,6 +89,29 @@ test('every independently versioned file is rechecked after preview and before s
       assert.equal((await listDocumentTransactions(f.document.path)).length, 0);
     } finally { await clean(f.root); }
   }
+});
+
+test('v2 canvas structural save preserves independent content presentation fields', async () => {
+  const f = await fixture();
+  try {
+    const v2 = migrateCanvasStateV1ToV2(f.canvas);
+    const customized = { ...v2, cards: v2.cards.map((card, index) => index === 1
+      ? { ...card, contentPosition: { x: 72, y: 48 }, bodyDisplay: 'full' as const, descendantsCollapsed: true }
+      : card) };
+    await writeFile(`${f.document.path}.mermarkd.json`, serializeCanvasStateV2Json(customized));
+    const plan = await prepareSectionStructurePlan(f.document, { kind: 'move', sourceIndex: 1, targetIndex: 3 });
+    const editor = await MarkdownEditorSession.create(f.document, f.draftDirectory);
+    const staged = await editor.stageSectionStructure(plan);
+    const saved = await editor.save({ epoch: editor.epoch, revision: staged.revision, content: staged.content });
+    assert.equal(saved.status, 'saved');
+    const persisted = parseCanvasStateJson(await readFile(`${f.document.path}.mermarkd.json`, 'utf8'));
+    assert.equal(persisted.schemaVersion, 2);
+    if (persisted.schemaVersion !== 2) return;
+    const card = persisted.cards.find((item) => item.id === 'card-1');
+    assert.deepEqual(card?.contentPosition, { x: 72, y: 48 });
+    assert.equal(card?.bodyDisplay, 'full');
+    assert.equal(card?.descendantsCollapsed, true);
+  } finally { await clean(f.root); }
 });
 
 test('additional source edits keep ambiguous moved annotations and links unresolved rather than guessing', async () => {

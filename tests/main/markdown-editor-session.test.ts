@@ -251,3 +251,47 @@ test('successful save keeps unrelated recovery branches visible against the new 
     await cleanup(f.directory);
   }
 });
+
+test('an untitled buffer can rebase to a new file on first save without touching sidecars', async () => {
+  const f = await fixture(Buffer.alloc(0));
+  try {
+    const untitledPath = path.join(f.directory, 'virtual-untitled.md');
+    const emptyDocument: OpenedMarkdownDocument = {
+      path: untitledPath,
+      name: '未命名.md',
+      content: '',
+      sourceSha256: digest(Buffer.alloc(0)),
+      bomByteLength: 0,
+      temporary: true,
+    };
+    const targetPath = path.join(f.directory, 'first-save.md');
+    await writeFile(targetPath, Buffer.alloc(0));
+    const targetDocument: OpenedMarkdownDocument = {
+      path: targetPath,
+      name: path.basename(targetPath),
+      content: '',
+      sourceSha256: digest(Buffer.alloc(0)),
+      bomByteLength: 0,
+    };
+    const session = await MarkdownEditorSession.create(emptyDocument, f.draftDirectory, 'epoch-first-save');
+    const candidate = '# First save\n正文\n';
+    session.update({ epoch: 'epoch-first-save', revision: 1, content: candidate });
+    await session.persistDraft({ epoch: 'epoch-first-save', revision: 1, content: candidate });
+    await session.rebaseDocument(targetDocument);
+    assert.equal(session.document.path, targetPath);
+    assert.equal(session.document.temporary, undefined);
+    assert.equal(session.view().dirty, true);
+    assert.equal(session.view().recoveryDrafts.length, 0);
+    const saved = await session.save({ epoch: 'epoch-first-save', revision: 1, content: candidate });
+    assert.equal(saved.status, 'saved');
+    if (saved.status !== 'saved') return;
+    assert.equal(saved.changed, true);
+    assert.deepEqual(await readFile(targetPath), Buffer.from(candidate));
+    assert.deepEqual(await readFile(f.annotationPath, 'utf8'), 'annotation sentinel\n');
+    assert.deepEqual(await readFile(f.canvasPath, 'utf8'), '{"canvas":"sentinel"}\n');
+    assert.ok(saved.editor.latestSourceBackupId);
+    await session.discardLatestSourceBackup(saved.editor.latestSourceBackupId);
+  } finally {
+    await cleanup(f.directory);
+  }
+});

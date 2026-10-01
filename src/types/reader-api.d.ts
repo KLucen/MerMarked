@@ -1,5 +1,6 @@
 import type { AnnotationAnchorStatus, AnnotationColor } from '../core/annotations';
 import type { CanvasState } from '../core/canvas-state';
+import type { CanvasStateV2 } from '../core/canvas-state-v2';
 import type { CanvasSceneCard, CanvasSceneLink } from '../core/canvas-scene';
 import type { MarkdownSourceFormat } from '../core/markdown-source';
 import type { SectionTransformOperation, SectionTransformRejection } from '../core/section-transform';
@@ -13,6 +14,8 @@ export interface OpenedMarkdownDocument {
   /** SHA-256 of the exact bytes read from disk, including any BOM and CRLF. */
   sourceSha256: string;
   bomByteLength: 0 | 3;
+  /** True while a new document has no user-selected file on disk yet. */
+  readonly temporary?: boolean;
   readonly recoveryPending?: boolean;
 }
 
@@ -44,7 +47,7 @@ export type DocumentRecoveryResult =
 
 export interface CanvasLoadResult {
   readonly status: 'missing' | 'ready' | 'stale' | 'invalid';
-  readonly model: CanvasState | null;
+  readonly model: CanvasState | CanvasStateV2 | null;
   readonly sidecarSha256: string | null;
   readonly reason?: string;
 }
@@ -52,7 +55,7 @@ export interface CanvasLoadResult {
 export interface CanvasSaveInput {
   readonly sourceSha256: string;
   readonly expectedSidecarSha256: string | null;
-  readonly model: CanvasState;
+  readonly model: CanvasState | CanvasStateV2;
 }
 
 export type CanvasExportFormat = 'png' | 'jpg' | 'pdf';
@@ -72,6 +75,26 @@ export type CanvasExportResult =
   | { readonly status: 'error'; readonly reason: string };
 
 export interface CanvasSaveResult {
+  readonly status: 'saved' | 'conflict' | 'pending';
+  readonly sidecarSha256?: string;
+  readonly reason?: string;
+}
+
+export interface CanvasLoadV2Result {
+  readonly status: 'missing' | 'ready' | 'stale' | 'invalid';
+  readonly model: CanvasStateV2 | null;
+  readonly sidecarSha256: string | null;
+  readonly sourceVersion: 1 | 2 | null;
+  readonly reason?: string;
+}
+
+export interface CanvasSaveV2Input {
+  readonly sourceSha256: string;
+  readonly expectedSidecarSha256: string | null;
+  readonly model: CanvasStateV2;
+}
+
+export interface CanvasSaveV2Result {
   readonly status: 'saved' | 'conflict' | 'pending';
   readonly sidecarSha256?: string;
   readonly reason?: string;
@@ -315,6 +338,8 @@ export interface MerMarkdApi {
   readDocumentImage(relativePath: string): Promise<string | null>;
   loadCanvas(): Promise<CanvasLoadResult>;
   saveCanvas(input: CanvasSaveInput): Promise<CanvasSaveResult>;
+  loadCanvasV2(): Promise<CanvasLoadV2Result>;
+  saveCanvasV2(input: CanvasSaveV2Input): Promise<CanvasSaveV2Result>;
   exportCanvas(input: CanvasExportInput): Promise<CanvasExportResult>;
   loadAnnotations(): Promise<AnnotationDocumentView>;
   createHighlight(input: CreateHighlightInput): Promise<AnnotationSaveResult>;

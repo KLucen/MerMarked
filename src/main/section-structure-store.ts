@@ -3,6 +3,8 @@ import { lstat, readFile } from 'node:fs/promises';
 import { mapAnnotationSidecarThroughEdit } from '../core/annotation-edit-map.ts';
 import { MAX_ANNOTATION_YAML_BYTES, parseAnnotationYaml, serializeAnnotationYaml } from '../core/annotations.ts';
 import { MAX_CANVAS_JSON_BYTES, mapCanvasThroughSectionTransform, parseCanvasJson, reconcileCanvasState, serializeCanvasJson } from '../core/canvas-state.ts';
+import { mapCanvasThroughSectionTransformV2, parseCanvasStateJson, reconcileCanvasStateV2, serializeCanvasStateJson } from '../core/canvas-state-v2.ts';
+import type { CanvasStateV2 } from '../core/canvas-state-v2.ts';
 import { decodeMarkdownBytes, encodeMarkdownBytes } from '../core/markdown-source.ts';
 import { previewSectionTransform, type ReadySectionTransformPreview, type SectionTransformOperation } from '../core/section-transform.ts';
 import type { MarkdownAnnotationImpact, OpenedMarkdownDocument } from '../types/reader-api.ts';
@@ -67,12 +69,22 @@ export async function prepareSectionStructurePlan(document: OpenedMarkdownDocume
   }
   let canvas = before.canvas;
   if (canvas !== null) {
-    const state = parseCanvasJson(new TextDecoder('utf-8', { fatal: true }).decode(canvas));
-    const mapped = await mapCanvasThroughSectionTransform(state, beforeSource, afterSource, preview);
+    const state = parseCanvasStateJson(new TextDecoder('utf-8', { fatal: true }).decode(canvas));
+    const mapped = state.schemaVersion === 2
+      ? await mapCanvasThroughSectionTransformV2(state, beforeSource, afterSource, preview)
+      : await mapCanvasThroughSectionTransform(state, beforeSource, afterSource, preview);
     const sourceIndex = operation.kind === 'move' ? operation.sourceIndex : operation.sectionIndex;
     const movedId = mapped.bindings.find((item) => item.sectionIndex === preview.sectionOrder.indexOf(sourceIndex))?.id;
-    canvas = Buffer.from(serializeCanvasJson({ ...mapped.model, cards: mapped.model.cards.map((card) => card.id === movedId
-      ? { ...card, position: { x: 24, y: preview.candidateTree.sections[preview.sectionOrder.indexOf(sourceIndex)].parentIndex === null ? 0 : 150 } } : card) }));
+    const movedPosition = { x: 24, y: preview.candidateTree.sections[preview.sectionOrder.indexOf(sourceIndex)].parentIndex === null ? 0 : 150 };
+    if (state.schemaVersion === 2) {
+      const model = mapped.model as CanvasStateV2;
+      canvas = Buffer.from(serializeCanvasStateJson({ ...model, cards: model.cards.map((card) => card.id === movedId
+        ? { ...card, position: movedPosition } : card) }), 'utf8');
+    } else {
+      const model = mapped.model as import('../core/canvas-state.ts').CanvasState;
+      canvas = Buffer.from(serializeCanvasJson({ ...model, cards: model.cards.map((card) => card.id === movedId
+        ? { ...card, position: movedPosition } : card) }));
+    }
   }
   return { before, after: { markdown, annotations, canvas }, preview, impact };
 }
@@ -99,8 +111,14 @@ export async function finalizeSectionStructurePlan(plan: SectionStructurePlan, c
   }
   let canvas = plan.before.canvas;
   if (canvas !== null) {
-    const mapping = await reconcileCanvasState(parseCanvasJson(new TextDecoder('utf-8', { fatal: true }).decode(canvas)), afterSource);
-    canvas = Buffer.from(serializeCanvasJson(mapping.model));
+    const state = parseCanvasStateJson(new TextDecoder('utf-8', { fatal: true }).decode(canvas));
+    if (state.schemaVersion === 2) {
+      const mapping = await reconcileCanvasStateV2(state, afterSource);
+      canvas = Buffer.from(serializeCanvasStateJson(mapping.model), 'utf8');
+    } else {
+      const mapping = await reconcileCanvasState(state, afterSource);
+      canvas = Buffer.from(serializeCanvasJson(mapping.model));
+    }
   }
   return { ...plan, after: { markdown, annotations, canvas }, impact };
 }

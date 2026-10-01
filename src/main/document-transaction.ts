@@ -2,7 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { link, lstat, open, readFile, readdir, realpath, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { parseAnnotationYaml, MAX_ANNOTATION_YAML_BYTES } from '../core/annotations.ts';
-import { MAX_CANVAS_JSON_BYTES, parseCanvasJson, reconcileCanvasState } from '../core/canvas-state.ts';
+import { MAX_CANVAS_JSON_BYTES, reconcileCanvasState } from '../core/canvas-state.ts';
+import { parseCanvasStateJson, reconcileCanvasStateV2 } from '../core/canvas-state-v2.ts';
+import type { CanvasStateDocument } from '../core/canvas-state-v2.ts';
 import { assertMarkdownLineEndingsPreserved, decodeMarkdownBytes } from '../core/markdown-source.ts';
 import { extractSections } from '../core/sections.ts';
 import { buildSelectionMap, resolveStoredHighlight } from '../core/selection-map.ts';
@@ -145,15 +147,17 @@ async function validateBundles(before: DocumentBundle, after: DocumentBundle): P
       }
     }
   }
-  const oldCanvas = before.canvas === null ? null : parseCanvasJson(decode(before.canvas));
+  const oldCanvas: CanvasStateDocument | null = before.canvas === null ? null : parseCanvasStateJson(decode(before.canvas));
   if (after.canvas !== null) {
-    const model = parseCanvasJson(decode(after.canvas));
+    const model = parseCanvasStateJson(decode(after.canvas));
     if (!same(before.canvas, after.canvas)) {
       if (model.source.sha256 !== afterHash) invalid();
-      const verified = await reconcileCanvasState(model, { bytes: after.markdown, content: next.content, sha256: afterHash });
+      const unresolvedCardIds = model.schemaVersion === 2
+        ? (await reconcileCanvasStateV2(model, { bytes: after.markdown, content: next.content, sha256: afterHash })).unresolvedCardIds
+        : (await reconcileCanvasState(model, { bytes: after.markdown, content: next.content, sha256: afterHash })).unresolvedCardIds;
       for (const card of model.cards) {
         if (card.anchor.basisSha256 === afterHash) {
-          if (verified.unresolvedCardIds.includes(card.id)) invalid();
+          if (unresolvedCardIds.includes(card.id)) invalid();
         } else {
           const old = oldCanvas?.cards.find((record) => record.id === card.id);
           if (!old || JSON.stringify(old.anchor) !== JSON.stringify(card.anchor)) invalid();

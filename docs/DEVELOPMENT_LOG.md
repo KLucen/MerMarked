@@ -152,6 +152,118 @@ npm.cmd run test:e2e:a8-5
 - B1 提交：`aea488a14bffeacb2097291b011ec80bccfa9bca`
 - 远端核验：`git ls-remote origin refs/heads/main` 返回同一 SHA（2026-10-02）。
 
+## 2026-10-02 · B1.1 内存新建与首次保存
+
+### 目标
+
+把“新建 Markdown”改为打开即进入可编辑缓冲区，首次显式保存时才选择真实文件路径，同时保持恢复草稿、字节格式和三文件写入门槛。
+
+### 用户反馈/需求来源
+
+用户希望打开软件后直接进入可以编辑和阅读的工作区，并要求新建/打开流程减少中断；B1 收尾时将无路径新建与首次保存列为下一批。
+
+### 设计决定
+
+- 新建生成带 `temporary` 标记的内存文档，不创建虚拟 `.md`、最近记录或批注/画布 sidecar。
+- 首次保存通过原生保存对话框选择 `.md`，独占创建空文件后换绑编辑会话，继续复用现有安全 Markdown 保存和恢复草稿流程。
+- 首次保存前冻结批注、画布、章节结构和导出；取消、目标已存在或放弃编辑均保留候选内容，不覆盖已有文件。
+
+### 修改文件
+
+- `src/main/main.ts`
+- `src/main/markdown-editor-session.ts`
+- `src/types/reader-api.d.ts`
+- `src/renderer/app-shell.tsx`
+- `src/renderer/main.tsx`
+- `tests/main/markdown-editor-session.test.ts`
+- `tests/e2e/b1-shell-packaged.mjs`
+
+### 测试和命令
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run package
+npm.cmd run test:e2e:b1
+git diff --check
+```
+
+结果：全量单测 `220/220`、类型检查、Windows x64 打包、首次保存打包版 E2E 及 `1200/800/420` CSS px 工作区验收通过。打包首次下载遇到 Electron 网络超时时使用 `$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'` 重试通过。
+
+### 产物/截图
+
+- 打包应用：`out/MerMarkd-win32-x64/MerMarkd.exe`
+- B1 响应式截图继续写入 `out/qa/b1-shell-wide.png`、`out/qa/b1-shell-narrow.png`、`out/qa/b1-shell-mobile.png`
+
+### 失败与限制
+
+- 未保存临时文档没有真实路径，关闭前仍依赖现有编辑恢复草稿；批注和画布需首次保存后使用。
+
+### 下一步
+
+进入 B2 画布 v2 真实投影，继续保留每批独立复查和远端发布。
+
+## 2026-10-02 · B2 画布 v2 投影与正文显示状态
+
+### 目标
+
+把 B0 的 v2 画布合同接入真实加载、保存、结构事务和卡片投影，让正文折叠、后代折叠和本节卡位置开始成为可用状态。
+
+### 用户反馈/需求来源
+
+用户要求父章节正文可在卡片组内任意位置、正文内容可展开/收起，并要求旧内容和每批回归保持安全可恢复。
+
+### 设计决定
+
+- 画布读写同时支持 schema v1/v2；旧 v1 只内存迁移，v2 字段在显式画布保存时按三文件基线提交。
+- `bodyDisplay` 使用 `hidden`、`preview`、`full` 三态；`descendantsCollapsed` 独立控制子章节；兼容场景用虚线组边界和独立 `contentPosition` 让本节正文不再固定在左上角。
+- 三文件事务、结构预览和恢复核验按 schema 分派，保留未解析卡片和箭头端点，不把普通布局写入 Markdown。
+- 固定结构投放标记暂时保留以复查 A8.4；B3 再替换为重叠比例/停留候选和拖出提升。
+
+### 修改文件
+
+- `src/core/canvas-state-v2.ts`
+- `src/core/canvas-scene-v2.ts`
+- `src/core/canvas-card-content.ts`
+- `src/main/canvas-store.ts`
+- `src/main/canvas-store-v2.ts`
+- `src/main/document-transaction.ts`
+- `src/main/section-structure-store.ts`
+- `src/main/main.ts`
+- `src/preload/preload.ts`
+- `src/types/reader-api.d.ts`
+- `src/renderer/canvas-view.tsx`
+- `src/renderer/style.css`
+- `tests/core/canvas-scene-v2.test.ts`
+
+### 测试和命令
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run package
+npm.cmd run test:e2e:b1
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+git diff --check
+```
+
+结果：全量单测 `220/220`、类型检查、Windows x64 打包、B1、A8.4 和 A8.5 打包版回归通过；v2 场景测试覆盖独立正文位置、全文状态、后代折叠和隐藏箭头端点。
+
+### 产物/截图
+
+- `out/MerMarkd-win32-x64/MerMarkd.exe`
+- B1 响应式截图及既有 A8 回归产物继续复用
+
+### 失败与限制
+
+- 兼容结构投放区仍存在，重叠候选、滞回、拖出提升和真正独立组节点留待 B3。
+- 补回 A8.4 兼容标记后的第一次打包在 Electron 临时目录重命名时返回 `ENOENT`，无残留进程后重试成功；这是打包环境瞬时失败。
+
+### 下一步
+
+进入 B3：删除常驻投放区，加入重叠比例/停留高亮、拖出提升与结构预览候选；收尾前仍运行全量测试、类型检查、打包和旧回归并推送 GitHub。
+
 ## 2026-10-01 · A8.6 安装、性能与高 DPI 首轮验收
 
 ### 目标

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
-import { ArrowDownToLine, ArrowUpToLine, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpToLine, BookOpen, Crosshair, EyeOff, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { canvasCardContent } from '../core/canvas-card-content';
-import { arrangeCanvas, buildCanvasScene } from '../core/canvas-scene';
-import { reconcileCanvasState } from '../core/canvas-state';
-import type { CanvasBinding, CanvasState } from '../core/canvas-state';
+import { buildCanvasSceneV2 } from '../core/canvas-scene-v2';
+import type { CanvasBinding } from '../core/canvas-state';
+import { arrangeCanvasV2, projectCanvasStateV2ToV1, reconcileCanvasStateV2 } from '../core/canvas-state-v2';
+import type { CanvasBodyDisplay, CanvasStateV2 } from '../core/canvas-state-v2';
 import { extractSections } from '../core/sections';
 import { encodeMarkdownBytes } from '../core/markdown-source';
 import type { OpenedMarkdownDocument } from '../types/reader-api';
@@ -15,12 +16,16 @@ import '@xyflow/react/dist/style.css';
 interface CardData extends Record<string, unknown> {
   title: string;
   summary: string;
+  fullText?: string;
   childCount: number;
   hiddenDescendants: number;
-  collapsed: boolean;
+  bodyDisplay: CanvasBodyDisplay;
+  contentPosition: { readonly x: number; readonly y: number };
+  descendantsCollapsed: boolean;
   readOnly: boolean;
   sectionIndex: number | null;
   fold: () => void;
+  toggleBody: () => void;
   edit: () => void;
   measure: (height: number) => void;
 }
@@ -38,17 +43,21 @@ function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
   }, [data.measure]);
   return <div className={selected ? 'canvas-chapter selected' : 'canvas-chapter'}>
     <Handle type="target" position={Position.Left} isConnectable={!data.readOnly} />
-    <div ref={body} className="canvas-card-body"><div className="canvas-card-header">
+    <div ref={body} className="canvas-card-body" style={{ left: data.contentPosition.x, top: data.contentPosition.y }}><div className="canvas-card-header">
       <strong>{data.title}</strong>
       <div className="canvas-card-actions nodrag">
         <button type="button" title="编辑本节" aria-label="编辑本节" onClick={data.edit}><FilePenLine size={15} /></button>
-        {data.childCount > 0 && <button type="button" title={data.collapsed ? '展开子章节' : '收起子章节'}
-          aria-label={data.collapsed ? '展开子章节' : '收起子章节'} disabled={data.readOnly} onClick={data.fold}>
-          {data.collapsed ? <ArrowDownToLine size={15} /> : <ArrowUpToLine size={15} />}
+        <button type="button" title={data.bodyDisplay === 'hidden' ? '显示正文摘要' : data.bodyDisplay === 'preview' ? '展开全部正文' : '收起正文'}
+          aria-label={data.bodyDisplay === 'hidden' ? '显示正文摘要' : data.bodyDisplay === 'preview' ? '展开全部正文' : '收起正文'} disabled={data.readOnly} onClick={data.toggleBody}>
+          {data.bodyDisplay === 'hidden' ? <EyeOff size={15} /> : <BookOpen size={15} />}
+        </button>
+        {data.childCount > 0 && <button type="button" title={data.descendantsCollapsed ? '展开子章节' : '收起子章节'}
+          aria-label={data.descendantsCollapsed ? '展开子章节' : '收起子章节'} disabled={data.readOnly} onClick={data.fold}>
+          {data.descendantsCollapsed ? <ArrowDownToLine size={15} /> : <ArrowUpToLine size={15} />}
         </button>}
       </div>
     </div>
-    <p className="canvas-card-summary">{data.summary || '暂无正文'}</p>
+    {data.bodyDisplay !== 'hidden' && <p className={data.bodyDisplay === 'full' ? 'canvas-card-summary canvas-card-full' : 'canvas-card-summary'}>{(data.bodyDisplay === 'full' ? data.fullText : data.summary) || '暂无正文'}</p>}
     <span className="canvas-card-count">{data.hiddenDescendants ? `${data.hiddenDescendants} 个章节已收起` : `${data.childCount} 个直接子章节`}</span>
     {data.sectionIndex !== null && <div className="canvas-structure-drop nodrag" aria-disabled={data.readOnly}
       data-canvas-structure-target={data.readOnly ? undefined : data.sectionIndex}>{data.readOnly ? '结构投放已暂停' : '拖到此处设为子章节'}</div>}
@@ -70,7 +79,7 @@ export interface CanvasViewProps {
 
 function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditSection, onStructurePreview }: CanvasViewProps) {
   const flow = useReactFlow<ChapterNode>();
-  const [model, setModel] = useState<CanvasState | null>(null);
+  const [model, setModel] = useState<CanvasStateV2 | null>(null);
   const [bindings, setBindings] = useState<readonly CanvasBinding[]>([]);
   const [unresolvedIds, setUnresolvedIds] = useState<readonly string[]>([]);
   const [unresolvedLinkIds, setUnresolvedLinkIds] = useState<readonly string[]>([]);
@@ -85,8 +94,8 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [query, setQuery] = useState('');
-  const [history, setHistory] = useState<CanvasState[]>([]);
-  const [future, setFuture] = useState<CanvasState[]>([]);
+  const [history, setHistory] = useState<CanvasStateV2[]>([]);
+  const [future, setFuture] = useState<CanvasStateV2[]>([]);
   const [loadRevision, setLoadRevision] = useState(0);
   const [minimumHeights, setMinimumHeights] = useState<Record<string, number>>({});
   const [exporting, setExporting] = useState<'png' | 'jpg' | 'pdf' | null>(null);
@@ -96,6 +105,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   const generation = useRef(0);
   const saveInFlight = useRef(false);
   const initialLayout = useRef(false);
+  const sourceVersion = useRef<1 | 2>(1);
   const tree = useMemo(() => extractSections(document.content), [document.content]);
   const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting);
 
@@ -103,14 +113,15 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     const current = ++generation.current;
     setModel(null); setLayoutPending(true); setReadError(null); setBusy(false); setMessage('正在加载画布…'); setHistory([]); setFuture([]); setMinimumHeights({}); setSelectedLink(null);
     void (async () => {
-      const loaded = await window.mermarkd.loadCanvas();
+      const loaded = await window.mermarkd.loadCanvasV2();
       if (loaded.status === 'invalid') throw new Error(loaded.reason);
       const bytes = encodeMarkdownBytes(document.content, document.bomByteLength);
       const digest = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes));
       const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
-      const reconciled = await reconcileCanvasState(loaded.model, { bytes, content: document.content, sha256 });
+      sourceVersion.current = loaded.sourceVersion ?? 1;
+      const reconciled = await reconcileCanvasStateV2(loaded.model, { bytes, content: document.content, sha256 });
       let initial = reconciled.model;
-      if (loaded.model === null) initial = await arrangeCanvas(tree, initial, reconciled.bindings);
+      if (loaded.model === null) initial = await arrangeCanvasV2(tree, initial, reconciled.bindings);
       else {
         const oldIds = new Set(loaded.model.cards.map((card) => card.id));
         initial = { ...initial, cards: initial.cards.map((card, index) => oldIds.has(card.id) ? card : {
@@ -122,7 +133,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
       initialLayout.current = loaded.model === null;
       setModel(initial); setBindings(reconciled.bindings); setUnresolvedIds(reconciled.unresolvedCardIds);
       setUnresolvedLinkIds(reconciled.unresolvedLinkIds); setSidecarHash(loaded.sidecarSha256);
-      setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : loaded.model === null ? '初始布局 · 尚未创建画布文件' : '画布已载入');
+      setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : loaded.model === null ? '初始布局 · 尚未创建画布文件' : loaded.sourceVersion === 1 ? '旧版画布已迁移到内存 v2' : '画布 v2 已载入');
       setFrom(reconciled.bindings[0]?.id ?? ''); setTo(reconciled.bindings[1]?.id ?? reconciled.bindings[0]?.id ?? '');
       requestAnimationFrame(() => {
         if (generation.current !== current || !loaded.model) return;
@@ -136,7 +147,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     if (!initialLayout.current || !model || bindings.some((binding) => !minimumHeights[binding.id])) return;
     initialLayout.current = false;
     const current = generation.current;
-    void arrangeCanvas(tree, model, bindings, minimumHeights).then((next) => {
+    void arrangeCanvasV2(tree, model, bindings, minimumHeights).then((next) => {
       if (generation.current !== current) return;
       setModel(next);
       setTimeout(() => { if (generation.current === current) void flow.fitView({ padding: 0.15 })
@@ -144,15 +155,19 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     }).catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('初始布局失败，请重新载入画布。'); } });
   }, [bindings, minimumHeights, model, tree]);
 
-  const persist = useCallback(async (next: CanvasState, remember = true) => {
+  const persist = useCallback(async (next: CanvasStateV2, remember = true) => {
     if (!model || readOnly || saveInFlight.current) return false;
     const current = generation.current;
     saveInFlight.current = true;
     setBusy(true); setModel(next); setMessage('正在保存画布…');
     try {
-      const result = await window.mermarkd.saveCanvas({ sourceSha256: document.sourceSha256, expectedSidecarSha256: sidecarHash, model: next });
+      const needsV2 = sourceVersion.current === 2 || next.cards.some((card) => card.bodyDisplay !== 'preview' || card.contentPosition.x !== 0 || card.contentPosition.y !== 0);
+      const result = needsV2
+        ? await window.mermarkd.saveCanvasV2({ sourceSha256: document.sourceSha256, expectedSidecarSha256: sidecarHash, model: next })
+        : await window.mermarkd.saveCanvas({ sourceSha256: document.sourceSha256, expectedSidecarSha256: sidecarHash, model: projectCanvasStateV2ToV1(next) });
       if (generation.current !== current) return false;
       if (result.status !== 'saved') { setReadError(result.reason ?? '画布未保存，请重新载入。'); setMessage(result.reason ?? '画布未保存'); return false; }
+      sourceVersion.current = needsV2 ? 2 : 1;
       if (remember) { setHistory((previous) => [...previous.slice(-49), model]); setFuture([]); }
       setModel(next); setSidecarHash(result.sidecarSha256 ?? null); setMessage('画布已保存 · Markdown 未改动');
       return true;
@@ -163,17 +178,19 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   const measured = useCallback((id: string, height: number) => {
     setMinimumHeights((previous) => previous[id] === height ? previous : { ...previous, [id]: height });
   }, []);
-  const scene = useMemo(() => model ? buildCanvasScene(tree, model, bindings, minimumHeights) : null, [bindings, minimumHeights, model, tree]);
+  const scene = useMemo(() => model ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights) : null, [bindings, document.content, minimumHeights, model, tree]);
   useEffect(() => {
     if (!model || !scene) { setNodes([]); return; }
-    const cardById = new Map(model.cards.map((card) => [card.id, card]));
     setNodes(scene.cards.map((card): ChapterNode => {
       return { id: card.id, type: 'chapter', parentId: card.parentId, position: card.position,
         hidden: card.hidden, selected: card.sectionIndex !== null && card.sectionIndex === activeSection,
         draggable: !readOnly, connectable: !readOnly, style: { width: card.width, height: card.height },
         data: { ...canvasCardContent(document.content, tree, card.sectionIndex), sectionIndex: card.sectionIndex, hiddenDescendants: card.hiddenDescendants,
-          collapsed: cardById.get(card.id)!.collapsed, readOnly,
-          fold: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? { ...item, collapsed: !item.collapsed } : item) }); },
+          bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, descendantsCollapsed: card.descendantsCollapsed, readOnly,
+          fold: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? { ...item, descendantsCollapsed: !item.descendantsCollapsed } : item) }); },
+          toggleBody: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? {
+            ...item, bodyDisplay: item.bodyDisplay === 'hidden' ? 'preview' : item.bodyDisplay === 'preview' ? 'full' : 'hidden',
+          } : item) }); },
           edit: () => onEditSection(card.sectionIndex), measure: (height) => measured(card.id, height) } };
     }));
   }, [activeSection, document.content, measured, model, onEditSection, persist, readOnly, scene, tree]);
@@ -201,7 +218,8 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     if (!scene || exporting || readOnly || busy || Boolean(readError)) return;
     setExporting(format); setExportMessage(null);
     try {
-      const result = await window.mermarkd.exportCanvas({ sourceSha256: document.sourceSha256, format, cards: scene.cards, links: scene.links, padding: 48, background: '#f3f6f8' });
+      const cards = scene.cards.map(({ contentPosition: _contentPosition, bodyDisplay: _bodyDisplay, descendantsCollapsed: _descendantsCollapsed, ...card }) => card);
+      const result = await window.mermarkd.exportCanvas({ sourceSha256: document.sourceSha256, format, cards, links: scene.links, padding: 48, background: '#f3f6f8' });
       if (result.status === 'saved') setExportMessage(`已导出 ${format.toUpperCase()} · ${result.width} × ${result.height}`);
       else if (result.status === 'error') setExportMessage(result.reason);
     } catch (error) {
@@ -218,10 +236,10 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
       <button title="放大" aria-label="放大" onClick={() => void flow.zoomIn()}><ZoomIn size={18} /></button>
       <button title="缩小" aria-label="缩小" onClick={() => void flow.zoomOut()}><ZoomOut size={18} /></button>
       <button title="自动整理" aria-label="自动整理" data-canvas-arrange="true" disabled={!model || readOnly} onClick={() => {
-        if (model) void arrangeCanvas(tree, model, bindings, minimumHeights).then((next) => persist(next));
+        if (model) void arrangeCanvasV2(tree, model, bindings, minimumHeights).then((next) => persist(next));
       }}><LayoutGrid size={18} /></button>
-      <button title="全部展开" aria-label="全部展开" data-canvas-expand="true" disabled={!model || readOnly} onClick={() => model && void persist({ ...model, cards: model.cards.map((card) => ({ ...card, collapsed: false })) })}><ArrowDownToLine size={18} /></button>
-      <button title="全部收起" aria-label="全部收起" data-canvas-collapse="true" disabled={!model || readOnly} onClick={() => model && void persist({ ...model, cards: model.cards.map((card) => ({ ...card, collapsed: true })) })}><ArrowUpToLine size={18} /></button>
+      <button title="全部展开" aria-label="全部展开" data-canvas-expand="true" disabled={!model || readOnly} onClick={() => model && void persist({ ...model, cards: model.cards.map((card) => ({ ...card, descendantsCollapsed: false })) })}><ArrowDownToLine size={18} /></button>
+      <button title="全部收起" aria-label="全部收起" data-canvas-collapse="true" disabled={!model || readOnly} onClick={() => model && void persist({ ...model, cards: model.cards.map((card) => ({ ...card, descendantsCollapsed: true })) })}><ArrowUpToLine size={18} /></button>
       <button title="撤销画布操作" aria-label="撤销画布操作" data-canvas-undo="true" disabled={!history.length || readOnly} onClick={() => {
         const previous = history.at(-1); if (previous && model) void persist(previous, false).then((saved) => { if (saved) { setHistory((items) => items.slice(0, -1)); setFuture((items) => [...items, model]); } });
       }}><RotateCcw size={18} /></button>
