@@ -143,7 +143,9 @@ await writeFile(documentPath, content, 'utf8');
 await writeFile(`${documentPath}.annotations.yaml`, `schemaVersion: 1\nsource:\n  sha256: "${hash}"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n`, 'utf8');
 await mkdir(outputDirectory, { recursive: true });
 
-const scales = [1, 1.25, 1.5];
+// Cover the Windows scale factors used by the product acceptance plan,
+// including the 200% setting common on high-density laptop displays.
+const scales = [1, 1.25, 1.5, 2];
 const results = [];
 try {
   for (const scale of scales) {
