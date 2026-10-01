@@ -340,9 +340,9 @@ try {
   assert.equal(sourceMenuKeyboard, true, 'source context-menu keyboard open');
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-context-menu]')) &&
     document.activeElement?.textContent === '复制'`, 'source context menu keyboard focus');
-  await cdp.evaluate(`document.querySelector('[data-editor-context-menu]')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
+  await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
   await waitFor(cdp, `document.activeElement?.textContent === '剪切'`, 'source context menu arrow navigation');
-  await cdp.evaluate(`document.querySelector('[data-editor-context-menu]')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
+  await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
   await waitFor(cdp, `!document.querySelector('[data-editor-context-menu]')`, 'source context menu keyboard close');
   await cdp.evaluate(`(() => {
     const textarea = document.querySelector('[data-editor-textarea]');
@@ -359,6 +359,35 @@ try {
 
   await click(cdp, '[data-mode="reader"]');
   await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader after clean mode switch');
+  const readerMenuReady = await cdp.evaluate(`(() => {
+    const article = document.querySelector('.markdown-body');
+    if (!(article instanceof HTMLElement)) return false;
+    const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      const start = node.nodeValue?.indexOf('ASCII_CURSOR') ?? -1;
+      if (start < 0) continue;
+      const range = document.createRange();
+      range.setStart(node, start); range.setEnd(node, start + 'ASCII_CURSOR'.length);
+      const selection = window.getSelection();
+      selection?.removeAllRanges(); selection?.addRange(range);
+      article.focus();
+      return { selected: selection?.toString(), active: document.activeElement === article };
+    }
+    return false;
+  })()`);
+  assert.equal(readerMenuReady?.selected, 'ASCII_CURSOR', 'reader context-menu selection');
+  assert.equal(readerMenuReady?.active, true, 'reader context-menu keyboard target');
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'F10', code: 'F10', modifiers: 8 });
+  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'F10', code: 'F10', modifiers: 8 });
+  await waitFor(cdp, `Boolean(document.querySelector('[data-reader-context-menu]'))`, 'reader context menu');
+  await waitFor(cdp, `document.activeElement?.textContent === '复制正文'`, 'reader context menu keyboard focus');
+  await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
+  await waitFor(cdp, `document.querySelector('[data-reader-context-menu]')?.querySelector('[role="menuitem"]:focus')?.getAttribute('aria-label')?.includes('琥珀')`,
+    'reader context menu arrow navigation');
+  await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
+  await waitFor(cdp, `!document.querySelector('[data-reader-context-menu]') &&
+    document.activeElement === document.querySelector('.markdown-body')`, 'reader context menu keyboard close');
   await click(cdp, '[data-mode="editor"]');
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'editor after clean mode switch');
   assertSnapshotUnchanged(noWriteBefore.markdown, await snapshot(firstPath), 'clean mode switch Markdown');
