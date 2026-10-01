@@ -304,12 +304,12 @@ node tests/e2e/qa-installed.mjs
 node --expose-gc tests/qa-performance.mjs
 ```
 
-结果：单测 `202/202`，类型检查、打包、安装包生成和 A8.2/A8.3/A8.4/A8.5 打包回归通过。安装版静默安装退出码为 `0`，三档设备像素比 `1/1.25/1.5` 均完成视口内检查。
+结果：单测 `202/202`，类型检查、打包、安装包生成和 A8.2/A8.3/A8.4/A8.5 打包回归通过。安装版静默安装退出码为 `0`；在重建打包版上补测 `1/1.25/1.5/2` 四档设备像素比，四档均完成视口内检查、模式切换和卡片控件验收，DPR 与目标值一致，1× 导出 PNG 成功。
 
 ### 产物/截图
 
 - 安装包：`out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`
-- DPI 截图：`out/qa/dpi-1-installed.png`、`out/qa/dpi-125-installed.png`、`out/qa/dpi-15-installed.png`
+- DPI 截图：`out/qa/dpi-1-installed.png`、`out/qa/dpi-125-installed.png`、`out/qa/dpi-15-installed.png`、`out/qa/dpi-2-installed.png`
 - 性能代表样本：约 `5 MiB`、`1,000` 个标题、约 `200` 张可见卡片；解析约 `762 ms`，布局约 `133 ms`，观测峰值 RSS 约 `273 MiB`。
 
 ### 失败与限制
@@ -317,7 +317,7 @@ node --expose-gc tests/qa-performance.mjs
 - `Update.exe --uninstall -s` 返回成功并删除快捷方式，但留下 `.dead`、`Update.exe` 和 `app-0.1.0`；本批确认无相关进程后才手动清理，不能称为卸载器零残留通过。
 - 数十万极短行的 `5 MiB` 压力样本约 `27 s`、约 `3.4 GiB` RSS，暴露同步解析风险；这不是代表性目标样本，但必须在性能收口前处理或限制。
 - 当前证据不是没有开发工具的新 Windows 环境，也没有覆盖真实多显示器物理 DPI。
-- 本批不重复执行代码测试或构建；以上命令和结果沿用本批已执行证据。
+- 本次补测只扩展安装验收脚本的 2× DPI 档位，未改变应用运行时逻辑；代码测试和构建证据沿用本批已执行结果。
 
 ### 下一步
 
