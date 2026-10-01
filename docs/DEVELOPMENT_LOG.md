@@ -8,7 +8,7 @@
 - 记录实际命令、结果、失败原因和未完成门槛；“通过”必须说明覆盖范围，不能只写结论。
 - 代码、测试或构建发生变化时，列出主要文件；纯规划批次也要记录影响的文档和未实施的内容。
 - 截图、安装包、导出文件等产物写明相对仓库路径或当前已知位置；无法提交到仓库的本地产物要注明原因。
-- 当前工作区没有 `.git` 元数据，因此本日志不能替代 Git commit、diff 或发布记录。恢复 Git 元数据后，应在每批末尾补充对应 commit 或 PR 链接。
+- Git commit、diff 和远端发布记录与本文件并列维护；每批完成后补充对应 commit、PR 或明确的未发布状态。
 
 ## 批次模板
 
@@ -33,6 +33,57 @@
 
 ### 下一步
 ```
+
+## 2026-10-01 · Git 仓库接入与远端历史合并
+
+### 目标
+
+把当前已验收的 B0 工作区安全接入 `https://github.com/KLucen/MerMarked`，保留远端已有 A 阶段历史，并为后续批次建立可追溯的提交记录。
+
+### 用户反馈/需求来源
+
+用户要求将项目 push 到 GitHub，并要求开发过程中持续保留可供后续查看的开发记录。
+
+### 设计决定
+
+- 使用 SSH 远端 `git@github.com:KLucen/MerMarked.git` 完成网络操作；仓库目标仍对应用户提供的 HTTPS 地址。
+- 远端 `main`（`cd8a142`）与本地 B0 提交（`43d6317`）历史无共同祖先，使用普通 `--allow-unrelated-histories` 合并，不改写或强制覆盖远端。
+- 发生 add/add 冲突的共享文件保留当前 B0 工作区版本；远端历史作为合并提交的第二父提交保留。
+- `.gitignore` 保留依赖、构建产物、覆盖率、事务临时文件和日志排除规则。
+
+### 修改文件
+
+- Git 元数据、索引和合并提交
+- `docs/DEVELOPMENT_LOG.md`
+
+### 测试和命令
+
+```powershell
+git fetch origin main
+git merge origin/main --allow-unrelated-histories --no-edit
+npm.cmd test
+npm.cmd run typecheck
+npm.cmd run package
+git push --set-upstream origin main
+git ls-remote git@github.com:KLucen/MerMarked.git refs/heads/main
+```
+
+合并前已确认工作区无用户未提交改动；合并冲突已逐项复核并保留 B0 版本。测试、类型检查和打包将在合并提交前重新执行，远端引用将在 push 后核对。
+
+### 产物/截图
+
+- 远端目标：[KLucen/MerMarked](https://github.com/KLucen/MerMarked)
+- 本地 B0 提交：`43d6317`
+- 合并来源：`cd8a142`
+
+### 失败与限制
+
+- GitHub HTTPS 访问曾因 443 超时，已切换 SSH 完成 fetch/push；这不改变用户提供的仓库地址。
+- 当前仍未声称 P0 完成；安装残留、行数密集大文件和真实多显示器 DPI 仍按 A8.6 记录待处理。
+
+### 下一步
+
+完成合并提交后运行完整代码检查并推送；以远端 `main` 的实际 SHA 作为本批收尾证据。
 
 ## 2026-10-01 · A8.6 安装、性能与高 DPI 首轮验收
 
