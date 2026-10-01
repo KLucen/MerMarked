@@ -273,6 +273,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .markdown-body h4 { font-size: 16px; margin: 1.5em 0 .6em; }
 .markdown-body h5, .markdown-body h6 { font-size: 14px; margin: 1.4em 0 .6em; }
 .markdown-body p { margin: 0 0 1.15em; }
+.markdown-body .reader-editable-block { border-radius: 4px; caret-color: #315eb7; outline: 1px solid transparent; outline-offset: 5px; transition: outline-color 140ms ease, background-color 140ms ease; }
+@media (hover: hover) and (pointer: fine) { .markdown-body .reader-editable-block:hover { background: rgba(49, 94, 183, .045); outline-color: #c5d3ec; } }
+.markdown-body .reader-editable-block:focus { background: rgba(49, 94, 183, .06); outline-color: #6e97dc; }
 .markdown-body a { color: #2d61bf; text-decoration: underline; text-decoration-color: #aabfe6; text-underline-offset: 3px; }
 .markdown-body a:hover { color: #1c499d; }
 .markdown-body blockquote { border-left: 3px solid #b9c9e6; color: #66758c; margin: 1.25em 0; padding: .1em 0 .1em 1.2em; }

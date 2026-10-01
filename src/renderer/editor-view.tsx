@@ -4,7 +4,7 @@ import type { MarkdownSourceFormat } from '../core/markdown-source';
 import { countGraphemes } from '../core/reader-navigation';
 import { editorToMarkdownText, markdownToEditorText } from '../core/editor-text';
 import { executeMarkdownSelectionCommand } from '../core/markdown-selection-commands';
-import { createMarkdownEditSession, type MarkdownEditSelection } from '../core/markdown-edit-transaction';
+import { createMarkdownEditSession, type MarkdownEditSelection, type MarkdownEditSession } from '../core/markdown-edit-transaction';
 import type { MarkdownSourceSelectionAction } from '../core/markdown-selection-commands';
 import { previewSectionTransform } from '../core/section-transform';
 import type { SectionTransformPreview } from '../core/section-transform';
@@ -83,6 +83,10 @@ export interface MarkdownEditorViewProps {
   readonly recoveringDraft?: boolean;
   readonly latestSourceBackupId?: string;
   readonly onChange: (editorText: string) => void;
+  /** Shared renderer transaction. When provided, local undo history is bypassed. */
+  readonly sharedEditSession?: MarkdownEditSession | null;
+  readonly onUndo?: () => MarkdownEditSelection | null;
+  readonly onRedo?: () => MarkdownEditSelection | null;
   readonly onSave: () => void;
   readonly onCursorChange?: (cursor: SourceEditorCursor) => void;
   readonly onRecoverDraft?: (id: string) => void;
@@ -201,6 +205,9 @@ export function MarkdownEditorView({
   recoveringDraft = false,
   latestSourceBackupId,
   onChange,
+  sharedEditSession,
+  onUndo,
+  onRedo,
   onSave,
   onCursorChange,
   onRecoverDraft,
@@ -235,6 +242,7 @@ export function MarkdownEditorView({
   const [structurePreview, setStructurePreview] = useState<SectionTransformPreview | null>(null);
   const [annotationImpact, setAnnotationImpact] = useState<MarkdownAnnotationImpact | null>(null);
   const [contextMenu, setContextMenu] = useState<EditorContextMenuState | null>(null);
+  const usesSharedHistory = sharedEditSession !== undefined;
 
   useEffect(() => {
     setAnnotationImpact(null);
@@ -250,8 +258,8 @@ export function MarkdownEditorView({
   }, [documentKey, sourceFormat.lineEnding, structurePreview, value]);
 
   const search = useMemo(() => literalMatches(value, query), [query, value]);
-  const canUndo = history.current.past.length > 0;
-  const canRedo = history.current.future.length > 0;
+  const canUndo = usesSharedHistory ? Boolean(sharedEditSession?.past.length) : history.current.past.length > 0;
+  const canRedo = usesSharedHistory ? Boolean(sharedEditSession?.future.length) : history.current.future.length > 0;
 
   const updateHistoryControls = useCallback(() => setHistoryRevision((revision) => revision + 1), []);
   void historyRevision;
@@ -291,15 +299,17 @@ export function MarkdownEditorView({
       reportSelection(nextSelection);
       return;
     }
-    history.current.past.push(entry);
-    if (history.current.past.length > MAX_EDITOR_HISTORY_ENTRIES) history.current.past.shift();
-    history.current.future = [];
+    if (!usesSharedHistory) {
+      history.current.past.push(entry);
+      if (history.current.past.length > MAX_EDITOR_HISTORY_ENTRIES) history.current.past.shift();
+      history.current.future = [];
+    }
     editRevision.current += 1;
     updateHistoryControls();
     setActionMessage(null);
     setConfirmDiscardChanges(false);
     emitValue(nextValue, nextSelection);
-  }, [emitValue, reportSelection, updateHistoryControls]);
+  }, [emitValue, reportSelection, updateHistoryControls, usesSharedHistory]);
 
   const clearHistory = useCallback(() => {
     history.current = { past: [], future: [] };
@@ -422,6 +432,12 @@ export function MarkdownEditorView({
 
   const undo = useCallback(() => {
     if (readOnly || saving) return;
+    if (usesSharedHistory) {
+      const nextSelection = onUndo?.();
+      if (nextSelection) selectAfterRender({ ...nextSelection, direction: 'none' });
+      if (nextSelection) setActionMessage('已撤销上一步源码修改。');
+      return;
+    }
     const entry = history.current.past.pop();
     if (!entry) return;
     const text = currentValue.current;
@@ -435,10 +451,16 @@ export function MarkdownEditorView({
     updateHistoryControls();
     setActionMessage('已撤销上一步源码修改。');
     emitValue(next, entry.selectionBefore);
-  }, [clearHistory, emitValue, readOnly, saving, updateHistoryControls]);
+  }, [clearHistory, emitValue, onUndo, readOnly, saving, selectAfterRender, updateHistoryControls, usesSharedHistory]);
 
   const redo = useCallback(() => {
     if (readOnly || saving) return;
+    if (usesSharedHistory) {
+      const nextSelection = onRedo?.();
+      if (nextSelection) selectAfterRender({ ...nextSelection, direction: 'none' });
+      if (nextSelection) setActionMessage('已重做源码修改。');
+      return;
+    }
     const entry = history.current.future.pop();
     if (!entry) return;
     const text = currentValue.current;
@@ -452,7 +474,7 @@ export function MarkdownEditorView({
     updateHistoryControls();
     setActionMessage('已重做源码修改。');
     emitValue(next, entry.selectionAfter);
-  }, [clearHistory, emitValue, readOnly, saving, updateHistoryControls]);
+  }, [clearHistory, emitValue, onRedo, readOnly, saving, selectAfterRender, updateHistoryControls, usesSharedHistory]);
 
   const replaceCurrent = useCallback(() => {
     if (readOnly || saving || !query || search.offsets.length === 0) return;
@@ -636,7 +658,7 @@ export function MarkdownEditorView({
       const next = markdownToEditorText(content);
       const nextSelection: EditorSelection = { start: 0, end: 0, direction: 'none' };
       const entry = changedSpan(currentValue.current, next, selection.current, nextSelection);
-      if (entry) { history.current.past.push(entry); history.current.future = []; updateHistoryControls(); }
+      if (entry && !usesSharedHistory) { history.current.past.push(entry); history.current.future = []; updateHistoryControls(); }
       pendingValue.current = next; currentValue.current = next; selectAfterRender(nextSelection);
       setActionMessage('结构变更已加入撤销栈，保存前可撤销。');
     });

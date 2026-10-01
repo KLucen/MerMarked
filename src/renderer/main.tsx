@@ -18,6 +18,7 @@ import { markdownToEditorText } from '../core/editor-text';
 import { activeSectionAtMarker, countGraphemes } from '../core/reader-navigation';
 import { extractSections, sectionFragmentIds } from '../core/sections';
 import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
+import { applyReaderPlainTextEdit, isReaderPlainTextBlock } from '../core/reader-edit';
 import type { AnnotationColor } from '../core/annotations';
 import type {
   AnnotationDocumentView,
@@ -34,6 +35,7 @@ import { AppShell } from './app-shell';
 import type { AppMode, AppNotice, NoticeKind, RecentDocumentItem } from './app-shell';
 import { EditorView } from './editor-view';
 import { ReaderView } from './reader-view';
+import { ReaderEditableBlock } from './reader-editable-block';
 import { CanvasView } from './canvas-view';
 import { DocumentRecoveryView } from './document-recovery-view';
 import { collectVisibleSearchMatches } from './reader-search';
@@ -433,6 +435,25 @@ function App() {
     (message, alert) => setMessage(message, alert ? 'alert' : 'status'),
   );
   const dirtyPreview = Boolean(editorController.editor?.dirty);
+  const commitReaderTextEdit = useCallback(async (blockStart: number, replacement: string) => {
+    if (activeMode !== 'reader' || !openedDocument || dirtyPreview) return;
+    const result = applyReaderPlainTextEdit(openedDocument.content, openedDocument.bomByteLength, {
+      blockStart,
+      replacement,
+    });
+    if (!result.ok) {
+      setMessage(result.reason, 'alert');
+      return;
+    }
+    const editor = editorController.editor ?? await editorController.open();
+    if (!editor) return;
+    if (editor.content !== openedDocument.content) {
+      setMessage('文档在阅读编辑期间发生变化，请重新载入后再试。', 'alert');
+      return;
+    }
+    editorController.changeEditorText(markdownToEditorText(result.content));
+    setMessage('正文修改已暂存到编辑缓冲区；切换到编辑模式后可预览并保存。');
+  }, [activeMode, dirtyPreview, editorController, openedDocument, setMessage]);
   const [canvasStructurePreview, setCanvasStructurePreview] = useState<SectionStructurePreview | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryItems, setRecoveryItems] = useState<readonly DocumentRecoveryItem[]>([]);
@@ -1444,12 +1465,20 @@ function App() {
 
   const heading = useCallback((tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', props: ComponentProps<'h1'> & ExtraProps) => {
     const { node, children, ...rest } = props;
-    const index = node?.position?.start.offset === undefined ? undefined : headingByOffset.get(node.position.start.offset);
+    const blockStart = node?.position?.start.offset;
+    const index = blockStart === undefined ? undefined : headingByOffset.get(blockStart);
     const id = index === undefined ? undefined : sectionIds[index];
+    const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
+    if (activeMode === 'reader' && !dirtyPreview && blockStart !== undefined && block && isReaderPlainTextBlock(selectionMap!, block)) {
+      return <ReaderEditableBlock as={tag} blockStart={blockStart} sourceText={block.visibleText} enabled
+        onCommit={commitReaderTextEdit} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
+        {children}
+      </ReaderEditableBlock>;
+    }
     const Tag = tag;
     return <Tag {...rest} id={id} tabIndex={id ? -1 : undefined}
       data-source-block-start={node?.position?.start.offset}>{children}</Tag>;
-  }, [headingByOffset, sectionIds]);
+  }, [activeMode, commitReaderTextEdit, dirtyPreview, headingByOffset, sectionIds, selectionMap]);
 
   const components = useMemo<Components>(() => ({
     h1: (props) => heading('h1', props),
@@ -1458,9 +1487,15 @@ function App() {
     h4: (props) => heading('h4', props),
     h5: (props) => heading('h5', props),
     h6: (props) => heading('h6', props),
-    p: ({ node, children, ...props }) => (
-      <p {...props} data-source-block-start={node?.position?.start.offset}>{children}</p>
-    ),
+    p: ({ node, children, ...props }) => {
+      const blockStart = node?.position?.start.offset;
+      const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
+      if (activeMode === 'reader' && !dirtyPreview && block && blockStart !== undefined && isReaderPlainTextBlock(selectionMap!, block)) {
+        return <ReaderEditableBlock as="p" blockStart={blockStart} sourceText={block.visibleText} enabled
+          onCommit={commitReaderTextEdit} className={props.className}>{children}</ReaderEditableBlock>;
+      }
+      return <p {...props} data-source-block-start={blockStart}>{children}</p>;
+    },
     table: ({ node: _node, children, ...props }) => (
       <div className="table-scroll" role="region" aria-label="表格，可水平滚动" tabIndex={0}>
         <table {...props}>{children}</table>
@@ -1476,7 +1511,7 @@ function App() {
       <LocalImage src={src} alt={alt} documentPath={openedDocument?.path ?? ''} />
     ),
     input: ({ node: _node, ...props }) => <input {...props} disabled readOnly />,
-  }), [openedDocument?.path, heading, openLink]);
+  }), [activeMode, commitReaderTextEdit, dirtyPreview, heading, openedDocument?.path, openLink, selectionMap]);
 
   const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
   const noteItems = annotationView?.items.filter((item) => item.kind === 'note') ?? [];
@@ -1635,6 +1670,9 @@ function App() {
           recoveringDraft={editorController.busy}
           latestSourceBackupId={editorController.editor.latestSourceBackupId}
           onChange={editorController.changeEditorText}
+          sharedEditSession={editorController.editSession}
+          onUndo={editorController.undo}
+          onRedo={editorController.redo}
           onSave={() => void editorController.save()}
           onRecoverDraft={(id) => void editorController.restoreDraft(id)}
           onDiscardDraft={(id) => void editorController.discardDraft(id)}
