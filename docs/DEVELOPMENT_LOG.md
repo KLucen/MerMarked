@@ -68,13 +68,14 @@ git push --set-upstream origin main
 git ls-remote git@github.com:KLucen/MerMarked.git refs/heads/main
 ```
 
-合并前已确认工作区无用户未提交改动；合并冲突已逐项复核并保留 B0 版本。测试、类型检查和打包将在合并提交前重新执行，远端引用将在 push 后核对。
+合并前已确认工作区无用户未提交改动；合并冲突已逐项复核并保留 B0 版本。合并后全量单测 `210/210`、类型检查和 Electron Windows x64 生产打包均通过。普通 push 成功，远端 `main` 已核对为 `29f19c8361f70956c6bbbb9ae6c5c3707a08352f`。
 
 ### 产物/截图
 
 - 远端目标：[KLucen/MerMarked](https://github.com/KLucen/MerMarked)
 - 本地 B0 提交：`43d6317`
 - 合并来源：`cd8a142`
+- 合并提交及已推送远端：`29f19c8`
 
 ### 失败与限制
 
@@ -83,7 +84,7 @@ git ls-remote git@github.com:KLucen/MerMarked.git refs/heads/main
 
 ### 下一步
 
-完成合并提交后运行完整代码检查并推送；以远端 `main` 的实际 SHA 作为本批收尾证据。
+合并提交 `29f19c8` 已推送；后续批次继续在每批收尾重新检查并更新本日志。
 
 ## 2026-10-01 · A8.6 安装、性能与高 DPI 首轮验收
 
