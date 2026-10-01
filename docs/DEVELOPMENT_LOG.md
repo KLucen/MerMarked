@@ -710,4 +710,4 @@ npm.cmd run test:e2e:a8-5
 
 结果：类型检查、diff 检查、镜像打包、A7.3b/A8.4/A8.5 打包回归全部通过；A7.3b 的键盘断言覆盖 `Shift+F10`、第一个菜单项焦点、ArrowDown 到下一项和 Escape 关闭。阅读 inline Markdown 映射、跨块编辑和真实中文 IME 设备验收仍未完成。
 
-本批代码提交待最终复查后生成；完成后先推送再进入阅读 inline 映射批次。
+本批代码提交：`56e2d0b`，已推送到 `origin/main`；日志核验提交随后补入远端结果，再进入阅读 inline 映射批次。
