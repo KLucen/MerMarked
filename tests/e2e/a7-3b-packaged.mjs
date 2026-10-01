@@ -316,6 +316,22 @@ try {
   assert.match(sourceContract.status, /CRLF/);
   assert.match(sourceContract.status, /末尾无换行/);
 
+  const contextMenuReady = await cdp.evaluate(`(() => {
+    const textarea = document.querySelector('[data-editor-textarea]');
+    if (!(textarea instanceof HTMLTextAreaElement)) return false;
+    const start = textarea.value.indexOf('ANCHOR_TEXT');
+    textarea.focus();
+    textarea.setSelectionRange(start, start + 'ANCHOR_TEXT'.length);
+    textarea.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 160, clientY: 160 }));
+    return true;
+  })()`);
+  assert.equal(contextMenuReady, true, 'source context-menu selection');
+  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-context-menu]'))`, 'source context menu');
+  await cdp.evaluate(`Array.from(document.querySelectorAll('[data-editor-context-menu] button')).find((button) => button.textContent === '加粗')?.click()`);
+  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('**ANCHOR_TEXT**')`, 'source bold command');
+  await pressShortcut(cdp, 'z');
+  await waitFor(cdp, `!document.querySelector('[data-editor-textarea]')?.value.includes('**ANCHOR_TEXT**')`, 'source bold undo');
+
   await click(cdp, '[data-mode="reader"]');
   await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader after clean mode switch');
   await click(cdp, '[data-mode="editor"]');
