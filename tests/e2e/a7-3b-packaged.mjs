@@ -330,6 +330,28 @@ try {
   })()`);
   assert.equal(contextMenuReady, true, 'source context-menu selection');
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-context-menu]'))`, 'source context menu');
+  const sourceMenuKeyboard = await cdp.evaluate(`(() => {
+    const textarea = document.querySelector('[data-editor-textarea]');
+    if (!(textarea instanceof HTMLTextAreaElement)) return false;
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'F10', shiftKey: true }));
+    return true;
+  })()`);
+  assert.equal(sourceMenuKeyboard, true, 'source context-menu keyboard open');
+  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-context-menu]')) &&
+    document.activeElement?.textContent === '复制'`, 'source context menu keyboard focus');
+  await cdp.evaluate(`document.querySelector('[data-editor-context-menu]')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
+  await waitFor(cdp, `document.activeElement?.textContent === '剪切'`, 'source context menu arrow navigation');
+  await cdp.evaluate(`document.querySelector('[data-editor-context-menu]')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
+  await waitFor(cdp, `!document.querySelector('[data-editor-context-menu]')`, 'source context menu keyboard close');
+  await cdp.evaluate(`(() => {
+    const textarea = document.querySelector('[data-editor-textarea]');
+    if (!(textarea instanceof HTMLTextAreaElement)) return;
+    const start = textarea.value.indexOf('ANCHOR_TEXT');
+    textarea.focus(); textarea.setSelectionRange(start, start + 'ANCHOR_TEXT'.length);
+    textarea.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 160, clientY: 160 }));
+  })()`);
+  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-context-menu]'))`, 'source context menu reopened');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-editor-context-menu] button')).find((button) => button.textContent === '加粗')?.click()`);
   await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('**ANCHOR_TEXT**')`, 'source bold command');
   await pressShortcut(cdp, 'z');

@@ -242,6 +242,7 @@ export function MarkdownEditorView({
   const [structurePreview, setStructurePreview] = useState<SectionTransformPreview | null>(null);
   const [annotationImpact, setAnnotationImpact] = useState<MarkdownAnnotationImpact | null>(null);
   const [contextMenu, setContextMenu] = useState<EditorContextMenuState | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
   const usesSharedHistory = sharedEditSession !== undefined;
 
   useEffect(() => {
@@ -395,6 +396,11 @@ export function MarkdownEditorView({
   }, [contextMenu]);
 
   useEffect(() => {
+    if (!contextMenu) return;
+    window.requestAnimationFrame(() => contextMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus());
+  }, [contextMenu]);
+
+  useEffect(() => {
     if (!active || focusRequestKey === null || focusOffset === null) return;
     const offset = Math.max(0, Math.min(focusOffset, currentValue.current.length));
     selectAfterRender({ start: offset, end: offset, direction: 'none' });
@@ -516,6 +522,17 @@ export function MarkdownEditorView({
   }, [active, onSave, openSearch, readOnly, saving]);
 
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+      event.preventDefault();
+      const textarea = event.currentTarget;
+      const box = textarea.getBoundingClientRect();
+      openContextMenuAt(
+        Math.max(8, Math.min(box.left + 12, window.innerWidth - 248)),
+        Math.max(8, Math.min(box.top + 28, window.innerHeight - 330)),
+        textarea,
+      );
+      return;
+    }
     if (!(event.ctrlKey || event.metaKey)) return;
     const key = event.key.toLocaleLowerCase();
     if (key === 'z' && !event.shiftKey) {
@@ -536,13 +553,32 @@ export function MarkdownEditorView({
 
   const sourceIsReadOnly = readOnly || sourceFormat.lineEnding === 'mixed';
 
+  const openContextMenuAt = (left: number, top: number, textarea: HTMLTextAreaElement) => {
+    const nextSelection = selectionFor(textarea);
+    reportSelection(nextSelection);
+    setContextMenu({ left, top, selection: nextSelection, source: currentValue.current, revision: editRevision.current });
+  };
+
   const openContextMenu = (event: React.MouseEvent<HTMLTextAreaElement>) => {
     event.preventDefault();
-    const nextSelection = selectionFor(event.currentTarget);
-    reportSelection(nextSelection);
     const left = Math.max(8, Math.min(event.clientX, window.innerWidth - 248));
     const top = Math.max(8, Math.min(event.clientY, window.innerHeight - 330));
-    setContextMenu({ left, top, selection: nextSelection, source: currentValue.current, revision: editRevision.current });
+    openContextMenuAt(left, top, event.currentTarget);
+  };
+
+  const handleContextMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)')];
+    if (event.key === 'Escape') { event.preventDefault(); setContextMenu(null); textareaRef.current?.focus({ preventScroll: true }); return; }
+    if (items.length === 0) return;
+    const current = document.activeElement instanceof HTMLButtonElement ? items.indexOf(document.activeElement) : -1;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length;
+      items[next]?.focus();
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      (document.activeElement as HTMLButtonElement | null)?.click();
+    }
   };
 
   const selectionFromContext = useCallback(() => {
@@ -896,8 +932,8 @@ export function MarkdownEditorView({
           autoCapitalize="off" autoCorrect="off" spellCheck={false} wrap="off" />
       </div>
 
-      {contextMenu && <div className="editor-context-menu" role="menu" aria-label="源码选区操作" data-editor-context-menu="true"
-        style={{ left: contextMenu.left, top: contextMenu.top }} onPointerDown={(event) => event.stopPropagation()}>
+      {contextMenu && <div ref={contextMenuRef} className="editor-context-menu" role="menu" aria-label="源码选区操作" data-editor-context-menu="true" tabIndex={-1}
+        style={{ left: contextMenu.left, top: contextMenu.top }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={handleContextMenuKeyDown}>
         <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
           onClick={() => void copyContextSelection()} disabled={contextMenu.selection.start === contextMenu.selection.end}>复制</button>
         <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
