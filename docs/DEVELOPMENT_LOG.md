@@ -250,6 +250,9 @@ git diff --check
 
 结果：全量单测 `220/220`、类型检查、Windows x64 打包、B1、A8.4 和 A8.5 打包版回归通过；v2 场景测试覆盖独立正文位置、全文状态、后代折叠和隐藏箭头端点。
 
+- B1.1+B2 提交：`ff29709e6039b7b2181028b9ab8a9c1092847311`
+- 远端核验：`git ls-remote origin refs/heads/main` 返回同一 SHA（2026-10-02）。
+
 ### 产物/截图
 
 - `out/MerMarkd-win32-x64/MerMarkd.exe`
