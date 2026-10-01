@@ -9,6 +9,10 @@ import type { SectionTransformOperation } from '../core/section-transform';
 const api: MerMarkdApi = Object.freeze({
   appName: 'MerMarkd',
   openMarkdown: () => ipcRenderer.invoke('document:open'),
+  newMarkdown: () => ipcRenderer.invoke('document:new'),
+  openRecentMarkdown: (documentPath: string) => ipcRenderer.invoke('document:open-recent', documentPath),
+  listRecentDocuments: () => ipcRenderer.invoke('document:recent-list'),
+  removeRecentDocument: (documentPath: string) => ipcRenderer.invoke('document:recent-remove', documentPath),
   openDroppedMarkdown: (file: File) => {
     let droppedPath: string;
     try {

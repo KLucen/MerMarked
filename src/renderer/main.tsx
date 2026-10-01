@@ -7,6 +7,7 @@ import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
+import { Clock3, FilePlus2, FolderOpen, X } from 'lucide-react';
 import {
   detectUnsupportedMarkdownExtensions,
   readingSanitizeSchema,
@@ -26,10 +27,11 @@ import type {
   OpenedMarkdownDocument,
   SectionStructurePreview,
   DocumentRecoveryItem, DocumentRecoveryPreview,
+  RecentMarkdownDocument,
 } from '../types/reader-api';
 import type { SectionTransformOperation } from '../core/section-transform';
 import { AppShell } from './app-shell';
-import type { AppMode, AppNotice, NoticeKind } from './app-shell';
+import type { AppMode, AppNotice, NoticeKind, RecentDocumentItem } from './app-shell';
 import { EditorView } from './editor-view';
 import { ReaderView } from './reader-view';
 import { CanvasView } from './canvas-view';
@@ -206,9 +208,66 @@ function LocalImage({ src, alt, documentPath }: {
       </span>;
 }
 
+function relativeRecentLabel(openedAt: number): string {
+  const elapsed = Math.max(0, Date.now() - openedAt);
+  if (elapsed < 60_000) return '刚刚打开';
+  if (elapsed < 3_600_000) return `${Math.max(1, Math.floor(elapsed / 60_000))} 分钟前`;
+  if (elapsed < 86_400_000) return `${Math.max(1, Math.floor(elapsed / 3_600_000))} 小时前`;
+  return new Date(openedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+}
+
+function StartPage({
+  opening,
+  recentDocuments,
+  onOpen,
+  onNew,
+  onOpenRecent,
+  onRemoveRecent,
+}: {
+  readonly opening: boolean;
+  readonly recentDocuments: readonly RecentDocumentItem[];
+  readonly onOpen: () => void;
+  readonly onNew: () => void;
+  readonly onOpenRecent: (path: string) => void;
+  readonly onRemoveRecent: (path: string) => void;
+}) {
+  return <main className="start-page">
+    <section className="start-hero" aria-labelledby="start-page-title">
+      <span className="start-eyebrow">MER MARKD WORKSPACE</span>
+      <h1 id="start-page-title">从一份 Markdown 开始</h1>
+      <p>在同一个安静的工作区里阅读、编辑和整理章节结构。</p>
+      <div className="start-actions">
+        <button className="welcome-open" type="button" data-start-open="true" onClick={onOpen} disabled={opening}>
+          <FolderOpen size={16} aria-hidden="true" />{opening ? '正在打开…' : '打开 Markdown'}
+        </button>
+        <button className="start-secondary-action" type="button" data-start-new="true" onClick={onNew} disabled={opening}>
+          <FilePlus2 size={16} aria-hidden="true" />新建文档
+        </button>
+      </div>
+      <span className="welcome-note">文件保存在本地；模式切换和阅读批注不会改写 Markdown。</span>
+    </section>
+    <section className="start-recent" aria-labelledby="recent-documents-title">
+      <div className="start-section-heading"><div><span className="start-section-kicker"><Clock3 size={13} aria-hidden="true" />RECENT</span><h2 id="recent-documents-title">最近打开</h2></div>
+        <span>{recentDocuments.length ? `${recentDocuments.length} 份` : '空'}</span></div>
+      {recentDocuments.length === 0 ? <p className="start-recent-empty">打开过的 Markdown 会出现在这里。</p> : <ul className="start-recent-list">
+        {recentDocuments.map((item) => <li key={item.path}>
+          <button type="button" onClick={() => onOpenRecent(item.path)} disabled={opening} title={item.path}>
+            <strong>{item.name}</strong><span>{item.path}</span><small>{relativeRecentLabel(item.openedAt)}</small>
+          </button>
+          <button type="button" className="start-recent-remove" onClick={() => onRemoveRecent(item.path)} aria-label={`移除最近文档 ${item.name}`}><X size={14} /></button>
+        </li>)}
+      </ul>}
+    </section>
+  </main>;
+}
+
 function App() {
   const [openedDocument, setOpenedDocument] = useState<OpenedMarkdownDocument | null>(null);
+  const [recentDocuments, setRecentDocuments] = useState<readonly RecentMarkdownDocument[]>([]);
   const [activeMode, setActiveMode] = useState<AppMode>('reader');
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [editorFocusRequest, setEditorFocusRequest] = useState(0);
   const [opening, setOpening] = useState(false);
   const [notice, setNotice] = useState<AppNotice | null>(null);
@@ -266,6 +325,13 @@ function App() {
   const setMessage = useCallback((text: string | null, kind: NoticeKind = 'status') => {
     setNotice(text ? { kind, text } : null);
   }, []);
+
+  const refreshRecentDocuments = useCallback(async () => {
+    try { setRecentDocuments(await window.mermarkd.listRecentDocuments()); }
+    catch { setRecentDocuments([]); }
+  }, []);
+
+  useEffect(() => { void refreshRecentDocuments(); }, [refreshRecentDocuments]);
 
   const clearReaderSelection = useCallback((options: ClearSelectionOptions = {}) => {
     if (selectionFrame.current !== null) {
@@ -432,11 +498,15 @@ function App() {
     setEditingNoteId(null);
     setReattachTargetId(null);
     setAnnotationPanelOpen(window.matchMedia('(min-width: 1101px)').matches);
+    setLeftSidebarOpen(false);
+    setRightSidebarOpen(false);
+    setFocusMode(false);
     setAnnotationSaving(false);
     setSummaryCopying(false);
     window.scrollTo({ top: 0 });
+    void refreshRecentDocuments();
     void refreshAnnotations(epoch);
-  }, [clearReaderSearchPaint, clearReaderSelection, editorController.reset, refreshAnnotations]);
+  }, [clearReaderSearchPaint, clearReaderSelection, editorController.reset, refreshAnnotations, refreshRecentDocuments]);
 
   useEffect(() => {
     const media = window.matchMedia('(min-width: 1101px)');
@@ -578,6 +648,53 @@ function App() {
       setOpening(false);
     }
   }, [dirtyPreview, setMessage, showOpenedDocument]);
+
+  const newMarkdown = useCallback(async () => {
+    if (dirtyPreview) {
+      setMessage('请先保存或放弃当前编辑，再新建 Markdown。', 'alert');
+      return;
+    }
+    setOpening(true);
+    setMessage(null);
+    try {
+      const opened = await window.mermarkd.newMarkdown();
+      if (opened) {
+        showOpenedDocument(opened);
+        setMessage('已创建空白 Markdown；切换到编辑模式开始输入。');
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '新建 Markdown 失败，请重试。', 'alert');
+    } finally {
+      setOpening(false);
+    }
+  }, [dirtyPreview, setMessage, showOpenedDocument]);
+
+  const openRecentMarkdown = useCallback(async (documentPath: string) => {
+    if (dirtyPreview) {
+      setMessage('请先保存或放弃当前编辑，再打开最近文档。', 'alert');
+      return;
+    }
+    setOpening(true);
+    setMessage(null);
+    try {
+      const opened = await window.mermarkd.openRecentMarkdown(documentPath);
+      showOpenedDocument(opened);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '最近文档无法打开，可能已被移动或删除。', 'alert');
+      void refreshRecentDocuments();
+    } finally {
+      setOpening(false);
+    }
+  }, [dirtyPreview, refreshRecentDocuments, setMessage, showOpenedDocument]);
+
+  const removeRecentMarkdown = useCallback(async (documentPath: string) => {
+    try {
+      await window.mermarkd.removeRecentDocument(documentPath);
+      await refreshRecentDocuments();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '无法移除最近文档记录。', 'alert');
+    }
+  }, [refreshRecentDocuments, setMessage]);
 
   const openDroppedMarkdown = useCallback(async (file: File) => {
     if (opening || dirtyPreview) {
@@ -1414,6 +1531,14 @@ function App() {
   return (
     <AppShell document={openedDocument} activeMode={activeMode} dirty={dirtyPreview}
       opening={opening || editorController.opening} dropActive={dropActive} notice={notice}
+      recentDocuments={recentDocuments}
+      leftSidebarOpen={leftSidebarOpen} rightSidebarOpen={rightSidebarOpen} focusMode={focusMode}
+      onNewDocument={() => void newMarkdown()}
+      onOpenRecent={(documentPath) => void openRecentMarkdown(documentPath)}
+      onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)}
+      onToggleLeftSidebar={() => { setLeftSidebarOpen((open) => !open); setRightSidebarOpen(false); }}
+      onToggleRightSidebar={() => { setRightSidebarOpen((open) => !open); setLeftSidebarOpen(false); }}
+      onToggleFocusMode={() => { setFocusMode((open) => !open); setLeftSidebarOpen(false); setRightSidebarOpen(false); }}
       sourceChangeMessage={!dirtyPreview && annotationView?.canReloadSource
         ? annotationView.reason ?? '原 Markdown 已在外部修改，请重新载入后继续。' : null}
       search={{ open: readerSearchOpen, query: readerSearchQuery,
@@ -1464,13 +1589,9 @@ function App() {
           }} />
       </div>}
       {!openedDocument ? (
-        <main className="welcome">
-          <div className="welcome-icon" aria-hidden="true">#</div>
-          <h1>从一份 Markdown 开始</h1>
-          <p>打开本地 .md 文件，阅读排版后的正文，并通过目录快速定位章节。</p>
-          <button className="welcome-open" type="button" onClick={() => void openMarkdown()} disabled={opening}>{opening ? '正在打开…' : '选择 Markdown 文件'}</button>
-          <span className="welcome-note">文件以只读方式载入，本次阅读不会修改原文。</span>
-        </main>
+        <StartPage opening={opening} recentDocuments={recentDocuments} onOpen={() => void openMarkdown()}
+          onNew={() => void newMarkdown()} onOpenRecent={(documentPath) => void openRecentMarkdown(documentPath)}
+          onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)} />
       ) : activeMode === 'cards' ? (
         <CanvasView document={readerDocument!} dirty={dirtyPreview} activeSection={activeSection}
           onSectionChange={setActiveSection} onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} />

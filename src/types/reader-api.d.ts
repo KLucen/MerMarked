@@ -16,6 +16,12 @@ export interface OpenedMarkdownDocument {
   readonly recoveryPending?: boolean;
 }
 
+export interface RecentMarkdownDocument {
+  readonly path: string;
+  readonly name: string;
+  readonly openedAt: number;
+}
+
 export interface DocumentRecoveryItem {
   readonly id: string;
   readonly status: 'prepared' | 'interrupted' | 'conflict' | 'incomplete' | 'invalid';
@@ -283,6 +289,10 @@ export interface ReadingSummaryCopyResult {
 export interface MerMarkdApi {
   readonly appName: 'MerMarkd';
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
+  newMarkdown(): Promise<OpenedMarkdownDocument | null>;
+  openRecentMarkdown(path: string): Promise<OpenedMarkdownDocument>;
+  listRecentDocuments(): Promise<readonly RecentMarkdownDocument[]>;
+  removeRecentDocument(path: string): Promise<void>;
   openDroppedMarkdown(file: File): Promise<OpenedMarkdownDocument>;
   reloadMarkdown(): Promise<OpenedMarkdownDocument>;
   listDocumentRecovery(): Promise<readonly DocumentRecoveryItem[]>;

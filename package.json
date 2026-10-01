@@ -21,6 +21,7 @@
     "test:e2e:a8-3": "node tests/e2e/a8-3-packaged.mjs",
     "test:e2e:a8-4": "node tests/e2e/a8-4-packaged.mjs",
     "test:e2e:a8-5": "node tests/e2e/a8-5-packaged.mjs",
+    "test:e2e:b1": "node tests/e2e/b1-shell-packaged.mjs",
     "package": "electron-forge package",
     "make": "electron-forge make"
   },
