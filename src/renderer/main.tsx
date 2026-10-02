@@ -18,7 +18,13 @@ import { markdownToEditorText } from '../core/editor-text';
 import { activeSectionAtMarker, countGraphemes } from '../core/reader-navigation';
 import { extractSections, sectionFragmentIds } from '../core/sections';
 import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
-import { applyReaderMappedTextEdit, isReaderMappedTextBlock } from '../core/reader-edit';
+import {
+  applyReaderMappedTextEdit,
+  isReaderMappedTextBlock,
+  resolveReaderInlineFormatSelection,
+} from '../core/reader-edit';
+import { applyMarkdownSelectionCommand } from '../core/markdown-selection-commands';
+import type { MarkdownSourceSelectionAction } from '../core/markdown-selection-commands';
 import type { AnnotationColor } from '../core/annotations';
 import type {
   AnnotationDocumentView,
@@ -1164,6 +1170,63 @@ function App() {
     }
   }, [closeReaderContextMenu, openedDocument, readerContextMenu, setMessage]);
 
+  const canApplyReaderFormat = useCallback((action: MarkdownSourceSelectionAction, menu: ReaderContextMenuState | null) => {
+    if (!menu || !openedDocument || dirtyPreview || (action !== 'bold' && action !== 'italic' && action !== 'quote')) return false;
+    return resolveReaderInlineFormatSelection(
+      openedDocument.content,
+      openedDocument.bomByteLength,
+      action,
+      menu.probe,
+    ).ok;
+  }, [dirtyPreview, openedDocument]);
+
+  const applyReaderContextFormat = useCallback(async (
+    action: Extract<MarkdownSourceSelectionAction, 'bold' | 'italic' | 'quote'>,
+    frozenProbe: SuccessfulSelectionProbe,
+  ) => {
+    if (activeMode !== 'reader' || dirtyPreview || !openedDocument) return;
+    const epoch = documentEpoch.current;
+    const sourcePath = openedDocument.path;
+    const sourceSha256 = openedDocument.sourceSha256;
+    const sourceContent = openedDocument.content;
+    const resolved = resolveReaderInlineFormatSelection(
+      sourceContent,
+      openedDocument.bomByteLength,
+      action,
+      frozenProbe,
+    );
+    if (!resolved.ok) {
+      setMessage(resolved.reason, 'alert');
+      return;
+    }
+    // The renderer session uses LF offsets. Convert the proven source span
+    // without guessing through a CRLF or a leading BOM.
+    const sourceOffset = sourceContent.startsWith('\uFEFF') ? 1 : 0;
+    const normalized = markdownToEditorText(sourceContent);
+    const start = markdownToEditorText(sourceContent.slice(0, sourceOffset + resolved.sourceStart)).length;
+    const end = markdownToEditorText(sourceContent.slice(0, sourceOffset + resolved.sourceEnd)).length;
+    let editor = editorController.editor;
+    if (!editor) editor = await editorController.open();
+    if (!editor || activeMode !== 'reader' || documentEpoch.current !== epoch ||
+        openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
+        openedDocument?.content !== sourceContent || editor.dirty || editor.content !== sourceContent) {
+      setMessage('文档在阅读格式编辑期间发生变化，请重新载入后再试。', 'alert');
+      return;
+    }
+    if (action === 'quote' && sourceContent.startsWith('\uFEFF') && resolved.sourceStart === 0) {
+      setMessage('带 BOM 的文档首段暂不能直接加引用格式，请在源码视图完成。', 'alert');
+      return;
+    }
+    try {
+      const next = applyMarkdownSelectionCommand(normalized, { start, end }, action);
+      if (!next.changed) return;
+      editorController.changeEditorText(next.content);
+      setMessage(action === 'bold' ? '已在阅读模式暂存加粗。' : action === 'italic' ? '已在阅读模式暂存斜体。' : '已在阅读模式暂存引用格式。');
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '阅读格式编辑失败。', 'alert');
+    }
+  }, [activeMode, dirtyPreview, editorController, openedDocument, setMessage]);
+
   useEffect(() => {
     closeReaderContextMenu(false);
   }, [activeMode, closeReaderContextMenu, openedDocument?.sourceSha256]);
@@ -1869,6 +1932,23 @@ function App() {
               <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
                 onClick={() => void copyReaderContextSelection()}>复制正文</button>
               <span className="editor-context-separator" role="separator" />
+              <span className="reader-context-label">格式</span>
+              {([
+                ['bold', '加粗'],
+                ['italic', '斜体'],
+                ['quote', '引用'],
+              ] as const).map(([action, label]) => {
+                const enabled = canApplyReaderFormat(action, readerContextMenu);
+                return <button key={action} type="button" role="menuitem" disabled={!enabled}
+                  title={enabled ? undefined : '仅支持单个可逆 Markdown 文字片段'}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    const probe = readerContextMenu.probe;
+                    closeReaderContextMenu();
+                    void applyReaderContextFormat(action, probe);
+                  }}>{label}</button>;
+              })}
+              <span className="editor-context-separator" role="separator" />
               <span className="reader-context-label">高亮选区</span>
               <div className="reader-context-palette" role="group" aria-label="选择高亮颜色">
                 {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button" role="menuitem"
@@ -1879,7 +1959,7 @@ function App() {
               </div>
               <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
                 onClick={() => { const probe = readerContextMenu.probe; closeReaderContextMenu(); openNoteComposer(probe); }} disabled={!canChangeAnnotations}>添加批注</button>
-              <span className="reader-context-note">格式编辑请在源码视图完成</span>
+              <span className="reader-context-note">复杂选区请切到源码视图编辑</span>
             </div>}
           </main>
           {!dirtyPreview && annotationPanelOpen && <>

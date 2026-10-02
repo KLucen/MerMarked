@@ -36,6 +36,10 @@ export interface SelectionMap {
 export type SelectionResolution =
   | {
       readonly ok: true;
+      /** Parser block and visible UTF-16 range used to validate inline edits. */
+      readonly blockStart: number;
+      readonly visibleStart: number;
+      readonly visibleEnd: number;
       /** Half-open UTF-8 byte range in the original file, including BOM bytes. */
       readonly startByte: number;
       readonly endByte: number;
@@ -235,6 +239,9 @@ export function resolveSelection(
   }
   return {
     ok: true,
+    blockStart,
+    visibleStart,
+    visibleEnd,
     startByte: map.bomByteLength + encoder.encode(map.source.slice(0, sourceStart)).length,
     endByte: map.bomByteLength + encoder.encode(map.source.slice(0, sourceEnd)).length,
     sourceExact: map.source.slice(sourceStart, sourceEnd),

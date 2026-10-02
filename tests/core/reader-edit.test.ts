@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyReaderMappedTextEdit, applyReaderPlainTextEdit } from '../../src/core/reader-edit.ts';
+import {
+  applyReaderMappedTextEdit,
+  applyReaderPlainTextEdit,
+  resolveReaderInlineFormatSelection,
+} from '../../src/core/reader-edit.ts';
 
 test('edits a plain paragraph while preserving BOM and CRLF bytes', () => {
   const source = '\uFEFF# 标题\r\n\r\n原始正文\r\n';
@@ -64,4 +68,48 @@ test('rejects encoded text and edits spanning multiple inline leaves', () => {
     replacement: '核心内容',
   });
   assert.equal(leaves.ok, false);
+});
+
+test('allows formatting one exact inline leaf and returns source offsets', () => {
+  const source = '前 **重点** 与 [链接](https://example.test)。';
+  const map = resolveReaderInlineFormatSelection(source, 0, 'bold', {
+    blockStart: 0,
+    visibleStart: 2,
+    visibleEnd: 4,
+  });
+  assert.equal(map.ok, true);
+  if (map.ok) {
+    assert.equal(source.slice(map.sourceStart, map.sourceEnd), '重点');
+    assert.equal(map.sourceExact, '重点');
+  }
+
+  const quote = resolveReaderInlineFormatSelection(source, 0, 'quote', {
+    blockStart: 0,
+    visibleStart: 0,
+    visibleEnd: 1,
+  });
+  assert.equal(quote.ok, true);
+});
+
+test('keeps reader formatting read-only for cross-leaf, encoded, and heading quote selections', () => {
+  const crossLeaf = resolveReaderInlineFormatSelection('**粗体** 普通', 0, 'italic', {
+    blockStart: 0,
+    visibleStart: 0,
+    visibleEnd: 5,
+  });
+  assert.equal(crossLeaf.ok, false);
+
+  const encoded = resolveReaderInlineFormatSelection('A &amp; B', 0, 'bold', {
+    blockStart: 0,
+    visibleStart: 0,
+    visibleEnd: 3,
+  });
+  assert.equal(encoded.ok, false);
+
+  const headingQuote = resolveReaderInlineFormatSelection('# 标题', 0, 'quote', {
+    blockStart: 0,
+    visibleStart: 0,
+    visibleEnd: 2,
+  });
+  assert.equal(headingQuote.ok, false);
 });

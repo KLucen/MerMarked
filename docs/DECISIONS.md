@@ -282,3 +282,11 @@
 - 理由：把完整渲染 DOM 反序列化回 Markdown 会破坏原始字节和 sidecar 锚点；单 leaf 差分能证明替换范围且不会覆盖相邻语法。模式切换后明确焦点是编辑器可用性的必要条件，且不改变 Markdown 或 sidecar 的写入边界。
 - 未完成：跨多个 inline leaf 的结构化格式编辑、列表/表格/代码/Setext、跨块编辑和真实中文 IME 设备验收仍需单独批次；本 ADR 不放宽复杂 Markdown 的只读策略。
 - 验证：新增 2 项核心映射测试，A7.3b 验证粗体/链接保留、实体/跨 leaf 拒绝、跨模式 undo/redo 与阅读菜单键盘流程；A8.4/A8.5 回归、类型检查、`239/239` 全量单测、镜像 `package/make` 通过。
+
+## ADR-032：阅读格式命令只对单一 exact leaf 开放并复用源码命令
+
+- 日期：2026-10-02；状态：B5.4 当前切片已通过核心、类型检查、打包和结构/恢复回归。
+- 决定：阅读右键菜单的加粗、斜体和引用先由 `resolveReaderInlineFormatSelection` 验证同一 paragraph/ATX heading 内的单一 exact text leaf、源码边界和可见边界。验证通过后，将 CRLF/BOM 源偏移转换为 renderer LF 偏移，复用 `markdown-selection-commands` 的局部替换，再交给 `useMarkdownEditor` 的 `changeEditorText` 进入共享撤销会话。
+- 约束：引用不作用于标题，带 BOM 文档首段也拒绝引用以避免把 BOM 移出文件首字节；实体、转义、代码、跨 leaf、跨块和不确定块保持只读。格式操作只改 Markdown 内存缓冲区，未保存前不写 Markdown、批注 YAML 或画布 JSON。
+- 理由：单 leaf 映射可以证明格式标记插入范围，不需要把完整渲染 DOM 反序列化回 Markdown；沿用已有源码命令避免另建一套格式语义，同时共享 session 保证跨模式撤销一致。
+- 验证：新增 reader-edit 核心格式边界测试与带 BOM 引用回归；全量单测 `242/242`、类型检查、diff 检查、镜像 `package/make`、A7.3b/A8.4/A8.5 打包版全部通过。最终 Setup.exe 大小 `154,900,992` 字节，SHA-256 `019AF4D77E8412D3A4FB8EFD4D954E900207391D405146B4135E08EFB2635F84`。
