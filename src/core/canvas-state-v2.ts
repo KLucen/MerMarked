@@ -6,6 +6,8 @@ import type { ReadySectionTransformPreview } from './section-transform.ts';
 
 export const CANVAS_SCHEMA_VERSION_V2 = 2 as const;
 export const CANVAS_BODY_DISPLAYS = ['hidden', 'preview', 'full'] as const;
+export const CANVAS_DEFAULT_CARD_SIZE = { width: 328, height: 176 } as const;
+export const CANVAS_CARD_SIZE_LIMITS = { minWidth: 180, maxWidth: 1_200, minHeight: 120, maxHeight: 1_600 } as const;
 export type CanvasBodyDisplay = typeof CANVAS_BODY_DISPLAYS[number];
 
 export interface CanvasCardV2 {
@@ -15,6 +17,8 @@ export interface CanvasCardV2 {
   readonly position: { readonly x: number; readonly y: number };
   /** Position of this chapter's content card inside its own derived group. */
   readonly contentPosition: { readonly x: number; readonly y: number };
+  /** User-adjustable content card dimensions. Older v2 files omit this field. */
+  readonly size?: { readonly width: number; readonly height: number };
   readonly bodyDisplay: CanvasBodyDisplay;
   readonly descendantsCollapsed: boolean;
 }
@@ -94,6 +98,14 @@ function position(value: unknown): { readonly x: number; readonly y: number } {
   return { x: finiteNumber(entry.x, -maxPosition, maxPosition), y: finiteNumber(entry.y, -maxPosition, maxPosition) };
 }
 
+function size(value: unknown): { readonly width: number; readonly height: number } {
+  const entry = record(value, ['width', 'height']);
+  // Keep dimensions large enough for the title/actions row while preventing a
+  // malformed sidecar from creating an unbounded React Flow node.
+  return { width: finiteNumber(entry.width, CANVAS_CARD_SIZE_LIMITS.minWidth, CANVAS_CARD_SIZE_LIMITS.maxWidth),
+    height: finiteNumber(entry.height, CANVAS_CARD_SIZE_LIMITS.minHeight, CANVAS_CARD_SIZE_LIMITS.maxHeight) };
+}
+
 function links(value: unknown, cardIds: ReadonlySet<string>): readonly CanvasLink[] {
   if (!Array.isArray(value) || value.length > 20_000) invalid();
   const linkIds = new Set<string>();
@@ -115,14 +127,19 @@ export function validateCanvasStateV2(value: unknown): CanvasStateV2 {
   if (!Array.isArray(entry.cards) || entry.cards.length > 10_000) invalid();
   const cardIds = new Set<string>();
   const cards = entry.cards.map((item): CanvasCardV2 => {
-    const card = record(item, ['id', 'anchor', 'position', 'contentPosition', 'bodyDisplay', 'descendantsCollapsed']);
+    if (!item || typeof item !== 'object' || Array.isArray(item)) invalid();
+    const raw = item as Record<string, unknown>;
+    const allowed = ['id', 'anchor', 'position', 'contentPosition', 'size', 'bodyDisplay', 'descendantsCollapsed'];
+    if (Object.keys(raw).some((key) => !allowed.includes(key)) ||
+      ['id', 'anchor', 'position', 'contentPosition', 'bodyDisplay', 'descendantsCollapsed'].some((key) => !Object.hasOwn(raw, key))) invalid();
+    const card = raw;
     const cardId = id(card.id);
     if (cardIds.has(cardId) || typeof card.descendantsCollapsed !== 'boolean' ||
       !CANVAS_BODY_DISPLAYS.includes(card.bodyDisplay as CanvasBodyDisplay)) invalid();
     cardIds.add(cardId);
     return { id: cardId, anchor: validateCanvasAnchor(card.anchor), position: position(card.position),
-      contentPosition: position(card.contentPosition), bodyDisplay: card.bodyDisplay as CanvasBodyDisplay,
-      descendantsCollapsed: card.descendantsCollapsed };
+      contentPosition: position(card.contentPosition), ...(card.size === undefined ? {} : { size: size(card.size) }),
+      bodyDisplay: card.bodyDisplay as CanvasBodyDisplay, descendantsCollapsed: card.descendantsCollapsed };
   });
   return { schemaVersion: CANVAS_SCHEMA_VERSION_V2, source: sourceValue, cards, links: links(entry.links, cardIds), viewport: viewport(entry.viewport) };
 }
@@ -141,6 +158,7 @@ export function migrateCanvasStateV1ToV2(value: CanvasState): CanvasStateV2 {
       anchor: cloneAnchor(card.anchor),
       position: { ...card.position },
       contentPosition: { x: 0, y: 0 },
+      size: CANVAS_DEFAULT_CARD_SIZE,
       bodyDisplay: 'preview',
       descendantsCollapsed: card.collapsed,
     })),
@@ -200,6 +218,7 @@ function fromV1(state: CanvasState, previous: ReadonlyMap<string, CanvasCardV2>)
       const old = previous.get(card.id);
       return { id: card.id, anchor: card.anchor, position: { ...card.position },
         contentPosition: old ? { ...old.contentPosition } : { x: 0, y: 0 },
+        ...(old?.size ? { size: { ...old.size } } : { size: CANVAS_DEFAULT_CARD_SIZE }),
         bodyDisplay: old?.bodyDisplay ?? 'preview', descendantsCollapsed: old?.descendantsCollapsed ?? card.collapsed };
     }), links: state.links.map((link) => ({ ...link })), viewport: { ...state.viewport } });
 }
@@ -275,6 +294,7 @@ export function mergeCanvasStateV1Reconciliation(
         anchor: cloneAnchor(card.anchor),
         position: { ...card.position },
         contentPosition: previous ? { ...previous.contentPosition } : { x: 0, y: 0 },
+        ...(previous?.size ? { size: { ...previous.size } } : { size: CANVAS_DEFAULT_CARD_SIZE }),
         bodyDisplay: previous?.bodyDisplay ?? 'preview',
         descendantsCollapsed: previous?.descendantsCollapsed ?? card.collapsed,
       };

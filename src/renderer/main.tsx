@@ -61,12 +61,15 @@ interface ReaderContextMenuState {
   readonly probe: SuccessfulSelectionProbe;
   readonly epoch: number;
   readonly sourceSha256: string;
+  /** Exact rendered Markdown used to build the frozen source probe. */
+  readonly contentSnapshot: string;
 }
 
 interface ValidatedSelectionTarget {
   readonly epoch: number;
   readonly sourceSha256: string;
   readonly probe: SuccessfulSelectionProbe;
+  readonly contentSnapshot: string;
   readonly range: Range;
   readonly origin: HTMLElement;
 }
@@ -335,6 +338,10 @@ function App() {
   const mutationInFlight = useRef(false);
   const selectionTarget = useRef<ValidatedSelectionTarget | null>(null);
   const selectionFeedbackRange = useRef<Range | null>(null);
+  // The context menu is mounted after the native contextmenu event. Focus can
+  // move to its first item before React has attached `readerContextMenuRef`,
+  // so keep a synchronous guard for that short transition as well.
+  const readerContextMenuPending = useRef(false);
   const selectionFrame = useRef<number | null>(null);
   const selectionAnnouncementTimer = useRef<number | null>(null);
   const readerSearchMatches = useRef<readonly VisibleSearchMatch[]>([]);
@@ -352,6 +359,7 @@ function App() {
   const closeReaderContextMenu = useCallback((restoreFocus = true) => {
     const trigger = readerContextMenuTrigger.current;
     readerContextMenuTrigger.current = null;
+    readerContextMenuPending.current = false;
     setReaderContextMenu(null);
     if (restoreFocus) window.requestAnimationFrame(() => trigger?.focus({ preventScroll: true }));
   }, []);
@@ -466,13 +474,17 @@ function App() {
     (message, alert) => setMessage(message, alert ? 'alert' : 'status'),
   );
   const dirtyPreview = Boolean(editorController.editor?.dirty);
+  const readerDocument = useMemo(() => {
+    if (!openedDocument || !editorController.editor?.dirty) return openedDocument;
+    return { ...openedDocument, content: editorController.editor.content };
+  }, [editorController.editor, openedDocument]);
   const commitReaderTextEdit = useCallback(async (blockStart: number, sourceText: string, replacement: string) => {
-    if (activeMode !== 'reader' || !openedDocument || dirtyPreview) return;
+    if (activeMode !== 'reader' || !openedDocument || !readerDocument) return;
     const epoch = documentEpoch.current;
     const sourcePath = openedDocument.path;
     const sourceSha256 = openedDocument.sourceSha256;
-    const sourceContent = openedDocument.content;
-    const result = applyReaderMappedTextEdit(sourceContent, openedDocument.bomByteLength, {
+    const sourceContent = readerDocument.content;
+    const result = applyReaderMappedTextEdit(sourceContent, readerDocument.bomByteLength, {
       blockStart,
       sourceText,
       replacement,
@@ -485,33 +497,34 @@ function App() {
     if (!editor) return;
     if (activeMode !== 'reader' || documentEpoch.current !== epoch ||
       openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
-      openedDocument?.content !== sourceContent || editor.content !== sourceContent || editor.dirty) {
+      editor.content !== sourceContent) {
       setMessage('文档在阅读编辑期间发生变化，请重新载入后再试。', 'alert');
       return;
     }
     editorController.changeEditorText(markdownToEditorText(result.content));
     setMessage('正文修改已暂存到编辑缓冲区；切换到编辑模式后可预览并保存。');
-  }, [activeMode, dirtyPreview, editorController, openedDocument, setMessage]);
+  }, [activeMode, editorController, openedDocument, readerDocument, setMessage]);
   const [canvasStructurePreview, setCanvasStructurePreview] = useState<SectionStructurePreview | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryItems, setRecoveryItems] = useState<readonly DocumentRecoveryItem[]>([]);
   const [recoveryPreview, setRecoveryPreview] = useState<DocumentRecoveryPreview | null>(null);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
-  const readerDocument = useMemo(() => {
-    if (!openedDocument || !editorController.editor?.dirty) return openedDocument;
-    return { ...openedDocument, content: editorController.editor.content };
-  }, [editorController.editor, openedDocument]);
   const documentForReaderAnalysis = activeMode === 'reader' ? readerDocument : openedDocument;
   const sectionTree = useMemo(
     () => documentForReaderAnalysis ? extractSections(documentForReaderAnalysis.content) : null,
     [documentForReaderAnalysis],
   );
   const selectionMap = useMemo(
-    () => documentForReaderAnalysis && activeMode === 'reader' && !dirtyPreview
-      ? buildSelectionMap(documentForReaderAnalysis.content, documentForReaderAnalysis.bomByteLength)
-      : null,
-    [activeMode, dirtyPreview, documentForReaderAnalysis],
+    () => {
+      if (!documentForReaderAnalysis || activeMode !== 'reader') return null;
+      try {
+        return buildSelectionMap(documentForReaderAnalysis.content, documentForReaderAnalysis.bomByteLength);
+      } catch {
+        return null;
+      }
+    },
+    [activeMode, documentForReaderAnalysis],
   );
   const sectionIds = useMemo(() => {
     if (!sectionTree) return [];
@@ -1075,6 +1088,7 @@ function App() {
       epoch: documentEpoch.current,
       sourceSha256: openedDocument.sourceSha256,
       probe: result,
+      contentSnapshot: readerDocument?.content ?? openedDocument.content,
       range: preservedRange,
       origin,
     };
@@ -1088,12 +1102,13 @@ function App() {
       setSelectionAnnouncement(`已选择 ${countGraphemes(result.displayQuote)} 个字符，可以添加高亮或批注。`);
       selectionAnnouncementTimer.current = null;
     }, 180);
-  }, [openedDocument, positionSelectionFeedback]);
+  }, [openedDocument, positionSelectionFeedback, readerDocument]);
 
   const readSelection = useCallback((): SelectionProbeResult => {
     const cached = selectionTarget.current;
     if (cached && openedDocument && cached.epoch === documentEpoch.current &&
-        cached.sourceSha256 === openedDocument.sourceSha256) return cached.probe;
+        cached.sourceSha256 === openedDocument.sourceSha256 &&
+        cached.contentSnapshot === readerDocument?.content) return cached.probe;
     const selection = window.getSelection();
     if (!selection || selection.rangeCount !== 1 || selection.isCollapsed) {
       return { ok: false, reason: '请先在正文中选择一段文字。' };
@@ -1102,10 +1117,10 @@ function App() {
     const result = resolveRangeSelection(range);
     rememberSelection(range, result);
     return result;
-  }, [openedDocument, rememberSelection, resolveRangeSelection]);
+  }, [openedDocument, readerDocument, rememberSelection, resolveRangeSelection]);
 
   const openReaderContextMenu = useCallback((event: MouseEvent<HTMLElement>) => {
-    if (dirtyPreview || !openedDocument) return;
+    if (!openedDocument) return;
     const article = window.document.querySelector<HTMLElement>('.markdown-body');
     const selection = window.getSelection();
     if (!article || !selection || selection.rangeCount !== 1 || selection.isCollapsed) return;
@@ -1114,6 +1129,7 @@ function App() {
     const probe = readSelection();
     if (!probe.ok) return;
     event.preventDefault();
+    readerContextMenuPending.current = true;
     readerContextMenuTrigger.current = event.currentTarget;
     setReaderContextMenu({
       left: Math.max(8, Math.min(event.clientX, window.innerWidth - 244)),
@@ -1121,8 +1137,9 @@ function App() {
       probe,
       epoch: documentEpoch.current,
       sourceSha256: openedDocument.sourceSha256,
+      contentSnapshot: readerDocument?.content ?? openedDocument.content,
     });
-  }, [dirtyPreview, openedDocument, readSelection]);
+  }, [openedDocument, readSelection, readerDocument]);
 
   const handleReaderContextMenuKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
     const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)')];
@@ -1140,7 +1157,7 @@ function App() {
   }, [closeReaderContextMenu]);
 
   const handleReaderContextShortcut = useCallback((event: ReactKeyboardEvent<HTMLElement>) => {
-    if (activeMode !== 'reader' || dirtyPreview || !openedDocument ||
+    if (activeMode !== 'reader' || !openedDocument ||
         !(event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) return;
     // The context-menu state may lag one render behind after Escape. The
     // mounted menu is authoritative so a second keyboard invocation is not
@@ -1150,19 +1167,22 @@ function App() {
     if (!probe.ok) return;
     event.preventDefault();
     event.stopPropagation();
+    readerContextMenuPending.current = true;
     const box = event.currentTarget.getBoundingClientRect();
     readerContextMenuTrigger.current = event.currentTarget;
     setReaderContextMenu({
       left: Math.max(8, Math.min(box.left + 12, window.innerWidth - 244)),
       top: Math.max(8, Math.min(box.top + 28, window.innerHeight - READER_CONTEXT_MENU_HEIGHT)),
       probe, epoch: documentEpoch.current, sourceSha256: openedDocument.sourceSha256,
+      contentSnapshot: readerDocument?.content ?? openedDocument.content,
     });
-  }, [activeMode, dirtyPreview, openedDocument, readSelection]);
+  }, [activeMode, openedDocument, readSelection, readerDocument]);
 
   const copyReaderContextSelection = useCallback(async () => {
     const menu = readerContextMenu;
     if (!menu || menu.epoch !== documentEpoch.current || !openedDocument ||
-        menu.sourceSha256 !== openedDocument.sourceSha256) return;
+        !readerDocument || menu.sourceSha256 !== openedDocument.sourceSha256 ||
+        menu.contentSnapshot !== readerDocument.content) return;
     try {
       if (!navigator.clipboard?.writeText) throw new Error('当前环境不支持剪贴板写入。');
       await navigator.clipboard.writeText(menu.probe.displayQuote);
@@ -1172,31 +1192,32 @@ function App() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '复制失败。', 'alert');
     }
-  }, [closeReaderContextMenu, openedDocument, readerContextMenu, setMessage]);
+  }, [closeReaderContextMenu, openedDocument, readerContextMenu, readerDocument, setMessage]);
 
   const readerSourceSelection = useCallback((menu: ReaderContextMenuState) => {
-    if (!openedDocument || menu.epoch !== documentEpoch.current || menu.sourceSha256 !== openedDocument.sourceSha256) {
+    if (!openedDocument || !readerDocument || menu.epoch !== documentEpoch.current ||
+        menu.sourceSha256 !== openedDocument.sourceSha256 || menu.contentSnapshot !== readerDocument.content) {
       setMessage('文档或选区已变化，请重新选择文字。', 'alert');
       return null;
     }
-    const resolved = resolveReaderMappedSelection(openedDocument.content, openedDocument.bomByteLength, menu.probe);
+    const resolved = resolveReaderMappedSelection(readerDocument.content, readerDocument.bomByteLength, menu.probe);
     if (!resolved.ok) {
       setMessage(resolved.reason, 'alert');
       return null;
     }
-    const bomOffset = openedDocument.content.startsWith('\uFEFF') ? 1 : 0;
+    const bomOffset = readerDocument.content.startsWith('\uFEFF') ? 1 : 0;
     const before = (offset: number) => markdownToEditorText(
-      openedDocument.content.slice(0, bomOffset + offset),
+      readerDocument.content.slice(0, bomOffset + offset),
     ).length;
     return { start: before(resolved.sourceStart), end: before(resolved.sourceEnd) };
-  }, [openedDocument, setMessage]);
+  }, [openedDocument, readerDocument, setMessage]);
 
   const applyReaderContextTextCommand = useCallback(async (
     action: Extract<MarkdownSourceSelectionAction, 'cut' | 'delete' | 'paste'>,
     menu: ReaderContextMenuState,
     pasted?: string,
   ) => {
-    if (activeMode !== 'reader' || dirtyPreview || !openedDocument) return false;
+    if (activeMode !== 'reader' || !openedDocument || !readerDocument) return false;
     const selection = readerSourceSelection(menu);
     if (!selection) return false;
     if (action === 'paste' && (pasted === undefined || !isReaderPlainTextPaste(pasted))) {
@@ -1206,12 +1227,12 @@ function App() {
     const epoch = documentEpoch.current;
     const sourcePath = openedDocument.path;
     const sourceSha256 = openedDocument.sourceSha256;
-    const sourceContent = openedDocument.content;
+    const sourceContent = readerDocument.content;
     let editor = editorController.editor;
     if (!editor) editor = await editorController.open();
     if (!editor || activeMode !== 'reader' || documentEpoch.current !== epoch ||
         openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
-        openedDocument?.content !== sourceContent || editor.dirty || editor.content !== sourceContent) {
+        editor.content !== sourceContent) {
       setMessage('文档在阅读编辑期间发生变化，请重新载入后再试。', 'alert');
       return false;
     }
@@ -1230,20 +1251,23 @@ function App() {
       setMessage(error instanceof Error ? error.message : '阅读编辑失败。', 'alert');
       return false;
     }
-  }, [activeMode, dirtyPreview, editorController, openedDocument, readerSourceSelection, setMessage]);
+  }, [activeMode, editorController, openedDocument, readerDocument, readerSourceSelection, setMessage]);
 
   const cutReaderContextSelection = useCallback(async () => {
     const menu = readerContextMenu;
-    if (!menu || !openedDocument || menu.epoch !== documentEpoch.current || menu.sourceSha256 !== openedDocument.sourceSha256) return;
+    if (!menu || !openedDocument || menu.epoch !== documentEpoch.current ||
+        !readerDocument || menu.sourceSha256 !== openedDocument.sourceSha256 ||
+        menu.contentSnapshot !== readerDocument.content) return;
     try {
       if (!navigator.clipboard?.writeText) throw new Error('当前环境不支持剪贴板写入。');
       await navigator.clipboard.writeText(menu.probe.displayQuote);
-      if (documentEpoch.current !== menu.epoch || openedDocument.sourceSha256 !== menu.sourceSha256) return;
+      if (documentEpoch.current !== menu.epoch || openedDocument.sourceSha256 !== menu.sourceSha256 ||
+          !readerDocument || readerDocument.content !== menu.contentSnapshot) return;
       if (await applyReaderContextTextCommand('cut', menu)) closeReaderContextMenu();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '剪切失败，未修改正文。', 'alert');
     }
-  }, [applyReaderContextTextCommand, closeReaderContextMenu, openedDocument, readerContextMenu, setMessage]);
+  }, [applyReaderContextTextCommand, closeReaderContextMenu, openedDocument, readerContextMenu, readerDocument, setMessage]);
 
   const deleteReaderContextSelection = useCallback(async () => {
     const menu = readerContextMenu;
@@ -1264,29 +1288,30 @@ function App() {
   }, [applyReaderContextTextCommand, closeReaderContextMenu, readerContextMenu, setMessage]);
 
   const canApplyReaderFormat = useCallback((action: MarkdownSourceSelectionAction, menu: ReaderContextMenuState | null) => {
-    if (!menu || !openedDocument || dirtyPreview || (action !== 'bold' && action !== 'italic' && action !== 'quote')) return false;
+    if (!menu || !openedDocument || !readerDocument || menu.contentSnapshot !== readerDocument.content ||
+        (action !== 'bold' && action !== 'italic' && action !== 'quote')) return false;
     return resolveReaderInlineFormatSelection(
-      openedDocument.content,
-      openedDocument.bomByteLength,
+      readerDocument.content,
+      readerDocument.bomByteLength,
       action,
       menu.probe,
     ).ok;
-  }, [dirtyPreview, openedDocument]);
+  }, [openedDocument, readerDocument]);
 
   const canApplyReaderText = useCallback((menu: ReaderContextMenuState | null) => {
-    if (!menu || !openedDocument || dirtyPreview) return false;
-    return resolveReaderMappedSelection(openedDocument.content, openedDocument.bomByteLength, menu.probe).ok;
-  }, [dirtyPreview, openedDocument]);
+    if (!menu || !openedDocument || !readerDocument || menu.contentSnapshot !== readerDocument.content) return false;
+    return resolveReaderMappedSelection(readerDocument.content, readerDocument.bomByteLength, menu.probe).ok;
+  }, [openedDocument, readerDocument]);
 
   const applyReaderContextFormat = useCallback(async (
     action: Extract<MarkdownSourceSelectionAction, 'bold' | 'italic' | 'quote'>,
     frozenProbe: SuccessfulSelectionProbe,
   ) => {
-    if (activeMode !== 'reader' || dirtyPreview || !openedDocument) return;
+    if (activeMode !== 'reader' || !openedDocument || !readerDocument) return;
     const epoch = documentEpoch.current;
     const sourcePath = openedDocument.path;
     const sourceSha256 = openedDocument.sourceSha256;
-    const sourceContent = openedDocument.content;
+    const sourceContent = readerDocument.content;
     const resolved = resolveReaderInlineFormatSelection(
       sourceContent,
       openedDocument.bomByteLength,
@@ -1307,7 +1332,7 @@ function App() {
     if (!editor) editor = await editorController.open();
     if (!editor || activeMode !== 'reader' || documentEpoch.current !== epoch ||
         openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
-        openedDocument?.content !== sourceContent || editor.dirty || editor.content !== sourceContent) {
+        editor.content !== sourceContent) {
       setMessage('文档在阅读格式编辑期间发生变化，请重新载入后再试。', 'alert');
       return;
     }
@@ -1323,20 +1348,23 @@ function App() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : '阅读格式编辑失败。', 'alert');
     }
-  }, [activeMode, dirtyPreview, editorController, openedDocument, setMessage]);
+  }, [activeMode, editorController, openedDocument, readerDocument, setMessage]);
 
   useEffect(() => {
     closeReaderContextMenu(false);
   }, [activeMode, closeReaderContextMenu, openedDocument?.sourceSha256]);
 
   useEffect(() => {
-    if (activeMode !== 'reader' || !openedDocument || dirtyPreview) return;
+    if (activeMode !== 'reader' || !openedDocument || !readerDocument) return;
     const epoch = documentEpoch.current;
     const sourceSha256 = openedDocument.sourceSha256;
     const handleSelectionChange = () => {
       // Moving focus into the context menu can collapse the native selection.
       // Keep the already validated probe alive until the menu action closes.
-      if (readerContextMenuRef.current) return;
+      // A context-menu focus transition can collapse the native selection
+      // before the menu element is mounted. Keep the frozen range/probe until
+      // the menu explicitly closes so actions such as “添加批注” still use it.
+      if (readerContextMenuRef.current || readerContextMenuPending.current) return;
       const selection = window.getSelection();
       const article = window.document.querySelector<HTMLElement>('.markdown-body');
       if (!selection || !article || selection.rangeCount !== 1) return;
@@ -1372,8 +1400,8 @@ function App() {
       document.removeEventListener('selectionchange', handleSelectionChange);
       clearReaderSelection();
     };
-  }, [activeMode, clearReaderSelection, dirtyPreview, openedDocument,
-    positionSelectionFeedback, rememberSelection, resolveRangeSelection]);
+  }, [activeMode, clearReaderSelection, openedDocument, positionSelectionFeedback,
+    readerDocument, rememberSelection, resolveRangeSelection]);
 
   useEffect(() => {
     if (!selectionProbe) return;
@@ -1697,7 +1725,7 @@ function App() {
     const index = blockStart === undefined ? undefined : headingByOffset.get(blockStart);
     const id = index === undefined ? undefined : sectionIds[index];
     const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-    if (activeMode === 'reader' && !dirtyPreview && blockStart !== undefined && block && isReaderMappedTextBlock(selectionMap!, block)) {
+    if (activeMode === 'reader' && blockStart !== undefined && block && isReaderMappedTextBlock(selectionMap!, block)) {
       return <ReaderEditableBlock as={tag} blockStart={blockStart} sourceText={block.visibleText} enabled
         onCommit={commitReaderTextEdit} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
         {children}
@@ -1706,7 +1734,7 @@ function App() {
     const Tag = tag;
     return <Tag {...rest} id={id} tabIndex={id ? -1 : undefined}
       data-source-block-start={node?.position?.start.offset}>{children}</Tag>;
-  }, [activeMode, commitReaderTextEdit, dirtyPreview, headingByOffset, sectionIds, selectionMap]);
+  }, [activeMode, commitReaderTextEdit, headingByOffset, sectionIds, selectionMap]);
 
   const components = useMemo<Components>(() => ({
     h1: (props) => heading('h1', props),
@@ -1718,7 +1746,7 @@ function App() {
     p: ({ node, children, ...props }) => {
       const blockStart = node?.position?.start.offset;
       const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-      if (activeMode === 'reader' && !dirtyPreview && block && blockStart !== undefined && isReaderMappedTextBlock(selectionMap!, block)) {
+      if (activeMode === 'reader' && block && blockStart !== undefined && isReaderMappedTextBlock(selectionMap!, block)) {
         return <ReaderEditableBlock as="p" blockStart={blockStart} sourceText={block.visibleText} enabled
           onCommit={commitReaderTextEdit} className={props.className}>{children}</ReaderEditableBlock>;
       }
@@ -1728,6 +1756,12 @@ function App() {
       <div className="table-scroll" role="region" aria-label="表格，可水平滚动" tabIndex={0}>
         <table {...props}>{children}</table>
       </div>
+    ),
+    td: ({ node, children, ...props }) => (
+      <td {...props} data-source-block-start={node?.position?.start.offset}>{children}</td>
+    ),
+    th: ({ node, children, ...props }) => (
+      <th {...props} data-source-block-start={node?.position?.start.offset}>{children}</th>
     ),
     pre: ({ node: _node, children, ...props }) => (
       <pre {...props} tabIndex={0} aria-label="代码块，可水平滚动">{children}</pre>
@@ -1739,7 +1773,7 @@ function App() {
       <LocalImage src={src} alt={alt} documentPath={openedDocument?.path ?? ''} />
     ),
     input: ({ node: _node, ...props }) => <input {...props} disabled readOnly />,
-  }), [activeMode, commitReaderTextEdit, dirtyPreview, heading, openedDocument?.path, openLink, selectionMap]);
+  }), [activeMode, commitReaderTextEdit, heading, openedDocument?.path, openLink, selectionMap]);
 
   const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
   const noteItems = annotationView?.items.filter((item) => item.kind === 'note') ?? [];

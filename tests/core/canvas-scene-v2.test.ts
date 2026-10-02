@@ -29,6 +29,18 @@ test('v2 scene keeps parent content position independent from its child group', 
   assert.ok(parent.width >= 190 + 328);
 });
 
+test('v2 scene uses persisted card dimensions when growing the chapter group', async () => {
+  const input = source('# Parent\nParent body\n');
+  const reconciled = await reconcileCanvasStateV2(null, input, () => 'card-parent');
+  const model = { ...reconciled.model, cards: reconciled.model.cards.map((card) => ({ ...card, size: { width: 520, height: 260 } })) };
+  const scene = buildCanvasSceneV2(input.content, extractSections(input.content), model, reconciled.bindings);
+  const card = scene.cards[0];
+  assert.deepEqual(card.size, { width: 520, height: 260 });
+  assert.equal(scene.contents[0].width, 520);
+  assert.ok(card.width >= 520 + 16);
+  assert.ok(card.height >= 260 + 16);
+});
+
 test('v2 scene hides descendants through the parent fold while retaining link endpoints', async () => {
   const input = source('# Parent\n\n## Child\n\n### Grandchild\n');
   const reconciled = await reconcileCanvasStateV2(null, input, (() => { let index = 0; return () => `card-${index++}`; })());

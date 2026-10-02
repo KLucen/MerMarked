@@ -60,16 +60,21 @@ test('a selection across inline markup includes the intervening source syntax', 
   assert.equal(bytes.subarray(result.startByte, result.endByte).toString('utf8'), result.sourceExact);
 });
 
-test('rejects unsupported inline code and ambiguous interior of escaped text', async () => {
+test('maps complete inline code while rejecting an ambiguous interior boundary', async () => {
   const { map } = await fixture();
   const block = map.blocks.find((candidate) => candidate.visibleText.includes('跨节点前半段'));
   assert.ok(block);
   const bad = resolveSelection(map, block.blockStart, 0, 0);
   assert.deepEqual(bad.ok, false);
 
-  const unsupported = map.blocks.find((candidate) => !candidate.supported && candidate.reason?.includes('inlineCode'));
-  assert.ok(unsupported);
-  assert.equal(resolveSelection(map, unsupported.blockStart, 0, 1).ok, false);
+  const inlineCode = map.blocks.find((candidate) => candidate.visibleText === '这里有 行内代码。');
+  assert.ok(inlineCode);
+  const codeStart = inlineCode.visibleText.indexOf('行内代码');
+  const interior = resolveSelection(map, inlineCode.blockStart, codeStart + 1, codeStart + 3);
+  assert.equal(interior.ok, false);
+  const complete = resolveSelection(map, inlineCode.blockStart, codeStart, codeStart + '行内代码'.length);
+  assert.equal(complete.ok, true);
+  if (complete.ok) assert.equal(complete.sourceExact, '`行内代码`');
   assert.equal(resolveSelection(map, -999, 0, 1).ok, false);
 });
 
@@ -110,6 +115,19 @@ test('maps a plain no-BOM source and checks inconsistent metadata', () => {
   if (result.ok) assert.deepEqual([result.startByte, result.endByte], [12, 18]);
   assert.throws(() => buildSelectionMap('\uFEFF# Hi', 0), /BOM/);
   assert.throws(() => buildSelectionMap('Hi', 2), /BOM/);
+});
+
+test('maps visible text in GFM table cells to the cell source range', () => {
+  const map = buildSelectionMap('| 名称 | 值 |\n| --- | --- |\n| Alpha | 中文 😀 |', 0);
+  const cell = map.blocks.find((candidate) => candidate.kind === 'tableCell' && candidate.visibleText === '中文 😀');
+  assert.ok(cell);
+  const start = cell.visibleText.indexOf('中文');
+  const result = resolveSelection(map, cell.blockStart, start, cell.visibleText.length);
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.displayQuote, '中文 😀');
+    assert.equal(result.sourceExact, '中文 😀');
+  }
 });
 
 function selectedAnchor(map: SelectionMap, quote: string, occurrence = 0) {

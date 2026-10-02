@@ -33,6 +33,17 @@ test('v2 serialization roundtrips independent content position and body display'
   assert.deepEqual(parseCanvasStateV2Json(serializeCanvasStateV2Json(changed)), changed);
 });
 
+test('v2 roundtrips adjustable card dimensions and keeps older cards without size readable', async () => {
+  const input = source('# A\nbody\n');
+  const v1 = await reconcileCanvasState(null, input, () => 'card-a');
+  const migrated = migrateCanvasStateV1ToV2(v1.model);
+  const resized = { ...migrated, cards: migrated.cards.map((card) => ({ ...card, size: { width: 520, height: 260 } })) };
+  assert.deepEqual(parseCanvasStateV2Json(serializeCanvasStateV2Json(resized)), resized);
+  const legacy = { ...resized, cards: resized.cards.map(({ size: _size, ...card }) => card) };
+  assert.equal(parseCanvasStateV2Json(serializeCanvasStateV2Json(legacy)).cards[0].size, undefined);
+  assert.throws(() => validateCanvasStateV2({ ...resized, cards: [{ ...resized.cards[0], size: { width: 100, height: 260 } }] }));
+});
+
 test('v2 validation rejects old collapsed field, unknown fields and invalid display values', async () => {
   const input = source('# A\n');
   const v1 = await reconcileCanvasState(null, input, () => 'card-a');
