@@ -21,6 +21,7 @@ import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../
 import {
   applyReaderMappedTextEdit,
   isReaderMappedTextBlock,
+  resolveReaderMappedSelection,
   resolveReaderInlineFormatSelection,
 } from '../core/reader-edit';
 import { applyMarkdownSelectionCommand } from '../core/markdown-selection-commands';
@@ -95,6 +96,7 @@ const ACTIVE_SELECTION_MARK_NAME = 'mermarkd-active-selection';
 const SEARCH_MARK_NAME = 'mermarkd-search-match';
 const CURRENT_SEARCH_MARK_NAME = 'mermarkd-current-search-match';
 const READING_POSITION_TOP = 148;
+const READER_CONTEXT_MENU_HEIGHT = 520;
 
 const NO_TAG = '__none__';
 const NEW_TAG = '__new__';
@@ -1113,7 +1115,7 @@ function App() {
     readerContextMenuTrigger.current = event.currentTarget;
     setReaderContextMenu({
       left: Math.max(8, Math.min(event.clientX, window.innerWidth - 244)),
-      top: Math.max(8, Math.min(event.clientY, window.innerHeight - 310)),
+      top: Math.max(8, Math.min(event.clientY, window.innerHeight - READER_CONTEXT_MENU_HEIGHT)),
       probe,
       epoch: documentEpoch.current,
       sourceSha256: openedDocument.sourceSha256,
@@ -1150,7 +1152,7 @@ function App() {
     readerContextMenuTrigger.current = event.currentTarget;
     setReaderContextMenu({
       left: Math.max(8, Math.min(box.left + 12, window.innerWidth - 244)),
-      top: Math.max(8, Math.min(box.top + 28, window.innerHeight - 310)),
+      top: Math.max(8, Math.min(box.top + 28, window.innerHeight - READER_CONTEXT_MENU_HEIGHT)),
       probe, epoch: documentEpoch.current, sourceSha256: openedDocument.sourceSha256,
     });
   }, [activeMode, dirtyPreview, openedDocument, readSelection]);
@@ -1170,6 +1172,92 @@ function App() {
     }
   }, [closeReaderContextMenu, openedDocument, readerContextMenu, setMessage]);
 
+  const readerSourceSelection = useCallback((menu: ReaderContextMenuState) => {
+    if (!openedDocument || menu.epoch !== documentEpoch.current || menu.sourceSha256 !== openedDocument.sourceSha256) {
+      setMessage('文档或选区已变化，请重新选择文字。', 'alert');
+      return null;
+    }
+    const resolved = resolveReaderMappedSelection(openedDocument.content, openedDocument.bomByteLength, menu.probe);
+    if (!resolved.ok) {
+      setMessage(resolved.reason, 'alert');
+      return null;
+    }
+    const bomOffset = openedDocument.content.startsWith('\uFEFF') ? 1 : 0;
+    const before = (offset: number) => markdownToEditorText(
+      openedDocument.content.slice(0, bomOffset + offset),
+    ).length;
+    return { start: before(resolved.sourceStart), end: before(resolved.sourceEnd) };
+  }, [openedDocument, setMessage]);
+
+  const applyReaderContextTextCommand = useCallback(async (
+    action: Extract<MarkdownSourceSelectionAction, 'cut' | 'delete' | 'paste'>,
+    menu: ReaderContextMenuState,
+    pasted?: string,
+  ) => {
+    if (activeMode !== 'reader' || dirtyPreview || !openedDocument) return false;
+    const selection = readerSourceSelection(menu);
+    if (!selection) return false;
+    if (action === 'paste' && (pasted === undefined || /[\r\n]/u.test(pasted))) {
+      setMessage('阅读模式粘贴暂只支持单行纯文本，请切到源码视图粘贴多行内容。', 'alert');
+      return false;
+    }
+    const epoch = documentEpoch.current;
+    const sourcePath = openedDocument.path;
+    const sourceSha256 = openedDocument.sourceSha256;
+    const sourceContent = openedDocument.content;
+    let editor = editorController.editor;
+    if (!editor) editor = await editorController.open();
+    if (!editor || activeMode !== 'reader' || documentEpoch.current !== epoch ||
+        openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
+        openedDocument?.content !== sourceContent || editor.dirty || editor.content !== sourceContent) {
+      setMessage('文档在阅读编辑期间发生变化，请重新载入后再试。', 'alert');
+      return false;
+    }
+    try {
+      const next = applyMarkdownSelectionCommand(
+        markdownToEditorText(sourceContent), selection, action, pasted,
+      );
+      if (!next.changed) return false;
+      editorController.changeEditorText(next.content);
+      setMessage(action === 'cut' ? '已剪切所选正文。' : action === 'delete' ? '已删除所选正文。' : '已在阅读模式暂存粘贴。');
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '阅读编辑失败。', 'alert');
+      return false;
+    }
+  }, [activeMode, dirtyPreview, editorController, openedDocument, readerSourceSelection, setMessage]);
+
+  const cutReaderContextSelection = useCallback(async () => {
+    const menu = readerContextMenu;
+    if (!menu || !openedDocument || menu.epoch !== documentEpoch.current || menu.sourceSha256 !== openedDocument.sourceSha256) return;
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error('当前环境不支持剪贴板写入。');
+      await navigator.clipboard.writeText(menu.probe.displayQuote);
+      if (documentEpoch.current !== menu.epoch || openedDocument.sourceSha256 !== menu.sourceSha256) return;
+      if (await applyReaderContextTextCommand('cut', menu)) closeReaderContextMenu();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '剪切失败，未修改正文。', 'alert');
+    }
+  }, [applyReaderContextTextCommand, closeReaderContextMenu, openedDocument, readerContextMenu, setMessage]);
+
+  const deleteReaderContextSelection = useCallback(async () => {
+    const menu = readerContextMenu;
+    if (!menu) return;
+    if (await applyReaderContextTextCommand('delete', menu)) closeReaderContextMenu();
+  }, [applyReaderContextTextCommand, closeReaderContextMenu, readerContextMenu]);
+
+  const pasteReaderContextSelection = useCallback(async () => {
+    const menu = readerContextMenu;
+    if (!menu) return;
+    try {
+      if (!navigator.clipboard?.readText) throw new Error('当前环境不支持剪贴板读取。');
+      const text = await navigator.clipboard.readText();
+      if (await applyReaderContextTextCommand('paste', menu, text)) closeReaderContextMenu();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : '粘贴失败，未修改正文。', 'alert');
+    }
+  }, [applyReaderContextTextCommand, closeReaderContextMenu, readerContextMenu, setMessage]);
+
   const canApplyReaderFormat = useCallback((action: MarkdownSourceSelectionAction, menu: ReaderContextMenuState | null) => {
     if (!menu || !openedDocument || dirtyPreview || (action !== 'bold' && action !== 'italic' && action !== 'quote')) return false;
     return resolveReaderInlineFormatSelection(
@@ -1178,6 +1266,11 @@ function App() {
       action,
       menu.probe,
     ).ok;
+  }, [dirtyPreview, openedDocument]);
+
+  const canApplyReaderText = useCallback((menu: ReaderContextMenuState | null) => {
+    if (!menu || !openedDocument || dirtyPreview) return false;
+    return resolveReaderMappedSelection(openedDocument.content, openedDocument.bomByteLength, menu.probe).ok;
   }, [dirtyPreview, openedDocument]);
 
   const applyReaderContextFormat = useCallback(async (
@@ -1236,6 +1329,9 @@ function App() {
     const epoch = documentEpoch.current;
     const sourceSha256 = openedDocument.sourceSha256;
     const handleSelectionChange = () => {
+      // Moving focus into the context menu can collapse the native selection.
+      // Keep the already validated probe alive until the menu action closes.
+      if (readerContextMenuRef.current) return;
       const selection = window.getSelection();
       const article = window.document.querySelector<HTMLElement>('.markdown-body');
       if (!selection || !article || selection.rangeCount !== 1) return;
@@ -1931,6 +2027,15 @@ function App() {
               style={{ left: readerContextMenu.left, top: readerContextMenu.top }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={handleReaderContextMenuKeyDown}>
               <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
                 onClick={() => void copyReaderContextSelection()}>复制正文</button>
+              <button type="button" role="menuitem" disabled={!canApplyReaderText(readerContextMenu)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => void cutReaderContextSelection()}>剪切正文</button>
+              <button type="button" role="menuitem" disabled={!canApplyReaderText(readerContextMenu)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => void deleteReaderContextSelection()}>删除正文</button>
+              <button type="button" role="menuitem" disabled={!canApplyReaderText(readerContextMenu)}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => void pasteReaderContextSelection()}>粘贴正文</button>
               <span className="editor-context-separator" role="separator" />
               <span className="reader-context-label">格式</span>
               {([

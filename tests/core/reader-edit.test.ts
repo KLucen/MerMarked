@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   applyReaderMappedTextEdit,
   applyReaderPlainTextEdit,
+  resolveReaderMappedSelection,
   resolveReaderInlineFormatSelection,
 } from '../../src/core/reader-edit.ts';
 
@@ -112,4 +113,25 @@ test('keeps reader formatting read-only for cross-leaf, encoded, and heading quo
     visibleEnd: 2,
   });
   assert.equal(headingQuote.ok, false);
+});
+
+test('maps a BOM and CRLF inline leaf without crossing neighboring leaves', () => {
+  const source = '\uFEFF# 标题\r\n\r\n这是 **重点** 与 [链接](https://example.test)。\r\n';
+  const blockStart = source.slice(1).indexOf('这是');
+  const mapped = resolveReaderMappedSelection(source, 3, {
+    blockStart,
+    visibleStart: 3,
+    visibleEnd: 5,
+  });
+  assert.equal(mapped.ok, true);
+  if (mapped.ok) {
+    assert.equal(mapped.sourceExact, '重点');
+    assert.equal(source.slice(1 + mapped.sourceStart, 1 + mapped.sourceEnd), '重点');
+  }
+  const crossLeaf = resolveReaderMappedSelection(source, 3, {
+    blockStart,
+    visibleStart: 0,
+    visibleEnd: 5,
+  });
+  assert.equal(crossLeaf.ok, false);
 });

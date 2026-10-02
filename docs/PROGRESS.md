@@ -1,6 +1,6 @@
 # MerMarkd 开发进度
 
-> 2026-10-02。当前阶段：P0 可行性原型，进行中；A1–A8.5 已完成对应切片验证，A8.6 已完成首轮测量但质量门槛仍有缺口。B0 核心合同、B1 工作区外壳与 B1.1 内存新建/首次保存、B2 画布 v2 投影、B3 结构拖动候选、B4 共同选区命令/右键菜单和 B5 共享编辑会话/阅读 inline 映射已完成当前切片验证；全量单测 `239/239`、类型检查、生产打包、A7.3b/A8.4/A8.5 回归通过。B5 尚未覆盖阅读内联格式命令、跨块编辑、完整输入法真机验收和最终干净环境门槛。每批收尾重新检查并上传 GitHub；P0 尚未完成。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-02。当前阶段：P0 可行性原型，进行中；A1–A8.5 已完成对应切片验证，A8.6 已完成测量但质量门槛仍有缺口。B0 核心合同、B1 工作区外壳与 B1.1 内存新建/首次保存、B2 画布 v2 投影、B3 结构拖动候选、B4 共同选区命令/右键菜单和 B5 共享编辑会话/阅读 inline 映射、格式与正文命令已完成当前切片验证；全量单测 `243/243`、类型检查、生产打包、A7.3b/A8.4/A8.5、性能与四档高 DPI 回归通过。B5 尚未覆盖跨块编辑、完整输入法真机验收和真实多显示器 DPI；卸载器自动零残留仍未承诺。每批收尾重新检查并上传 GitHub；P0 尚未完成。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## 试用反馈与迭代规划（已整理，尚未实施）
 
@@ -487,3 +487,30 @@ node tests/e2e/a8-5-packaged.mjs
 - 本批最终 Setup.exe 大小 `154,900,992` 字节，SHA-256 `019AF4D77E8412D3A4FB8EFD4D954E900207391D405146B4135E08EFB2635F84`。
 
 收尾重新检查了 CRLF/BOM 归一化偏移、带 BOM 文档首段引用保护、dirty/文档身份门槛、共享撤销边界和菜单 disabled 状态，并在提交前复跑打包版。跨多个 inline leaf 的结构化格式、列表/表格/代码/Setext、跨块和真实中文 IME 设备验收仍留待后续批次。
+
+## B5.5 阅读正文剪切、删除与粘贴（已完成当前切片）
+
+阅读模式右键菜单新增剪切正文、删除正文和粘贴正文。三项操作都先用当前文档 epoch/source hash 和 exact inline leaf 映射核对选区，再复用共享 Markdown 编辑会话；剪切写入系统剪贴板后仍会再次核对文档身份，正文变更只停留在 dirty 缓冲区。阅读粘贴暂限制为单行文本，空剪贴板不会把选区误删；复杂或过期选区继续禁用。
+
+本批修正了新增菜单的视口边界：菜单按约 520 px 的保守预算定位，窗口不足时使用 CSS 最大高度和滚动，避免低高度窗口底部菜单被裁切。选区状态在菜单取得焦点后保持已验证 probe，避免浏览器原生选区因焦点移动被清空并关闭菜单。
+
+本批新增 BOM+CRLF exact leaf 映射和空粘贴拒绝测试；A7.3b 真实打包版覆盖剪切、删除、粘贴、共享撤销、底部菜单视口约束，并核对 Markdown、批注 YAML、画布 JSON 的字节和 mtime 均未改变。A8.4/A8.5 继续复跑通过。
+
+本批最终复核命令：
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run make
+npm.cmd run test:e2e:a7-3b
+npm.cmd run test:e2e:a8-4
+npm.cmd run test:e2e:a8-5
+npm.cmd run test:e2e:qa-installed
+npm.cmd run test:qa:performance
+```
+
+安装版干净安装退出码 `0`、约 `9,750 ms`，79 个文件、约 `527,580,699` 字节；`Update.exe --uninstall -s` 退出码 `0`、约 `741 ms`，无残留进程。Squirrel 卸载瞬间仍留下 `app-0.1.0`、`.dead` 和 `Update.exe`，已在确认无进程后清理本次安装目录；已有 `%APPDATA%\MerMarkd` 用户数据未删除。四档 DPR `1/1.25/1.5/2` 均通过，1× PNG 为 `844 × 522`，打包启动到阅读约 `633–654 ms`、卡片就绪约 `760–898 ms`。5 MiB/1,000 标题/200 卡片性能样本为 `extractSections 813.64 ms`、`buildCanvasScene 1.97 ms`、`arrangeCanvas 142.77 ms`、峰值 RSS `269.04 MiB`。
+
+本批仍不宣称真实多显示器物理 DPI、数十万短行压力和卸载器自动零残留已闭合；跨多个 inline leaf、跨块、列表/表格/代码/Setext 与中文 IME 真机验收进入下一批。
