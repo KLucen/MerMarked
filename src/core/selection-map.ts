@@ -1,4 +1,4 @@
-import type { Heading, Paragraph, PhrasingContent, Root } from 'mdast';
+import type { Heading, Paragraph, PhrasingContent, Root, TableCell } from 'mdast';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
@@ -19,7 +19,7 @@ export interface SelectionBlock {
   readonly blockStart: number;
   /** End offset of the parsed block, used by the narrow reader edit mapper. */
   readonly blockEnd: number;
-  readonly kind: 'heading' | 'paragraph';
+  readonly kind: 'heading' | 'paragraph' | 'tableCell';
   readonly visibleText: string;
   readonly supported: boolean;
   readonly reason?: string;
@@ -87,7 +87,7 @@ function commonEdges(raw: string, value: string): { prefix: number; suffix: numb
 }
 
 function addTextLeaf(
-  node: Extract<PhrasingContent, { type: 'text' }>,
+  node: { readonly value: string; readonly position?: { readonly start: { readonly offset?: number }; readonly end: { readonly offset?: number } } },
   source: string,
   blockStart: number,
   blockEnd: number,
@@ -117,7 +117,7 @@ function addTextLeaf(
   return null;
 }
 
-function buildBlock(node: Heading | Paragraph, source: string): SelectionBlock {
+function buildBlock(node: Heading | Paragraph | TableCell, source: string): SelectionBlock {
   const blockStart = node.position?.start.offset;
   const blockEnd = node.position?.end.offset;
   if (blockStart === undefined || blockEnd === undefined) {
@@ -130,6 +130,14 @@ function buildBlock(node: Heading | Paragraph, source: string): SelectionBlock {
   const visit = (inline: PhrasingContent): void => {
     if (reason) return;
     if (inline.type === 'text') {
+      reason = addTextLeaf(inline, source, blockStart, blockEnd, visibleText, leaves) ?? undefined;
+      if (!reason) visibleText += inline.value;
+      return;
+    }
+    if (inline.type === 'inlineCode') {
+      // The backticks remain part of the source anchor. Interior selections
+      // are rejected by sourceBoundary, while selecting the whole rendered
+      // code span remains reversible and can be annotated safely.
       reason = addTextLeaf(inline, source, blockStart, blockEnd, visibleText, leaves) ?? undefined;
       if (!reason) visibleText += inline.value;
       return;
@@ -159,8 +167,8 @@ export function buildSelectionMap(content: string, bomByteLength: number): Selec
   const root = processor.parse(source) as Root;
   const blocks: SelectionBlock[] = [];
   const visit = (node: { type: string; children?: readonly unknown[] }): void => {
-    if (node.type === 'heading' || node.type === 'paragraph') {
-      blocks.push(buildBlock(node as Heading | Paragraph, source));
+    if (node.type === 'heading' || node.type === 'paragraph' || node.type === 'tableCell') {
+      blocks.push(buildBlock(node as Heading | Paragraph | TableCell, source));
       return;
     }
     node.children?.forEach((child) => visit(child as { type: string; children?: readonly unknown[] }));

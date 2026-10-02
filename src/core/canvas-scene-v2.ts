@@ -1,6 +1,7 @@
 import { canvasCardContent } from './canvas-card-content.ts';
 import type { CanvasBinding } from './canvas-state.ts';
 import type { CanvasStateV2 } from './canvas-state-v2.ts';
+import { CANVAS_DEFAULT_CARD_SIZE } from './canvas-state-v2.ts';
 import type { SectionTree } from './sections.ts';
 
 export const CANVAS_GROUP_PREFIX = 'group:';
@@ -53,6 +54,7 @@ export interface CanvasSceneV2Card {
   readonly hiddenDescendants: number;
   readonly position: { readonly x: number; readonly y: number };
   readonly contentPosition: { readonly x: number; readonly y: number };
+  readonly size: { readonly width: number; readonly height: number };
   readonly bodyDisplay: CanvasStateV2['cards'][number]['bodyDisplay'];
   readonly descendantsCollapsed: boolean;
 }
@@ -104,7 +106,9 @@ export function buildCanvasSceneV2(
     const hiddenDescendants = section
       ? tree.sections.filter((item) => item.index !== section.index && item.headingRange.start >= section.headingRange.start && item.headingRange.start < section.subtreeRange.end).length
       : 0;
-    const bodyHeight = card.bodyDisplay === 'full' ? Math.max(220, minimumHeights[binding.id] ?? 220) : 176;
+    const preferredSize = card.size ?? CANVAS_DEFAULT_CARD_SIZE;
+    const bodyHeight = card.bodyDisplay === 'full' ? Math.max(preferredSize.height, 220, minimumHeights[binding.id] ?? 220)
+      : Math.max(preferredSize.height, 176);
     groups.push({ id: groupId(binding.id), cardId: binding.id, sectionIndex: binding.sectionIndex,
       ...(parentCardId ? { parentId: groupId(parentCardId) } : {}), hidden,
       hiddenDescendants: card.descendantsCollapsed ? hiddenDescendants : 0,
@@ -112,7 +116,7 @@ export function buildCanvasSceneV2(
     const cardContent = canvasCardContent(content, tree, binding.sectionIndex);
     contents.push({ id: contentId(binding.id), cardId: binding.id, groupId: groupId(binding.id), sectionIndex: binding.sectionIndex,
       hidden, position: { x: Math.max(16, card.contentPosition.x), y: Math.max(38, card.contentPosition.y) },
-      width: 328, height: bodyHeight, bodyDisplay: card.bodyDisplay,
+      width: preferredSize.width, height: bodyHeight, bodyDisplay: card.bodyDisplay,
       title: cardContent.title, summary: cardContent.summary, childCount: cardContent.childCount });
   }
 
@@ -153,7 +157,8 @@ export function buildCanvasSceneV2(
     const parentGroup = groups.find((item) => item.id === group.parentId);
     return { id: group.cardId, sectionIndex: group.sectionIndex, ...(parentGroup ? { parentId: parentGroup.cardId } : {}),
       hidden: group.hidden, width: group.width, height: group.height, hiddenDescendants: group.hiddenDescendants,
-      position: { ...group.position }, contentPosition: { ...content.position }, bodyDisplay: content.bodyDisplay,
+      position: { ...group.position }, contentPosition: { ...content.position }, size: { width: content.width, height: content.height },
+      bodyDisplay: content.bodyDisplay,
       descendantsCollapsed: cardById.get(group.cardId)!.descendantsCollapsed };
   });
   return { groups, contents, cards, links };

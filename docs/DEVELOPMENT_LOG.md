@@ -863,3 +863,24 @@ node tests/e2e/a8-5-packaged.mjs
 ### 边界与下一步
 
 本批不扩大跨多个 inline leaf 的格式化、跨块/多行粘贴、列表/表格/代码结构编辑或中文 IME 真机范围；下一步仍先评估可逆结构化补丁，再决定是否开放更复杂阅读编辑。
+
+## 2026-10-02 · B5.7 连续 dirty 编辑、冻结选区与卡片尺寸
+
+### 触发问题
+
+真实操作中，右键菜单抢走焦点会让浏览器折叠原生选区，随后批注入口退化为“请先在正文中选择”；第一次正文修改进入 dirty 后，阅读模式的后续编辑也被整体冻结；卡片布局缺少可持久化的尺寸调节入口。
+
+### 实现
+
+- 右键菜单打开时同步记录 pending guard，直到菜单关闭才允许 `selectionchange` 清理选区；冻结记录绑定建立时的正文快照，正文再次变化后旧菜单安全失效。
+- 阅读映射和右键正文命令改用当前 `readerDocument`，因此多个编辑命令可以在同一个内存缓冲区连续执行。批注 YAML 与画布写入继续受 dirty gate 保护，不把 sidecar 锚定到旧源版本。
+- `SelectionMap` 为 GFM `tableCell` 增加源码块，并允许完整选择单个行内代码叶；转义/实体内部和不完整代码范围仍拒绝。renderer 的 `td/th` 组件带上对应源码块起点。
+- `CanvasStateV2.cards[].size` 采用兼容旧文件的可选字段，侧栏使用受限数值输入更新宽高，场景组边界和卡片正文同步采用该尺寸，导出只传递场景几何。
+
+### 验证
+
+`npm.cmd test` 通过 `248/248`；`npm.cmd run typecheck` 和 `git diff --check` 通过；新增 selection-map 表格/行内代码、连续 dirty 编辑以及 canvas v2 尺寸往返测试。A7.3b、A8.4、A8.5 打包回归通过。安装版四档 DPR `1/1.25/1.5/2` 均通过，1× 导出 `844 × 564`；性能样本为 `extractSections 1511.41 ms`、`buildCanvasScene 3.62 ms`、`arrangeCanvas 283.36 ms`，峰值 RSS `247.09 MiB`。`npm.cmd run make` 通过；Setup.exe `154,902,528` 字节，SHA-256 `84128DAE7AFB9E843594CE60E154E3D34455F50782428BC921454548C2A183B2`。
+
+### 后续边界
+
+跨多个 inline leaf 的结构化格式、多行/跨块编辑、列表紧凑项无段落映射、复杂 HTML 和真实中文 IME 设备仍保持保守限制；本批不改变三文件保存事务，也不把 dirty 期间的批注/画布候选直接写盘。

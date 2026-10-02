@@ -59,6 +59,27 @@ test('edits one exact inline leaf while preserving emphasis and link syntax', ()
   if (link.ok) assert.equal(link.content, '[新文字](https://example.test)');
 });
 
+test('supports consecutive reader edits against the current unsaved buffer', () => {
+  const first = applyReaderMappedTextEdit('第一段\n\n第二段', 0, {
+    blockStart: 0,
+    sourceText: '第一段',
+    replacement: '更新一',
+  });
+  assert.equal(first.ok, true);
+  if (!first.ok) return;
+
+  // The second command receives the rendered text and source map rebuilt from
+  // the dirty buffer. It must not require the persisted document to be saved.
+  const secondBlockStart = first.content.indexOf('第二段');
+  const second = applyReaderMappedTextEdit(first.content, 0, {
+    blockStart: secondBlockStart,
+    sourceText: '第二段',
+    replacement: '更新二',
+  });
+  assert.equal(second.ok, true);
+  if (second.ok) assert.equal(second.content, '更新一\n\n更新二');
+});
+
 test('rejects encoded text and edits spanning multiple inline leaves', () => {
   const entity = applyReaderMappedTextEdit('A &amp; B', 0, {
     blockStart: 0,

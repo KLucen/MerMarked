@@ -16,7 +16,7 @@ import type {
   OverlapDwellState,
 } from '../core/canvas-structure-candidates';
 import type { CanvasBinding } from '../core/canvas-state';
-import { arrangeCanvasV2, projectCanvasStateV2ToV1, reconcileCanvasStateV2 } from '../core/canvas-state-v2';
+import { arrangeCanvasV2, CANVAS_CARD_SIZE_LIMITS, CANVAS_DEFAULT_CARD_SIZE, projectCanvasStateV2ToV1, reconcileCanvasStateV2 } from '../core/canvas-state-v2';
 import type { CanvasBodyDisplay, CanvasStateV2 } from '../core/canvas-state-v2';
 import { extractSections } from '../core/sections';
 import { encodeMarkdownBytes } from '../core/markdown-source';
@@ -32,6 +32,7 @@ interface CardData extends Record<string, unknown> {
   hiddenDescendants: number;
   bodyDisplay: CanvasBodyDisplay;
   contentPosition: { readonly x: number; readonly y: number };
+  size: { readonly width: number; readonly height: number };
   descendantsCollapsed: boolean;
   nestStatus?: 'candidate' | 'ready';
   detachStatus?: 'candidate' | 'ready';
@@ -58,7 +59,8 @@ function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
     data.detachStatus && `detach-${data.detachStatus}`].filter(Boolean).join(' ');
   return <div className={chapterClass}>
     <Handle type="target" position={Position.Left} isConnectable={!data.readOnly} />
-    <div ref={body} className="canvas-card-body" style={{ left: data.contentPosition.x, top: data.contentPosition.y }}><div className="canvas-card-header">
+    <div ref={body} className="canvas-card-body" style={{ left: data.contentPosition.x, top: data.contentPosition.y,
+      width: data.size.width, height: data.size.height }}><div className="canvas-card-header">
       <strong>{data.title}</strong>
       <div className="canvas-card-actions nodrag">
         <button type="button" title="编辑本节" aria-label="编辑本节" onClick={data.edit}><FilePenLine size={15} /></button>
@@ -204,7 +206,8 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     saveInFlight.current = true;
     setBusy(true); setModel(next); setMessage('正在保存画布…');
     try {
-      const needsV2 = sourceVersion.current === 2 || next.cards.some((card) => card.bodyDisplay !== 'preview' || card.contentPosition.x !== 0 || card.contentPosition.y !== 0);
+      const needsV2 = sourceVersion.current === 2 || next.cards.some((card) => card.bodyDisplay !== 'preview' || card.contentPosition.x !== 0 || card.contentPosition.y !== 0 ||
+        card.size !== undefined && (card.size.width !== CANVAS_DEFAULT_CARD_SIZE.width || card.size.height !== CANVAS_DEFAULT_CARD_SIZE.height));
       const result = needsV2
         ? await window.mermarkd.saveCanvasV2({ sourceSha256: document.sourceSha256, expectedSidecarSha256: sidecarHash, model: next })
         : await window.mermarkd.saveCanvas({ sourceSha256: document.sourceSha256, expectedSidecarSha256: sidecarHash, model: projectCanvasStateV2ToV1(next) });
@@ -282,7 +285,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
         hidden: card.hidden, selected: card.sectionIndex !== null && card.sectionIndex === activeSection,
         draggable: !readOnly, connectable: !readOnly, style: { width: card.width, height: card.height },
         data: { ...canvasCardContent(document.content, tree, card.sectionIndex), sectionIndex: card.sectionIndex, hiddenDescendants: card.hiddenDescendants,
-          bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, descendantsCollapsed: card.descendantsCollapsed, readOnly,
+          bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, size: card.size ?? CANVAS_DEFAULT_CARD_SIZE, descendantsCollapsed: card.descendantsCollapsed, readOnly,
           fold: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? { ...item, descendantsCollapsed: !item.descendantsCollapsed } : item) }); },
           toggleBody: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? {
             ...item, bodyDisplay: item.bodyDisplay === 'hidden' ? 'preview' : item.bodyDisplay === 'preview' ? 'full' : 'hidden',
@@ -310,6 +313,20 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   }, [label, model, persist, readOnly]);
   const titleFor = (id: string) => nodes.find((node) => node.id === id)?.data.title ?? id;
   const currentCard = nodes.find((node) => node.selected);
+  const currentModelCard = currentCard && model?.cards.find((card) => card.id === currentCard.id);
+  const updateCardSize = useCallback((dimension: 'width' | 'height', rawValue: string) => {
+    if (!model || readOnly || !currentCard) return;
+    const value = Number(rawValue);
+    if (!Number.isFinite(value)) return;
+    const limits = dimension === 'width'
+      ? { min: CANVAS_CARD_SIZE_LIMITS.minWidth, max: CANVAS_CARD_SIZE_LIMITS.maxWidth }
+      : { min: CANVAS_CARD_SIZE_LIMITS.minHeight, max: CANVAS_CARD_SIZE_LIMITS.maxHeight };
+    const clamped = Math.min(limits.max, Math.max(limits.min, Math.round(value)));
+    const current = currentModelCard?.size ?? CANVAS_DEFAULT_CARD_SIZE;
+    if (current[dimension] === clamped) return;
+    void persist({ ...model, cards: model.cards.map((card) => card.id === currentCard.id
+      ? { ...card, size: { ...current, [dimension]: clamped } } : card) });
+  }, [currentCard, currentModelCard?.size, model, persist, readOnly]);
   const requestStructure = useCallback(async (operation: SectionTransformOperation): Promise<boolean> => {
     if (readOnly || saveInFlight.current) return false;
     setBusy(true); setMessage('正在核验结构变更…');
@@ -322,7 +339,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     if (!scene || exporting || readOnly || busy || Boolean(readError)) return;
     setExporting(format); setExportMessage(null);
     try {
-      const cards = scene.cards.map(({ contentPosition: _contentPosition, bodyDisplay: _bodyDisplay, descendantsCollapsed: _descendantsCollapsed, ...card }) => card);
+      const cards = scene.cards.map(({ contentPosition: _contentPosition, size: _size, bodyDisplay: _bodyDisplay, descendantsCollapsed: _descendantsCollapsed, ...card }) => card);
       const result = await window.mermarkd.exportCanvas({ sourceSha256: document.sourceSha256, format, cards, links: scene.links, padding: 48, background: '#f3f6f8' });
       if (result.status === 'saved') setExportMessage(`已导出 ${format.toUpperCase()} · ${result.width} × ${result.height}`);
       else if (result.status === 'error') setExportMessage(result.reason);
@@ -454,6 +471,16 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
           <button disabled={readOnly} onClick={() => model && void persist({ ...model, links: model.links.map((link) => link.id === selectedLink ? { ...link, label } : link) })}><Link2 size={16} /> 更新标签</button>
           <button data-canvas-delete-link="true" disabled={readOnly} onClick={() => { if (model) void persist({ ...model, links: model.links.filter((link) => link.id !== selectedLink) }); setSelectedLink(null); }}><Trash2 size={16} /> 删除箭头</button>
         </div>}
+        <h2>章节卡片尺寸</h2>
+        {currentCard && currentModelCard ? <>
+          <p className="canvas-structure-hint">调整当前卡片的正文画布，尺寸会随画布布局一起保存。</p>
+          <label>宽度（px）<input type="number" min={CANVAS_CARD_SIZE_LIMITS.minWidth} max={CANVAS_CARD_SIZE_LIMITS.maxWidth} step={8}
+            value={currentModelCard.size?.width ?? CANVAS_DEFAULT_CARD_SIZE.width} disabled={readOnly}
+            onChange={(event) => updateCardSize('width', event.target.value)} /></label>
+          <label>高度（px）<input type="number" min={CANVAS_CARD_SIZE_LIMITS.minHeight} max={CANVAS_CARD_SIZE_LIMITS.maxHeight} step={8}
+            value={currentModelCard.size?.height ?? CANVAS_DEFAULT_CARD_SIZE.height} disabled={readOnly}
+            onChange={(event) => updateCardSize('height', event.target.value)} /></label>
+        </> : <p className="canvas-structure-hint">先选择一张章节卡片，再调整其宽高。</p>}
         <p>{bindings.length} 张卡片 · {model?.links.length ?? 0} 条箭头</p>
         {unresolvedIds.length > 0 && <div className="canvas-unresolved" role="status">
           <h3>待修复</h3><p>{unresolvedIds.length} 张卡片、{unresolvedLinkIds.length} 条箭头无法确定原章节，已保留原端点。</p>

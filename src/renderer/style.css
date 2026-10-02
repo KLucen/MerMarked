@@ -386,15 +386,15 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-chapter.detach-candidate { border-color: #5681a0; box-shadow: 0 0 0 3px #cbddea; }
 .canvas-chapter.detach-ready { border-color: #315eb7; box-shadow: 0 0 0 4px #b9c9ed, 0 7px 24px #315eb733; }
 @keyframes canvas-nest-pulse { from { transform: translateZ(0); } to { transform: translateZ(0) scale(1.008); } }
-.canvas-card-header { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 14px 14px 5px; max-width: 300px; box-sizing: border-box; }
+.canvas-card-header { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 14px 14px 5px; max-width: none; box-sizing: border-box; }
 .canvas-card-header strong { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; min-width: 0; }
-.canvas-card-body { position: absolute; width: 300px; box-sizing: border-box; border: 1px solid #bcccd2; border-radius: 7px; background: #fafdfc; box-shadow: 0 2px 3px #203d4610; }
+.canvas-card-body { position: absolute; width: 100%; box-sizing: border-box; border: 1px solid #bcccd2; border-radius: 7px; background: #fafdfc; box-shadow: 0 2px 3px #203d4610; overflow: auto; }
 .canvas-card-actions { display: flex; gap: 4px; flex: 0 0 auto; }
 .canvas-card-actions button { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
-.canvas-card-summary { font-size: 12px; line-height: 1.5; margin: 4px 14px; max-width: 266px; overflow-wrap: anywhere; }
+.canvas-card-summary { font-size: 12px; line-height: 1.5; margin: 4px 14px; max-width: none; overflow-wrap: anywhere; }
 .canvas-card-full { max-height: 360px; overflow: auto; white-space: pre-wrap; }
 .canvas-card-count { display: block; margin: 8px 14px; font-size: 11px; color: #58746c; }
-.canvas-nest-indicator, .canvas-detach-indicator { border-radius: 4px; margin: 8px 14px; padding: 6px; font-size: 11px; text-align: center; max-width: 252px; }
+.canvas-nest-indicator, .canvas-detach-indicator { border-radius: 4px; margin: 8px 14px; padding: 6px; font-size: 11px; text-align: center; max-width: none; }
 .canvas-nest-indicator { border: 1px solid #d9b45f; color: #785314; background: #fff5d8; }
 .canvas-detach-indicator { border: 1px solid #9fb6d0; color: #315273; background: #edf4fb; }
 .canvas-structure-hint { color: #60746d; line-height: 1.5; }

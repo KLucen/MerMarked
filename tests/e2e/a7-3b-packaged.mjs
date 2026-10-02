@@ -389,6 +389,17 @@ try {
   assert.equal(readerMenuReady, 'ASCII_CURSOR', 'reader context-menu selection');
   await waitFor(cdp, `Boolean(document.querySelector('[data-reader-context-menu]'))`, 'reader context menu');
   await waitFor(cdp, `document.activeElement?.textContent === '复制正文'`, 'reader context menu keyboard focus');
+  await waitFor(cdp, `(() => {
+    const active = CSS.highlights?.get('mermarkd-active-selection');
+    return Boolean(active && active.priority > 0 && active.size > 0);
+  })()`, 'reader context menu keeps the frozen selection highlight');
+  await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '添加批注')?.click()`);
+  await waitFor(cdp, `document.querySelector('.note-composer blockquote')?.textContent === 'ASCII_CURSOR'`,
+    'reader context menu passes the frozen selection to note composer');
+  await cdp.evaluate(`document.querySelector('.note-composer button[type="button"]')?.click()`);
+  await waitFor(cdp, `!document.querySelector('.note-composer')`, 'cancel reader note composer');
+  await cdp.evaluate(`document.querySelector('.markdown-body')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'F10', shiftKey: true }))`);
+  await waitFor(cdp, `Boolean(document.querySelector('[data-reader-context-menu]'))`, 'reader context menu reopened after note cancellation');
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
   await waitFor(cdp, `document.querySelector('[data-reader-context-menu]')?.querySelector('[role="menuitem"]:focus')?.getAttribute('aria-label')?.includes('琥珀')`,
     'reader context menu arrow navigation');

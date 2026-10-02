@@ -524,3 +524,24 @@ npm.cmd run test:qa:performance
 本批新增核心回归，覆盖常见内联标记、实体、链接、标题、列表和 thematic break 文本，并让 quote 命令拒绝空选区；A7.3b、A8.4、A8.5 打包版回归均通过，阅读粘贴与撤销路径保持可用。最终 Setup.exe 为 `154,901,504` 字节，SHA-256 为 `12324CA007418F3143EA00BEDAAF66D5095730BF2ACB88A0242A64759942046D`。
 
 安装版四档 DPR `1/1.25/1.5/2` 复测通过，控件均适配视口；1× 导出尺寸为 `844 × 522`。性能样本为 `extractSections 794.31 ms`、`buildCanvasScene 2.01 ms`、`arrangeCanvas 136.28 ms`，峰值 RSS `272.89 MiB`。
+
+## B5.7 阅读连续编辑、冻结选区与可调卡片尺寸（已完成当前切片）
+
+本批针对实际使用中的四个阻塞点推进：阅读模式右键菜单打开后保留蓝色选区；正文进入 dirty 缓冲区后仍可继续进行阅读正文编辑；普通表格单元格和完整行内代码选区建立安全源码锚点；卡片模式允许调整当前卡片的宽高并保存到画布 sidecar。
+
+阅读选区现在记录文档 epoch、source hash 和建立选区时的正文快照。菜单挂载及焦点迁移的短暂 `selectionchange` 不会清掉冻结 Range 或 Custom Highlight，菜单中的复制、格式、批注入口继续使用同一份核验结果；正文快照变化后旧菜单会安全失效。正文编辑映射改为读取当前 dirty buffer，剪切、删除、粘贴、加粗、斜体、引用和正文块编辑可以连续执行；批注 YAML 与画布 JSON 仍在 dirty 期间冻结，避免把锚点写到旧 source hash。
+
+画布 v2 卡片新增可选 `size` 字段，默认 `328 × 176`，宽度限制 `180–1200`、高度限制 `120–1600`。旧 v2 文件缺少该字段时仍可读取；侧栏通过数值输入调整当前卡片，父组边界、正文滚动区域和布局计算使用持久化尺寸，导出 payload 继续剥离内部尺寸字段。
+
+阅读映射增加 GFM 表格单元格与完整行内代码的可逆范围，实体、转义内部、代码片段内部边界、跨块和复杂 HTML 仍在无法证明时拒绝。Markdown、批注 YAML 和画布 JSON 的保存边界未改变。
+
+本批验证：
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+node --test tests/core/selection-map.test.ts tests/core/canvas-state-v2.test.ts tests/core/canvas-scene-v2.test.ts
+```
+
+结果：全量单测 `248/248`、类型检查和相关映射/画布测试通过。打包版 A7.3b、A8.4、A8.5 均通过；安装版四档 DPR `1/1.25/1.5/2` 均通过，1× 导出 `844 × 564`，控件无溢出。5 MiB/1,000 标题性能样本为 `extractSections 1511.41 ms`、`buildCanvasScene 3.62 ms`、`arrangeCanvas 283.36 ms`，峰值 RSS `247.09 MiB`。`npm.cmd run make` 通过，Setup.exe `154,902,528` 字节，SHA-256 `84128DAE7AFB9E843594CE60E154E3D34455F50782428BC921454548C2A183B2`。
