@@ -290,3 +290,11 @@
 - 约束：引用不作用于标题，带 BOM 文档首段也拒绝引用以避免把 BOM 移出文件首字节；实体、转义、代码、跨 leaf、跨块和不确定块保持只读。格式操作只改 Markdown 内存缓冲区，未保存前不写 Markdown、批注 YAML 或画布 JSON。
 - 理由：单 leaf 映射可以证明格式标记插入范围，不需要把完整渲染 DOM 反序列化回 Markdown；沿用已有源码命令避免另建一套格式语义，同时共享 session 保证跨模式撤销一致。
 - 验证：新增 reader-edit 核心格式边界测试与带 BOM 引用回归；全量单测 `242/242`、类型检查、diff 检查、镜像 `package/make`、A7.3b/A8.4/A8.5 打包版全部通过。最终 Setup.exe 大小 `154,900,992` 字节，SHA-256 `019AF4D77E8412D3A4FB8EFD4D954E900207391D405146B4135E08EFB2635F84`。
+
+## ADR-033：阅读正文剪切、删除与粘贴复用共享源码会话
+
+- 日期：2026-10-02；状态：B5.5 当前切片已通过核心、打包、安装/卸载、性能和高 DPI 验收。
+- 决定：阅读右键菜单的剪切、删除和粘贴只对一个经 `resolveReaderMappedSelection` 证明的 exact inline leaf 开放。操作以当前 epoch/source hash 重新核验选区，转换 BOM/CRLF 源偏移后复用 `applyMarkdownSelectionCommand` 和 renderer 共享 `MarkdownEditSession`；不直接写 Markdown、批注 YAML 或画布 JSON。
+- 约束：剪切先写入系统剪贴板，异步返回后若文档身份、正文或编辑器 dirty 状态变化则放弃源码修改；粘贴暂只接受非空单行文本，空文本和换行文本拒绝。菜单取得焦点时保留已验证 probe，菜单位置按 520 px 保守高度预算并受视口最大高度约束。
+- 理由：阅读模式必须编辑渲染正文对应的可证明源码范围，不能因 DOM 选区变化或整页反序列化破坏 Markdown 字节和 sidecar 锚点；单行限制先覆盖高频短文本，同时把跨块、多行和复杂 Markdown 留在源码模式。
+- 验证：新增 BOM+CRLF exact leaf 与空粘贴核心回归；A7.3b 验证三项命令、共享撤销、底部菜单视口和三类内容文件字节/mtime 不变；A8.4/A8.5、四档 DPR、性能样本和 Squirrel 安装/卸载复测通过。最新 Setup.exe 大小 `154,901,504` 字节，SHA-256 `775867EB76FADB6CBFA4D0F37D76433DFA4F7F4F3CCBBAE3E4AE1B4372EFDC8F`。

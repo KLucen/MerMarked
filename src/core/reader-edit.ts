@@ -9,6 +9,17 @@ export interface ReaderInlineFormatSelection {
   readonly visibleEnd: number;
 }
 
+export type ReaderMappedSelectionResult =
+  | {
+      readonly ok: true;
+      readonly selection: ReaderInlineFormatSelection;
+      /** UTF-16 source offsets in the BOM-stripped Markdown. */
+      readonly sourceStart: number;
+      readonly sourceEnd: number;
+      readonly sourceExact: string;
+    }
+  | { readonly ok: false; readonly reason: string };
+
 export type ReaderInlineFormatSelectionResult =
   | {
       readonly ok: true;
@@ -59,6 +70,54 @@ export function isReaderMappedTextBlock(map: SelectionMap, block: SelectionBlock
   return !/[\r\n]/u.test(sourceBlock) && block.leaves.every((leaf) => leaf.exact);
 }
 
+/** Resolve a selection that can be replaced without crossing Markdown syntax. */
+export function resolveReaderMappedSelection(
+  content: string,
+  bomByteLength: number,
+  selection: ReaderInlineFormatSelection,
+): ReaderMappedSelectionResult {
+  if (typeof content !== 'string' || (bomByteLength !== 0 && bomByteLength !== 3)) {
+    return { ok: false, reason: '阅读编辑的源文档或 BOM 信息无效。' };
+  }
+  if (content.startsWith('\uFEFF') !== (bomByteLength === 3)) {
+    return { ok: false, reason: '正文和 BOM 元数据不一致。' };
+  }
+  if (!selection || !Number.isSafeInteger(selection.blockStart) || selection.blockStart < 0 ||
+      !Number.isSafeInteger(selection.visibleStart) || !Number.isSafeInteger(selection.visibleEnd) ||
+      selection.visibleStart < 0 || selection.visibleEnd <= selection.visibleStart) {
+    return { ok: false, reason: '阅读编辑选区无效。' };
+  }
+  const map = (() => {
+    try { return buildSelectionMap(content, bomByteLength); }
+    catch { return null; }
+  })();
+  if (!map) return { ok: false, reason: '无法建立当前正文的安全映射。' };
+  const block = map.blocks.find((candidate) => candidate.blockStart === selection.blockStart);
+  if (!block || !isReaderMappedTextBlock(map, block)) {
+    return { ok: false, reason: block?.reason ?? '当前正文包含无法安全保留的 Markdown 语法。' };
+  }
+  if (selection.visibleEnd > block.visibleText.length) {
+    return { ok: false, reason: '阅读编辑选区超出正文块范围。' };
+  }
+  const leaf = block.leaves.find((candidate) =>
+    candidate.visibleStart <= selection.visibleStart && selection.visibleEnd <= candidate.visibleEnd);
+  if (!leaf || !leaf.exact) {
+    return { ok: false, reason: '编辑必须完整落在一个可逆的 Markdown 文字片段内。' };
+  }
+  const resolved = resolveSelection(map, selection.blockStart, selection.visibleStart, selection.visibleEnd);
+  if (!resolved.ok || resolved.sourceExact !== resolved.displayQuote ||
+      resolved.sourceStart < leaf.sourceStart || resolved.sourceEnd > leaf.sourceEnd) {
+    return { ok: false, reason: '阅读编辑不能跨越 Markdown 语法或编码边界。' };
+  }
+  return {
+    ok: true,
+    selection,
+    sourceStart: resolved.sourceStart,
+    sourceEnd: resolved.sourceEnd,
+    sourceExact: resolved.sourceExact,
+  };
+}
+
 /**
  * Validate a reader formatting selection without serializing rendered DOM.
  * Formatting is deliberately limited to one exact text leaf. Quote is
@@ -71,52 +130,24 @@ export function resolveReaderInlineFormatSelection(
   action: ReaderInlineFormat,
   selection: ReaderInlineFormatSelection,
 ): ReaderInlineFormatSelectionResult {
-  if (typeof content !== 'string' || (bomByteLength !== 0 && bomByteLength !== 3)) {
-    return { ok: false, reason: '阅读格式编辑的源文档或 BOM 信息无效。' };
-  }
-  if (content.startsWith('\uFEFF') !== (bomByteLength === 3)) {
-    return { ok: false, reason: '正文和 BOM 元数据不一致。' };
-  }
   if (action !== 'bold' && action !== 'italic' && action !== 'quote') {
     return { ok: false, reason: '阅读格式命令无效。' };
   }
-  if (!selection || !Number.isSafeInteger(selection.blockStart) || selection.blockStart < 0 ||
-      !Number.isSafeInteger(selection.visibleStart) || !Number.isSafeInteger(selection.visibleEnd) ||
-      selection.visibleStart < 0 || selection.visibleEnd <= selection.visibleStart) {
-    return { ok: false, reason: '阅读格式选区无效。' };
-  }
-  const map = (() => {
-    try { return buildSelectionMap(content, bomByteLength); }
-    catch { return null; }
-  })();
-  if (!map) return { ok: false, reason: '无法建立当前正文的安全映射。' };
+  const mapped = resolveReaderMappedSelection(content, bomByteLength, selection);
+  if (!mapped.ok) return mapped;
+  const map = buildSelectionMap(content, bomByteLength);
   const block = map.blocks.find((candidate) => candidate.blockStart === selection.blockStart);
-  if (!block || !isReaderMappedTextBlock(map, block)) {
-    return { ok: false, reason: block?.reason ?? '当前正文包含无法安全保留的 Markdown 语法。' };
-  }
+  if (!block) return { ok: false, reason: '当前正文块已变化，请重新选择。' };
   if (action === 'quote' && block.kind !== 'paragraph') {
     return { ok: false, reason: '引用格式暂只支持普通段落，标题保持原有章节结构。' };
-  }
-  if (selection.visibleEnd > block.visibleText.length) {
-    return { ok: false, reason: '阅读格式选区超出正文块范围。' };
-  }
-  const leaf = block.leaves.find((candidate) =>
-    candidate.visibleStart <= selection.visibleStart && selection.visibleEnd <= candidate.visibleEnd);
-  if (!leaf || !leaf.exact) {
-    return { ok: false, reason: '格式编辑必须完整落在一个可逆的 Markdown 文字片段内。' };
-  }
-  const resolved = resolveSelection(map, selection.blockStart, selection.visibleStart, selection.visibleEnd);
-  if (!resolved.ok || resolved.sourceExact !== resolved.displayQuote ||
-      resolved.sourceStart < leaf.sourceStart || resolved.sourceEnd > leaf.sourceEnd) {
-    return { ok: false, reason: '格式编辑不能跨越 Markdown 语法或编码边界。' };
   }
   return {
     ok: true,
     action,
     selection,
-    sourceStart: resolved.sourceStart,
-    sourceEnd: resolved.sourceEnd,
-    sourceExact: resolved.sourceExact,
+    sourceStart: mapped.sourceStart,
+    sourceEnd: mapped.sourceEnd,
+    sourceExact: mapped.sourceExact,
   };
 }
 

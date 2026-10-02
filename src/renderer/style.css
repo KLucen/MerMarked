@@ -448,6 +448,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .editor-context-menu button:disabled { color: #99a3b2; cursor: not-allowed; }
 .editor-context-separator { background: #e8edf3; height: 1px; margin: 3px 2px; }
 .reader-context-label, .reader-context-note { color: #748197; font-size: 11px; padding: 4px 10px; }
+.reader-context-menu { max-height: calc(100vh - 16px); overflow-y: auto; }
 .reader-context-palette { display: grid; gap: 2px; grid-template-columns: 1fr 1fr; }
 .reader-context-color { align-items: center; display: flex; gap: 6px; min-width: 0; }
 .reader-context-color .highlight-swatch { height: 12px; width: 12px; }

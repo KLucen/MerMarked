@@ -140,7 +140,7 @@ function replacementFor(action: MarkdownSourceSelectionAction, text: string, pas
       requireNonEmpty(text);
       return text;
     case 'paste':
-      if (pasted === undefined) throw new Error('粘贴内容无效。');
+      if (pasted === undefined || pasted.length === 0) throw new Error('粘贴内容无效。');
       return pasted;
   }
 }
@@ -210,6 +210,7 @@ export function applyMarkdownSelectionCommand(
   content: string,
   selection: MarkdownEditSelection,
   action: MarkdownSelectionCommand,
+  text?: string,
 ): { readonly changed: boolean; readonly content: string; readonly selection: MarkdownEditSelection } {
   const session = {
     baseline: content,
@@ -222,6 +223,7 @@ export function applyMarkdownSelectionCommand(
     action,
     expectedRevision: 0,
     selection,
+    ...(text === undefined ? {} : { text }),
   });
   if (result.kind !== 'markdown') {
     throw new Error('该 Markdown 命令不会改写源码。');

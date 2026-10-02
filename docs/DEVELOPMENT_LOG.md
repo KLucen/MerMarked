@@ -792,3 +792,41 @@ node tests/e2e/a8-5-packaged.mjs
 ### 边界与下一步
 
 这批没有开放跨多个 inline leaf 的结构化格式、列表/表格/代码/Setext、跨块编辑或中文 IME 真机验收。带 BOM 文档首段引用禁用是为避免破坏 BOM 首字节的保守门槛。收尾重新检查了 CRLF/BOM 偏移、菜单 disabled 状态、dirty/文档身份和共享 undo/redo，打包版复核后再提交推送。
+
+## 2026-10-02 · B5.5 阅读正文剪切、删除与粘贴
+
+### 目标
+
+把阅读模式右键菜单补齐到剪切正文、删除正文和粘贴正文，同时保持 Markdown 字节、批注 YAML、画布 JSON 的独立保存边界，并处理新增菜单在低高度窗口中的可用性。
+
+### 设计决定
+
+- `resolveReaderMappedSelection` 统一核对当前 exact inline leaf、可见范围和源码范围；剪切、删除、粘贴都转换为共享编辑器的 LF 选区后调用 `applyMarkdownSelectionCommand`。
+- 剪切在写入系统剪贴板后再次检查 epoch/source hash、当前正文和 editor dirty 状态；任一身份变化都放弃源码修改。阅读粘贴只接受非空单行文本，空剪贴板不会退化为删除。
+- 菜单高度采用 520 px 保守预算，CSS 增加 `max-height` 和滚动；选区监听在菜单取得焦点时保留已验证 probe，避免原生选区因焦点移动导致菜单关闭。
+- A7.3b 的第三份 fixture 现在带有效 annotations/canvas sidecar，三项阅读命令前后均比较 Markdown、YAML、canvas 的字节和 mtime。
+
+### 修改文件
+
+- `src/core/markdown-selection-commands.ts`
+- `src/core/reader-edit.ts`
+- `src/renderer/main.tsx`
+- `src/renderer/style.css`
+- `tests/core/markdown-selection-commands.test.ts`
+- `tests/core/reader-edit.test.ts`
+- `tests/e2e/a7-3b-packaged.mjs`
+- `docs/PROGRESS.md`
+- `docs/DEVELOPMENT_LOG.md`
+- `docs/DECISIONS.md`
+
+### 验证
+
+命令：`npm.cmd test`、`npm.cmd run typecheck`、`git diff --check`、镜像 `package/make`、`npm.cmd run test:e2e:a7-3b`、`npm.cmd run test:e2e:a8-4`、`npm.cmd run test:e2e:a8-5`、`npm.cmd run test:e2e:qa-installed`、`npm.cmd run test:qa:performance`。
+
+当前验证结果：核心全量测试 `243/243`、类型检查和 diff 检查通过；A7.3b、A8.4、A8.5 通过。A7.3b 输出 `exactCrLfBomRoundTrip=true`、`dirtyPreviewSidecarsFrozen=true`、`recoveryDrafts=1`；A8.4 输出 `structuralSave=true`、`reopen=true`；A8.5 输出 `dirtyOwnTransactionRecovery=true`。四档 DPR `1/1.25/1.5/2` 均通过，1× PNG 为 `844 × 522`；性能样本为 `extractSections 813.64 ms`、`buildCanvasScene 1.97 ms`、`arrangeCanvas 142.77 ms`、峰值 RSS `269.04 MiB`。
+
+本批 Setup.exe 为 `154,901,504` 字节，SHA-256 为 `775867EB76FADB6CBFA4D0F37D76433DFA4F7F4F3CCBBAE3E4AE1B4372EFDC8F`。干净安装退出码 `0`、约 `9,750 ms`，79 个文件、`527,580,699` 字节；官方卸载退出码 `0`、约 `741 ms`，无残留进程。Squirrel 卸载瞬间留下 `app-0.1.0`、`.dead` 和 `Update.exe`，已在确认无进程后清理测试安装目录；既有 `%APPDATA%\MerMarkd` 未删除。
+
+### 边界与下一步
+
+跨多个 inline leaf 的结构化格式、多行/跨块编辑、列表/表格/代码/Setext 和完整中文 IME 仍保持保守限制。真实多显示器物理 DPI、数十万短行压力和卸载器自动零残留不作为本批通过项。下一批优先评估跨 leaf 结构化编辑的可逆补丁合同，再决定是否扩大阅读编辑范围。
