@@ -108,6 +108,9 @@ test('stale revisions, surrogate splits, empty formatting, and missing paste tex
     action: 'italic', expectedRevision: 0, selection: { start: 0, end: 0 },
   }), /需要先选择/);
   assert.throws(() => executeMarkdownSelectionCommand(source, {
+    action: 'quote', expectedRevision: 0, selection: { start: 0, end: 0 },
+  }), /需要先选择/);
+  assert.throws(() => executeMarkdownSelectionCommand(source, {
     action: 'paste', expectedRevision: 0, selection: { start: 0, end: 0 },
   }), /粘贴内容无效/);
   assert.throws(() => executeMarkdownSelectionCommand(source, {

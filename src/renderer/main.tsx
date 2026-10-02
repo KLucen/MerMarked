@@ -20,6 +20,8 @@ import { extractSections, sectionFragmentIds } from '../core/sections';
 import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
 import {
   applyReaderMappedTextEdit,
+  escapeReaderPlainText,
+  isReaderPlainTextPaste,
   isReaderMappedTextBlock,
   resolveReaderMappedSelection,
   resolveReaderInlineFormatSelection,
@@ -1197,8 +1199,8 @@ function App() {
     if (activeMode !== 'reader' || dirtyPreview || !openedDocument) return false;
     const selection = readerSourceSelection(menu);
     if (!selection) return false;
-    if (action === 'paste' && (pasted === undefined || /[\r\n]/u.test(pasted))) {
-      setMessage('阅读模式粘贴暂只支持单行纯文本，请切到源码视图粘贴多行内容。', 'alert');
+    if (action === 'paste' && (pasted === undefined || !isReaderPlainTextPaste(pasted))) {
+      setMessage('阅读模式粘贴暂只支持无缩进的单行纯文本，请切到源码视图粘贴多行或结构化内容。', 'alert');
       return false;
     }
     const epoch = documentEpoch.current;
@@ -1214,8 +1216,11 @@ function App() {
       return false;
     }
     try {
+      const readerPaste = action === 'paste' && pasted !== undefined
+        ? escapeReaderPlainText(pasted)
+        : pasted;
       const next = applyMarkdownSelectionCommand(
-        markdownToEditorText(sourceContent), selection, action, pasted,
+        markdownToEditorText(sourceContent), selection, action, readerPaste,
       );
       if (!next.changed) return false;
       editorController.changeEditorText(next.content);
