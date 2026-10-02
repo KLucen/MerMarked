@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { buildSelectionMap } from '../../src/core/selection-map.ts';
 import {
   applyReaderMappedTextEdit,
   applyReaderPlainTextEdit,
+  escapeReaderPlainText,
+  isReaderPlainTextPaste,
   resolveReaderMappedSelection,
   resolveReaderInlineFormatSelection,
 } from '../../src/core/reader-edit.ts';
@@ -134,4 +137,31 @@ test('maps a BOM and CRLF inline leaf without crossing neighboring leaves', () =
     visibleEnd: 5,
   });
   assert.equal(crossLeaf.ok, false);
+});
+
+test('escapes reader paste markers while preserving the visible plain text', () => {
+  const plainText = '**加粗** &copy; [链接](url)';
+  const escaped = escapeReaderPlainText(plainText);
+  assert.equal(escaped, '\\*\\*加粗\\*\\* \\&copy; \\[链接\\](url)');
+  assert.equal(buildSelectionMap(escaped, 0).blocks[0]?.visibleText, plainText);
+  const angleText = '<http://a>';
+  const escapedAngleText = escapeReaderPlainText(angleText);
+  assert.equal(buildSelectionMap(escapedAngleText, 0).blocks[0]?.visibleText, angleText);
+  assert.equal(escapeReaderPlainText('# 标题'), '\\# 标题');
+  assert.equal(escapeReaderPlainText('1. 项目'), '1\\. 项目');
+  assert.equal(escapeReaderPlainText('- 项目'), '\\- 项目');
+  assert.equal(escapeReaderPlainText('---'), '\\---');
+
+  const pasted = applyReaderMappedTextEdit('旧文本', 0, {
+    blockStart: 0,
+    sourceText: '旧文本',
+    replacement: escapeReaderPlainText('**加粗**'),
+  });
+  assert.equal(pasted.ok, true);
+  if (pasted.ok) assert.equal(pasted.content, '\\*\\*加粗\\*\\*');
+  assert.equal(isReaderPlainTextPaste('普通文本'), true);
+  assert.equal(isReaderPlainTextPaste(''), false);
+  assert.equal(isReaderPlainTextPaste('第一行\n第二行'), false);
+  assert.equal(isReaderPlainTextPaste('  开头空格'), false);
+  assert.equal(isReaderPlainTextPaste('\t缩进'), false);
 });

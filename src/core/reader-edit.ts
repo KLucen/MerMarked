@@ -51,6 +51,32 @@ export type ReaderPlainTextEditResult =
 
 const encoder = new TextEncoder();
 
+const readerPlainTextEscapes = new Set(['\\', '`', '*', '_', '[', ']', '~', '<', '|']);
+
+/** Reader paste stays single-line and rejects leading indentation it cannot render losslessly. */
+export function isReaderPlainTextPaste(text: string): boolean {
+  return typeof text === 'string' && text.length > 0 &&
+    !/[\r\n]/u.test(text) && !/^[ \t]/u.test(text);
+}
+
+/**
+ * Keep reader-mode paste as visible plain text even when the input contains
+ * Markdown punctuation. Structural markers are escaped only where they can
+ * start a block, while inline syntax punctuation is always protected.
+ */
+export function escapeReaderPlainText(text: string): string {
+  if (typeof text !== 'string' || text.length === 0) return text;
+  let escaped = Array.from(text, (character) =>
+    readerPlainTextEscapes.has(character) ? `\\${character}` : character,
+  ).join('');
+  escaped = escaped.replace(/^(\s{0,3})([#-])(?=\s|$|[#-])/u, '$1\\$2');
+  escaped = escaped.replace(/^(\s{0,3})([+])(?=\s|$)/u, '$1\\$2');
+  escaped = escaped.replace(/^(\s{0,3})(>)/u, '$1\\$2');
+  escaped = escaped.replace(/^(\s{0,3})(\d{1,9})([.)])(?=\s)/u, '$1$2\\$3');
+  escaped = escaped.replace(/&(?=(?:#(?:x[0-9a-f]+|[0-9]+)|[a-z][a-z0-9]+);)/giu, () => '\\&');
+  return escaped;
+}
+
 export function isReaderPlainTextBlock(map: SelectionMap, block: SelectionBlock): boolean {
   if (!block.supported) return false;
   const visibleText = block.visibleText;

@@ -185,6 +185,7 @@ export function executeMarkdownSelectionCommand(
     };
   }
 
+  if (command.action === 'quote') requireNonEmpty(checked.text);
   const quote = command.action === 'quote' ? quoteBlock(session.current.content, checked.selection) : null;
   const effectiveSelection = quote?.selection ?? checked.selection;
   const selectedText = session.current.content.slice(effectiveSelection.start, effectiveSelection.end);

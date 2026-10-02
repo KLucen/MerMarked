@@ -830,3 +830,36 @@ node tests/e2e/a8-5-packaged.mjs
 ### 边界与下一步
 
 跨多个 inline leaf 的结构化格式、多行/跨块编辑、列表/表格/代码/Setext 和完整中文 IME 仍保持保守限制。真实多显示器物理 DPI、数十万短行压力和卸载器自动零残留不作为本批通过项。下一批优先评估跨 leaf 结构化编辑的可逆补丁合同，再决定是否扩大阅读编辑范围。
+
+## 2026-10-02 · B5.6 阅读模式严格纯文本粘贴
+
+### 目标
+
+修正阅读模式粘贴会把用户输入的 Markdown 标记当成语法的问题，使“编辑渲染结果”的粘贴行为保持纯文本语义；源码模式继续允许原始 Markdown 粘贴。
+
+### 设计决定
+
+- 新增 `escapeReaderPlainText`，只在阅读模式使用。它保护反斜杠、强调、链接、代码、删除线、HTML/表格标记、实体起始符，以及行首标题、列表、分隔线和有序列表标记。
+- 转义后用现有 `SelectionMap` 做可见文字往返测试，未建立新的 DOM 反向序列化路径；编辑会话仍复用 B5.5 的共享撤销和文档身份核验。
+- 空文本、多行文本和无法证明的复杂块继续拒绝，用户可以切到源码模式进行结构化 Markdown 粘贴。
+
+### 修改文件
+
+- `src/core/reader-edit.ts`
+- `src/core/markdown-selection-commands.ts`
+- `src/renderer/main.tsx`
+- `tests/core/reader-edit.test.ts`
+- `tests/core/markdown-selection-commands.test.ts`
+- `docs/PROGRESS.md`
+- `docs/DEVELOPMENT_LOG.md`
+- `docs/DECISIONS.md`
+
+### 当前验证
+
+核心新增测试覆盖 `**...**`、实体、链接、标题、列表、thematic break、前导空白拒绝和 quote 空选区拒绝；完整单测 `244/244`、类型检查、打包版 A7.3b/A8.4/A8.5 均通过。最终 Setup.exe 为 `154,901,504` 字节，SHA-256 为 `12324CA007418F3143EA00BEDAAF66D5095730BF2ACB88A0242A64759942046D`。
+
+安装版 QA 四档 DPR `1/1.25/1.5/2` 通过，1× 导出尺寸 `844 × 522`；5 MiB/1,000 标题/200 卡片性能样本为 `extractSections 794.31 ms`、`buildCanvasScene 2.01 ms`、`arrangeCanvas 136.28 ms`、峰值 RSS `272.89 MiB`。
+
+### 边界与下一步
+
+本批不扩大跨多个 inline leaf 的格式化、跨块/多行粘贴、列表/表格/代码结构编辑或中文 IME 真机范围；下一步仍先评估可逆结构化补丁，再决定是否开放更复杂阅读编辑。
