@@ -462,3 +462,28 @@ npm.cmd run test:e2e:a8-5
 - 最新 Setup.exe 大小 `154,900,480` 字节，SHA-256 `5FF3FF634A20DF892CF3DB5A2C734DDED202967DBF77D44C8605F869CE6D2BB0`。本批没有重复执行真实安装器卸载；上一批的干净安装、四档 DPR、性能基线与残留限制继续有效。
 
 本批收尾重新检查了源码映射边界、共享历史、焦点生命周期、右键菜单键盘路径、打包产物和结构/恢复回归。下一批进入阅读模式更丰富的安全编辑规划，优先评估单 inline leaf 的加粗/斜体/引用命令是否能在不破坏 source anchor 的前提下开放；跨块和复杂 Markdown 仍保持保守只读。
+
+## B5.4 阅读单 leaf 安全格式命令（当前切片）
+
+阅读模式右键菜单现在对单一 exact inline leaf 提供加粗、斜体和引用命令。命令先用阅读选区映射核对 block、可见范围、源码范围和叶片边界，再复用 `markdown-selection-commands` 的局部源码替换，最后进入共享 Markdown 编辑缓冲区；Markdown、批注 YAML 和画布 JSON 仍保持独立。跨 leaf、实体/转义、代码、不明确块和标题引用继续禁用格式按钮，复杂选区明确回到源码视图。
+
+本批新增 `resolveReaderInlineFormatSelection` 核心安全门槛和打包版 A7.3b 三项格式/撤销回归。核心测试覆盖单 exact leaf 的源偏移、跨 leaf/编码边界拒绝和标题引用拒绝。格式命令还补上了带 BOM 首行引用的源字节回归，确保 BOM 仍位于文件首字节。
+
+本批最终复核：
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run make
+node tests/e2e/a7-3b-packaged.mjs
+node tests/e2e/a8-4-packaged.mjs
+node tests/e2e/a8-5-packaged.mjs
+```
+
+- 全量单测 `242/242`、类型检查和 diff 检查通过；镜像 `package` 与 `make` 通过。
+- A7.3b 打包版通过：阅读上下文菜单、单 exact leaf 加粗/斜体/引用、切回源码核对和逐步撤销；A8.4/A8.5 回归通过。
+- 本批最终 Setup.exe 大小 `154,900,992` 字节，SHA-256 `019AF4D77E8412D3A4FB8EFD4D954E900207391D405146B4135E08EFB2635F84`。
+
+收尾重新检查了 CRLF/BOM 归一化偏移、带 BOM 文档首段引用保护、dirty/文档身份门槛、共享撤销边界和菜单 disabled 状态，并在提交前复跑打包版。跨多个 inline leaf 的结构化格式、列表/表格/代码/Setext、跨块和真实中文 IME 设备验收仍留待后续批次。

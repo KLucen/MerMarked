@@ -106,7 +106,11 @@ function quoteBlock(content: string, selection: MarkdownEditSelection): {
   readonly selection: MarkdownEditSelection;
   readonly replacement: string;
 } {
-  const start = content.lastIndexOf('\n', Math.max(0, selection.start - 1)) + 1;
+  // Keep a leading UTF-16 BOM outside the quoted line. It is file metadata,
+  // not visible Markdown content, and must remain the first code unit.
+  const bomOffset = content.startsWith('\uFEFF') ? 1 : 0;
+  const lineStart = content.lastIndexOf('\n', Math.max(bomOffset, selection.start - 1)) + 1;
+  const start = Math.max(bomOffset, lineStart);
   const breakAt = content.indexOf('\n', selection.end);
   const end = breakAt < 0 ? content.length : breakAt;
   const block = content.slice(start, end);

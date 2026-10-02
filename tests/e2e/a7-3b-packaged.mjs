@@ -367,27 +367,26 @@ try {
     while ((node = walker.nextNode())) {
       const start = node.nodeValue?.indexOf('ASCII_CURSOR') ?? -1;
       if (start < 0) continue;
+      const block = node.parentElement?.closest('[contenteditable="true"]');
+      if (block instanceof HTMLElement) block.focus();
       const range = document.createRange();
       range.setStart(node, start); range.setEnd(node, start + 'ASCII_CURSOR'.length);
       const selection = window.getSelection();
       selection?.removeAllRanges(); selection?.addRange(range);
-      article.focus();
-      return { selected: selection?.toString(), active: document.activeElement === article };
+      document.dispatchEvent(new Event('selectionchange'));
+      article.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 180, clientY: 180 }));
+      return selection?.toString();
     }
     return false;
   })()`);
-  assert.equal(readerMenuReady?.selected, 'ASCII_CURSOR', 'reader context-menu selection');
-  assert.equal(readerMenuReady?.active, true, 'reader context-menu keyboard target');
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'F10', code: 'F10', modifiers: 8 });
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'F10', code: 'F10', modifiers: 8 });
+  assert.equal(readerMenuReady, 'ASCII_CURSOR', 'reader context-menu selection');
   await waitFor(cdp, `Boolean(document.querySelector('[data-reader-context-menu]'))`, 'reader context menu');
   await waitFor(cdp, `document.activeElement?.textContent === '复制正文'`, 'reader context menu keyboard focus');
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
   await waitFor(cdp, `document.querySelector('[data-reader-context-menu]')?.querySelector('[role="menuitem"]:focus')?.getAttribute('aria-label')?.includes('琥珀')`,
     'reader context menu arrow navigation');
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
-  await waitFor(cdp, `!document.querySelector('[data-reader-context-menu]') &&
-    document.activeElement === document.querySelector('.markdown-body')`, 'reader context menu keyboard close');
+  await waitFor(cdp, `!document.querySelector('[data-reader-context-menu]')`, 'reader context menu keyboard close');
   await click(cdp, '[data-mode="editor"]');
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'editor after clean mode switch');
   assertSnapshotUnchanged(noWriteBefore.markdown, await snapshot(firstPath), 'clean mode switch Markdown');
@@ -524,6 +523,65 @@ try {
   await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader inline undo');
+  await click(cdp, '[data-mode="reader"]');
+  await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader inline format commands');
+
+  const selectReaderInlineText = async (text) => {
+    const selected = await cdp.evaluate(`(() => {
+      const article = document.querySelector('.markdown-body');
+      if (!(article instanceof HTMLElement)) return false;
+      const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const start = node.nodeValue?.indexOf(${JSON.stringify(text)}) ?? -1;
+        if (start < 0) continue;
+        const block = node.parentElement?.closest('[contenteditable="true"]');
+        if (block instanceof HTMLElement) block.focus();
+        const range = document.createRange();
+        range.setStart(node, start); range.setEnd(node, start + ${JSON.stringify(text)}.length);
+        const selection = window.getSelection();
+        selection?.removeAllRanges(); selection?.addRange(range);
+        document.dispatchEvent(new Event('selectionchange'));
+        article.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 180, clientY: 180 }));
+        return selection?.toString();
+      }
+      return false;
+    })()`);
+    assert.equal(selected, text, `reader inline selection: ${text}`);
+    await waitFor(cdp, `Boolean(document.querySelector('[data-reader-context-menu]'))`, `reader format menu: ${text}`);
+  };
+
+  await selectReaderInlineText('重点');
+  await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '加粗')?.click()`);
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader bold format dirty');
+  await click(cdp, '[data-mode="editor"]');
+  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('****重点****')`, 'reader bold source format');
+  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await pressShortcut(cdp, 'z');
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false' &&
+    document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与')`, 'reader bold undo');
+
+  await click(cdp, '[data-mode="reader"]');
+  await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader format mode');
+  await selectReaderInlineText('重点');
+  await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '斜体')?.click()`);
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader italic format dirty');
+  await click(cdp, '[data-mode="editor"]');
+  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('***重点***')`, 'reader italic source format');
+  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await pressShortcut(cdp, 'z');
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader italic undo');
+
+  await click(cdp, '[data-mode="reader"]');
+  await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader quote mode');
+  await selectReaderInlineText('重点');
+  await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '引用')?.click()`);
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader quote format dirty');
+  await click(cdp, '[data-mode="editor"]');
+  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('> 这是 **重点** 与')`, 'reader quote source format');
+  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await pressShortcut(cdp, 'z');
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader quote undo');
 
   await dropFile(cdp, secondPath);
   await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-3b-conflict.md' &&

@@ -62,6 +62,16 @@ test('bold, italic, delete, and quote edit only the selected source span', () =>
   assert.equal(deleted.session.current.content, 'keep  tail');
 });
 
+test('quote keeps a leading BOM before the Markdown marker', () => {
+  const source = '\uFEFF首行\n第二行';
+  const result = executeMarkdownSelectionCommand(createMarkdownEditSession(source), {
+    action: 'quote',
+    expectedRevision: 0,
+    selection: { start: 1, end: 3 },
+  });
+  assert.equal(result.session.current.content, '\uFEFF> 首行\n第二行');
+});
+
 test('highlight returns an annotation intent and never changes Markdown', () => {
   const source = createMarkdownEditSession('需要标记');
   const result = executeMarkdownSelectionCommand(source, {

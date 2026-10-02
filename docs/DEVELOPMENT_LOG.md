@@ -747,3 +747,48 @@ npm.cmd run test:e2e:a8-5
 首次 A7.3b 复跑曾在 inline undo 超时，诊断确认是测试在切换模式后焦点停留在 `BODY`；产品补上激活焦点，测试同时等待真实 textarea 焦点后通过。普通阅读块和单 inline leaf 已支持安全编辑，跨块、复杂 inline、实体/转义和完整中文 IME 真机验收仍未开放。真实安装器卸载、四档 DPR 和性能基线沿用上一批已核验结果，本批只重新生成安装包，未重复执行安装/卸载。
 
 本批代码和日志将在收尾复查后独立提交并推送；下一步评估单 inline leaf 的加粗/斜体/引用命令是否能继续保持源码和 sidecar 边界。
+
+## 2026-10-02 · B5.4 阅读单 leaf 安全格式命令
+
+### 目标
+
+让阅读模式在可证明的单个 exact inline leaf 上提供加粗、斜体和引用，同时继续把复杂 Markdown 留在源码编辑模式，并沿用现有 Markdown 选区命令与共享编辑缓冲区。
+
+### 设计决定
+
+- `SelectionResolution` 记录解析块和可见 UTF-16 范围，格式命令可以复核原始 DOM 选区的身份，不依赖再次搜索同名文字。
+- `resolveReaderInlineFormatSelection` 只接受一个 exact text leaf；实体、转义、代码、跨 leaf、跨块和无法重建的边界直接返回不可编辑。引用只作用于普通段落，避免把标题变成引用中的章节；带 BOM 文档的首段也保守禁用引用。
+- renderer 将 BOM/CRLF 源偏移转换为共享 session 的 LF 偏移，复用 `applyMarkdownSelectionCommand` 的加粗、斜体和引用语义，再调用 `changeEditorText` 写入已有撤销历史。所有操作仍停留在内存 dirty 缓冲区。
+- 阅读右键菜单对复杂选区保留复制/批注能力，格式按钮 disabled 并提示切换源码视图；格式命令成功后可以切回源码逐步撤销，sidecar 和画布不参与写入。
+
+### 修改文件
+
+- `src/core/selection-map.ts`
+- `src/core/markdown-selection-commands.ts`
+- `src/core/reader-edit.ts`
+- `src/renderer/main.tsx`
+- `tests/core/markdown-selection-commands.test.ts`
+- `tests/core/reader-edit.test.ts`
+- `tests/e2e/a7-3b-packaged.mjs`
+- `docs/PROGRESS.md`
+- `docs/DECISIONS.md`
+
+### 验证
+
+```powershell
+node --test tests/core/reader-edit.test.ts
+npm.cmd test
+npm.cmd run typecheck
+git diff --check
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run package
+$env:ELECTRON_MIRROR='https://npmmirror.com/mirrors/electron/'; npm.cmd run make
+node tests/e2e/a7-3b-packaged.mjs
+node tests/e2e/a8-4-packaged.mjs
+node tests/e2e/a8-5-packaged.mjs
+```
+
+结果：reader-edit 核心测试 `8/8` 通过，全量单测 `242/242`，类型检查和 diff 检查通过；镜像 `package` 与 `make` 通过。A7.3b 打包版覆盖阅读上下文菜单、单 exact leaf 加粗/斜体/引用、切回源码核对和逐步撤销并通过；A8.4/A8.5 回归通过。最终 Setup.exe 大小 `154,900,992` 字节，SHA-256 `019AF4D77E8412D3A4FB8EFD4D954E900207391D405146B4135E08EFB2635F84`。
+
+### 边界与下一步
+
+这批没有开放跨多个 inline leaf 的结构化格式、列表/表格/代码/Setext、跨块编辑或中文 IME 真机验收。带 BOM 文档首段引用禁用是为避免破坏 BOM 首字节的保守门槛。收尾重新检查了 CRLF/BOM 偏移、菜单 disabled 状态、dirty/文档身份和共享 undo/redo，打包版复核后再提交推送。
