@@ -66,6 +66,73 @@ export interface CanvasSceneV2 {
   readonly links: readonly CanvasSceneV2Link[];
 }
 
+export interface CanvasViewportLike {
+  readonly x: number;
+  readonly y: number;
+  readonly zoom: number;
+}
+
+export interface CanvasSceneBounds {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Return the scene bounds in React Flow's world coordinates. Child cards use
+ * coordinates relative to their parent group, so their ancestors are folded
+ * into the result before calculating the bounds.
+ */
+export function canvasSceneBounds(cards: readonly CanvasSceneV2Card[]): CanvasSceneBounds | null {
+  const byId = new Map(cards.map((card) => [card.id, card]));
+  const cache = new Map<string, { x: number; y: number }>();
+  const absolutePosition = (card: CanvasSceneV2Card, visiting = new Set<string>()): { x: number; y: number } => {
+    const cached = cache.get(card.id);
+    if (cached) return cached;
+    if (visiting.has(card.id) || !card.parentId) {
+      const result = { x: card.position.x, y: card.position.y };
+      cache.set(card.id, result);
+      return result;
+    }
+    visiting.add(card.id);
+    const parent = byId.get(card.parentId);
+    const parentPosition = parent ? absolutePosition(parent, visiting) : { x: 0, y: 0 };
+    const result = { x: parentPosition.x + card.position.x, y: parentPosition.y + card.position.y };
+    cache.set(card.id, result);
+    return result;
+  };
+  const visible = cards.filter((card) => !card.hidden);
+  if (!visible.length) return null;
+  const positions = visible.map((card) => ({ card, position: absolutePosition(card) }));
+  const left = Math.min(...positions.map(({ position }) => position.x));
+  const top = Math.min(...positions.map(({ position }) => position.y));
+  const right = Math.max(...positions.map(({ card, position }) => position.x + card.width));
+  const bottom = Math.max(...positions.map(({ card, position }) => position.y + card.height));
+  return { x: left, y: top, width: Math.max(1, right - left), height: Math.max(1, bottom - top) };
+}
+
+/**
+ * A persisted viewport is usable only when its visible world rectangle
+ * intersects the current scene. This protects against stale sidecars that
+ * restore a valid-but-useless transform far away from the current cards.
+ */
+export function isCanvasViewportVisible(
+  viewport: CanvasViewportLike,
+  cards: readonly CanvasSceneV2Card[],
+  viewportWidth = 1_200,
+  viewportHeight = 800,
+): boolean {
+  if (!Number.isFinite(viewport.x) || !Number.isFinite(viewport.y) || !Number.isFinite(viewport.zoom) || viewport.zoom <= 0 ||
+    !Number.isFinite(viewportWidth) || !Number.isFinite(viewportHeight) || viewportWidth <= 0 || viewportHeight <= 0) return false;
+  const bounds = canvasSceneBounds(cards);
+  if (!bounds) return false;
+  const view = { x: -viewport.x / viewport.zoom, y: -viewport.y / viewport.zoom,
+    width: viewportWidth / viewport.zoom, height: viewportHeight / viewport.zoom };
+  return view.x < bounds.x + bounds.width && view.x + view.width > bounds.x &&
+    view.y < bounds.y + bounds.height && view.y + view.height > bounds.y;
+}
+
 function groupId(cardId: string): string { return `${CANVAS_GROUP_PREFIX}${cardId}`; }
 function contentId(cardId: string): string { return `${CANVAS_CONTENT_PREFIX}${cardId}`; }
 

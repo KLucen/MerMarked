@@ -526,9 +526,6 @@ export function MarkdownEditorView({
       } else if (key === 'h') {
         event.preventDefault();
         openSearch(true);
-      } else if (key === 's') {
-        event.preventDefault();
-        if (!saving && !readOnly) onSave();
       }
     };
     window.addEventListener('keydown', handleShortcut);
