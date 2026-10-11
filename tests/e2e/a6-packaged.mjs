@@ -1,3 +1,4 @@
+import { openWorkspaceStatus } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -228,6 +229,7 @@ async function waitFor(cdp, expression, label, timeoutMs = 12_000) {
 }
 
 async function clickExact(cdp, text, selector = 'button') {
+  if (/重新检查|安全重定位|确认当前版本/.test(text)) await openWorkspaceStatus(cdp);
   const encoded = JSON.stringify(text);
   const encodedSelector = JSON.stringify(selector);
   await cdp.evaluate(`(() => {
@@ -310,7 +312,8 @@ try {
   cdp = await connect(page);
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer startup');
   await dropFile(cdp, documentPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a6-relocation.md' &&
+  await openWorkspaceStatus(cdp, "a6-relocation.md");
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a6-relocation.md' &&
     document.querySelector('.annotation-summary')?.textContent.includes('6 条记录')`, 'initial annotation load');
   assert.match(await cdp.evaluate(`document.querySelector('.annotation-summary').textContent`), /0 条待定位|6 条记录/);
 
@@ -320,11 +323,13 @@ try {
   await waitFor(cdp, `Array.from(document.querySelectorAll('button')).some((button) =>
     button.textContent.trim() === '重新载入原文')`, 'external source warning');
   await clickExact(cdp, '重新载入原文');
+  await openWorkspaceStatus(cdp);
   await waitFor(cdp, `document.querySelector('.markdown-body')?.textContent.includes('新关键词') &&
     document.querySelector('.annotation-summary')?.textContent.includes('3 条可安全重定位')`, 'relocation review');
   assert.equal(digest(await readFile(documentPath)), firstExternalHash);
 
   await clickExact(cdp, '应用 3 条安全重定位');
+  await openWorkspaceStatus(cdp);
   await waitFor(cdp, `document.querySelector('.annotation-summary')?.textContent.includes('3 条待定位') &&
     !document.querySelector('.annotation-summary')?.textContent.includes('可安全重定位')`, 'partial relocation save');
 
@@ -341,6 +346,7 @@ try {
   await waitFor(cdp, `Boolean(document.querySelector('.reattach-controls'))`, 'manual reattachment controls');
   await selectVisibleText(cdp, '新关键词');
   await clickExact(cdp, '确认所选新位置');
+  await openWorkspaceStatus(cdp);
   await waitFor(cdp, `document.querySelector('.annotation-summary')?.textContent.includes('2 条待定位') &&
     Array.from(document.querySelectorAll('.note-card')).some((item) => item.textContent.includes('新关键词'))`,
   'manual reattachment save');
@@ -411,6 +417,7 @@ try {
   await waitFor(cdp, `Array.from(document.querySelectorAll('button')).some((button) =>
     button.textContent.trim() === '重新载入原文')`, 'second source warning');
   await clickExact(cdp, '重新载入原文');
+  await openWorkspaceStatus(cdp);
   await waitFor(cdp, `document.querySelector('.annotation-summary')?.textContent.includes('4 条可安全重定位')`,
     'second relocation review');
   const externallyEdited = parseAnnotationYaml(await readFile(sidecarPath, 'utf8'));

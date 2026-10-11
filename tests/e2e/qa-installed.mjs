@@ -110,7 +110,7 @@ async function waitForFile(filePath) {
 async function controlsFitViewport(cdp) {
   return cdp.evaluate(`(() => {
     const names = ['[data-mode="reader"]', '[data-mode="editor"]', '[data-mode="cards"]',
-      '[data-editor-save]', '[data-canvas-save]', '[data-canvas-export="png"]', '[data-canvas-export="jpg"]', '[data-canvas-export="pdf"]'];
+      '[data-workspace-save]', '[data-canvas-save]', '[data-canvas-export="png"]', '[data-canvas-export="jpg"]', '[data-canvas-export="pdf"]'];
     return names.flatMap((selector) => [...document.querySelectorAll(selector)]).every((element) => {
       const box = element.getBoundingClientRect();
       if (box.width === 0 || box.height === 0 || getComputedStyle(element).visibility === 'hidden') return true;
@@ -122,7 +122,7 @@ async function controlsFitViewport(cdp) {
 async function controlGeometry(cdp) {
   return cdp.evaluate(`(() => {
     const names = ['[data-mode="reader"]', '[data-mode="editor"]', '[data-mode="cards"]',
-      '[data-editor-save]', '[data-canvas-save]', '[data-canvas-export="png"]', '[data-canvas-export="jpg"]', '[data-canvas-export="pdf"]'];
+      '[data-workspace-save]', '[data-canvas-save]', '[data-canvas-export="png"]', '[data-canvas-export="jpg"]', '[data-canvas-export="pdf"]'];
     return names.flatMap((selector) => [...document.querySelectorAll(selector)].map((element) => {
       const box = element.getBoundingClientRect();
       return { selector, display: getComputedStyle(element).display, disabled: element.hasAttribute('disabled'), left: box.left, top: box.top, right: box.right, bottom: box.bottom, width: box.width, height: box.height };

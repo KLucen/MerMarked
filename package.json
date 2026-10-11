@@ -25,7 +25,8 @@
     "test:e2e:qa-installed": "node tests/e2e/qa-installed.mjs",
     "test:qa:performance": "node tests/qa-performance.mjs",
     "package": "electron-forge package",
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "test:e2e:ux1": "node tests/e2e/ux1-workspace-packaged.mjs"
   },
   "dependencies": {
     "@xyflow/react": "12.12.0",

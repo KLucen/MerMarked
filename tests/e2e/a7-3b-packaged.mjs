@@ -296,8 +296,11 @@ try {
   cdp = await connect(page);
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer startup');
   await dropFile(cdp, firstPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-3b-roundtrip.md' &&
+  await waitFor(cdp, `Boolean(document.querySelector('[aria-label="文档状态"]'))`, 'workspace status');
+  await click(cdp, '[aria-label="文档状态"]');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-3b-roundtrip.md' &&
     document.querySelector('.annotation-summary')?.textContent.includes('1 条记录')`, 'first reader document');
+  await click(cdp, '[aria-label="文档状态"]');
 
   const noWriteBefore = {
     markdown: await snapshot(firstPath),
@@ -495,7 +498,7 @@ try {
   assert.deepEqual(await readFile(path.join(workspace, backupNames[0])), firstBytes);
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'b5-reader-edit.md' &&
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' &&
     Boolean(document.querySelector('[data-reader-editable="true"]'))`, 'reader editable plain block');
   const thirdBefore = {
     markdown: await snapshot(thirdPath),
@@ -588,7 +591,7 @@ try {
     document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与')`, 'reader bold undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader format mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader format mode');
   await selectReaderInlineText('重点');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '斜体')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader italic format dirty');
@@ -599,7 +602,7 @@ try {
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader italic undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader quote mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader quote mode');
   await selectReaderInlineText('重点');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '引用')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader quote format dirty');
@@ -610,7 +613,7 @@ try {
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader quote undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader text commands mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader text commands mode');
   await selectReaderInlineText('重点');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '剪切正文')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader cut dirty');
@@ -623,7 +626,7 @@ try {
     document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与')`, 'reader cut undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader delete mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader delete mode');
   const bottomY = await cdp.evaluate('window.innerHeight - 4');
   await selectReaderInlineText('重点', bottomY);
   const menuBounds = await cdp.evaluate(`(() => {
@@ -643,7 +646,7 @@ try {
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader delete undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader paste mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader paste mode');
   await selectReaderInlineText('重点');
   assert.equal(await cdp.evaluate(`navigator.clipboard.writeText('替换').then(() => true)`), true, 'reader paste clipboard setup');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '粘贴正文')?.click()`);
@@ -659,7 +662,7 @@ try {
   assertSnapshotUnchanged(thirdBefore.canvas, await snapshot(thirdCanvas), 'reader commands canvas');
 
   await dropFile(cdp, secondPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-3b-conflict.md' &&
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-3b-conflict.md' &&
     Boolean(document.querySelector('.markdown-body'))`, 'conflict reader document');
   const secondBefore = {
     annotations: await snapshot(secondSidecar),
@@ -699,7 +702,7 @@ try {
 
   await dropFile(cdp, firstPath);
   await new Promise((resolve) => setTimeout(resolve, 250));
-  assert.equal(await cdp.evaluate(`document.querySelector('h1')?.textContent`), 'a7-3b-conflict.md',
+  assert.equal(await cdp.evaluate(`document.querySelector('.workspace-current-name')?.textContent`), 'a7-3b-conflict.md',
     'dirty drop must not replace the current document');
   assert.equal(await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.value`), conflictCandidate);
 

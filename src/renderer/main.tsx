@@ -41,6 +41,7 @@ import type {
 } from '../types/reader-api';
 import type { SectionTransformOperation } from '../core/section-transform';
 import { AppShell } from './app-shell';
+import type { PartStatus, WorkspaceStatuses } from './workspace-status';
 import type { AppMode, AppNotice, NoticeKind, RecentDocumentItem } from './app-shell';
 import { EditorView } from './editor-view';
 import { ReaderView } from './reader-view';
@@ -472,32 +473,63 @@ function App() {
     void refreshAnnotations(epoch);
   }, [clearReaderSearchPaint, clearReaderSelection, refreshAnnotations]);
 
+  const reportEditorStatus = useCallback((message: string | null, alert?: boolean) => {
+    setMessage(message, alert ? 'alert' : 'status');
+  }, [setMessage]);
   const editorController = useMarkdownEditor(
     openedDocument,
     acceptEditorDocument,
     acceptEditorDocument,
-    (message, alert) => setMessage(message, alert ? 'alert' : 'status'),
+    reportEditorStatus,
   );
   const dirtyPreview = Boolean(editorController.editor?.dirty);
-  const workspaceStatuses = useMemo(() => ({
-    source: dirtyPreview ? '未保存' : annotationView?.canReloadSource ? '外部变化' : '已保存',
-    annotations: dirtyPreview
-      ? '等待正文保存'
-      : annotationLoading
-        ? '检查中'
-        : annotationView?.status === 'ready'
-          ? '可用'
-          : annotationView?.status === 'needs-relocation'
-            ? '待定位'
-            : '只读',
-    canvas: dirtyPreview || annotationView?.canReloadSource ? '等待正文确认' : '可编辑',
-  }), [annotationLoading, annotationView?.canReloadSource, annotationView?.status, dirtyPreview]);
+  const [readerDraftDirty, setReaderDraftDirty] = useState(false);
+  useEffect(() => { setReaderDraftDirty(false); }, [activeMode, openedDocument]);
+  const saveSource = useCallback(() => {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && active.hasAttribute('data-reader-editable')) active.blur();
+    void editorController.save();
+  }, [editorController.save]);
+  const [canvasStatus, setCanvasStatus] = useState<{ path: string; sha256: string; status: PartStatus } | null>(null);
+  const reportCanvasStatus = useCallback((path: string, sha256: string, status: PartStatus) => {
+    setCanvasStatus((old) => old?.path === path && old.sha256 === sha256 && old.status.text === status.text && old.status.tone === status.tone
+      ? old : { path, sha256, status });
+  }, []);
+  useEffect(() => {
+    if (openedDocument && !editorController.editor && !editorController.opening && !editorController.error) void editorController.open();
+  }, [openedDocument, editorController.editor, editorController.opening, editorController.error, editorController.open]);
+  const readerCanEdit = Boolean(editorController.editor?.editable) && !editorController.busy &&
+    !openedDocument?.recoveryPending && !annotationView?.canReloadSource;
+  const workspaceStatuses: WorkspaceStatuses = {
+    source: openedDocument?.recoveryPending ? { text: '需要恢复', tone: 'error' }
+      : editorController.error ? { text: dirtyPreview ? '未保存，请检查提示' : '操作未完成，请检查提示', tone: 'error' }
+      : annotationView?.canReloadSource ? { text: '文件已在外部修改', tone: 'warning' }
+      : editorController.busy ? { text: '处理中', tone: 'busy' }
+      : openedDocument?.temporary ? { text: '待首次保存', tone: 'warning' }
+      : dirtyPreview || readerDraftDirty ? { text: '未保存', tone: 'warning' }
+      : editorController.editor?.editable === false ? { text: '只读', tone: 'neutral' }
+      : { text: '已保存', tone: 'neutral' },
+    annotations: annotationError || annotationView?.errorCode ? { text: '操作未完成，请检查提示', tone: 'error' }
+      : annotationView?.pendingDraftCount ? { text: '有批注尚未保存', tone: 'warning' }
+      : dirtyPreview || readerDraftDirty ? { text: '等待正文保存', tone: 'neutral' }
+      : annotationSaving ? { text: '保存中', tone: 'busy' }
+      : annotationLoading ? { text: '检查中', tone: 'busy' }
+      : annotationView?.unresolvedCount || unpaintableIds.length ? { text: '有批注待定位', tone: 'warning' }
+      : annotationView?.status === 'read-only' ? { text: '只读', tone: 'warning' }
+      : annotationView?.status === 'needs-relocation' ? { text: '需要检查位置', tone: 'warning' }
+      : { text: annotationView ? '已核验' : '尚未载入', tone: 'neutral' },
+    canvas: canvasStatus && canvasStatus.path === openedDocument?.path && canvasStatus.sha256 === openedDocument?.sourceSha256 && canvasStatus.status.tone === 'error'
+      ? canvasStatus.status
+      : dirtyPreview || readerDraftDirty ? { text: '等待正文保存', tone: 'neutral' }
+      : canvasStatus && canvasStatus.path === openedDocument?.path && canvasStatus.sha256 === openedDocument?.sourceSha256
+        ? canvasStatus.status : { text: '尚未载入', tone: 'neutral' },
+  };
   const readerDocument = useMemo(() => {
     if (!openedDocument || !editorController.editor?.dirty) return openedDocument;
     return { ...openedDocument, content: editorController.editor.content };
   }, [editorController.editor, openedDocument]);
   const commitReaderTextEdit = useCallback(async (blockStart: number, sourceText: string, replacement: string) => {
-    if (activeMode !== 'reader' || !openedDocument || !readerDocument) return;
+    if (activeMode !== 'reader' || !readerCanEdit || !openedDocument || !readerDocument) return;
     const epoch = documentEpoch.current;
     const sourcePath = openedDocument.path;
     const sourceSha256 = openedDocument.sourceSha256;
@@ -520,8 +552,8 @@ function App() {
       return;
     }
     editorController.changeEditorText(markdownToEditorText(result.content));
-    setMessage('正文修改已暂存到编辑缓冲区；切换到编辑模式后可预览并保存。');
-  }, [activeMode, editorController, openedDocument, readerDocument, setMessage]);
+    setMessage('正文已修改，按 Ctrl+S 保存。');
+  }, [activeMode, editorController.editor, editorController.open, editorController.changeEditorText, openedDocument, readerCanEdit, readerDocument, setMessage]);
   const [canvasStructurePreview, setCanvasStructurePreview] = useState<SectionStructurePreview | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryItems, setRecoveryItems] = useState<readonly DocumentRecoveryItem[]>([]);
@@ -584,6 +616,7 @@ function App() {
   }, [deferredEditorText]);
 
   const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
+    setCanvasStatus(null);
     setCanvasStructurePreview(null);
     editorController.reset();
     clearReaderSelection({ clearNative: true });
@@ -1312,7 +1345,7 @@ function App() {
   }, [applyReaderContextTextCommand, closeReaderContextMenu, readerContextMenu, setMessage]);
 
   const canApplyReaderFormat = useCallback((action: MarkdownSourceSelectionAction, menu: ReaderContextMenuState | null) => {
-    if (!menu || !openedDocument || !readerDocument || menu.contentSnapshot !== readerDocument.content ||
+    if (!readerCanEdit || !menu || !openedDocument || !readerDocument || menu.epoch !== documentEpoch.current || menu.sourceSha256 !== openedDocument.sourceSha256 || menu.contentSnapshot !== readerDocument.content ||
         (action !== 'bold' && action !== 'italic' && action !== 'quote')) return false;
     return resolveReaderInlineFormatSelection(
       readerDocument.content,
@@ -1320,12 +1353,12 @@ function App() {
       action,
       menu.probe,
     ).ok;
-  }, [openedDocument, readerDocument]);
+  }, [openedDocument, readerCanEdit, readerDocument]);
 
   const canApplyReaderText = useCallback((menu: ReaderContextMenuState | null) => {
-    if (!menu || !openedDocument || !readerDocument || menu.contentSnapshot !== readerDocument.content) return false;
+    if (!readerCanEdit || !menu || !openedDocument || !readerDocument || menu.epoch !== documentEpoch.current || menu.sourceSha256 !== openedDocument.sourceSha256 || menu.contentSnapshot !== readerDocument.content) return false;
     return resolveReaderMappedSelection(readerDocument.content, readerDocument.bomByteLength, menu.probe).ok;
-  }, [openedDocument, readerDocument]);
+  }, [openedDocument, readerCanEdit, readerDocument]);
 
   const applyReaderContextFormat = useCallback(async (
     action: Extract<MarkdownSourceSelectionAction, 'bold' | 'italic' | 'quote'>,
@@ -1520,7 +1553,7 @@ function App() {
   ) => {
     const allowedStatus = annotationView?.status === 'ready' ||
       (allowRelocation && annotationView?.status === 'needs-relocation');
-    if (dirtyPreview || activeMode !== 'reader' || !allowedStatus || annotationView.pendingDraftCount > 0 ||
+    if (dirtyPreview || readerDraftDirty || activeMode !== 'reader' || !allowedStatus || annotationView.pendingDraftCount > 0 ||
         annotationLoading || mutationInFlight.current) return;
     const epoch = documentEpoch.current;
     mutationInFlight.current = true;
@@ -1534,23 +1567,26 @@ function App() {
         afterSaved?.(result);
         setMessage(successMessage);
       } else if (result.status === 'conflict') {
+        setAnnotationError(result.reason ?? '批注保存冲突，请检查文档状态。');
         clearReaderSelection({ clearNative: true });
         setMessage(result.draftPath
           ? `文件已发生变化，未覆盖批注文件。待处理草稿：${result.draftPath}`
           : result.reason ?? '批注状态已变化，请重新打开文档后再试。', 'alert');
       } else {
         clearReaderSelection({ clearNative: true });
+        setAnnotationError('批注尚未写回同目录，请检查待保存草稿。');
         setMessage(`批注尚未写回同目录。待保存草稿：${result.draftPath ?? '应用数据目录'}`, 'alert');
       }
     } catch (error) {
       if (documentEpoch.current === epoch) {
+        setAnnotationError(error instanceof Error ? error.message : '保存批注失败。');
         setMessage(error instanceof Error ? error.message : '保存批注失败。', 'alert');
       }
     } finally {
       mutationInFlight.current = false;
       if (documentEpoch.current === epoch) setAnnotationSaving(false);
     }
-  }, [activeMode, annotationLoading, annotationView, clearReaderSelection, dirtyPreview,
+  }, [activeMode, annotationLoading, annotationView, clearReaderSelection, dirtyPreview, readerDraftDirty,
     refreshAnnotations, setMessage]);
 
   const createHighlight = useCallback((color: AnnotationColor, frozenProbe?: SuccessfulSelectionProbe) => {
@@ -1749,16 +1785,16 @@ function App() {
     const index = blockStart === undefined ? undefined : headingByOffset.get(blockStart);
     const id = index === undefined ? undefined : sectionIds[index];
     const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-    if (activeMode === 'reader' && blockStart !== undefined && block && isReaderMappedTextBlock(selectionMap!, block)) {
+    if (readerCanEdit && activeMode === 'reader' && blockStart !== undefined && block && isReaderMappedTextBlock(selectionMap!, block)) {
       return <ReaderEditableBlock as={tag} blockStart={blockStart} sourceText={block.visibleText} enabled
-        onCommit={commitReaderTextEdit} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
+        onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
         {children}
       </ReaderEditableBlock>;
     }
     const Tag = tag;
     return <Tag {...rest} id={id} tabIndex={id ? -1 : undefined}
       data-source-block-start={node?.position?.start.offset}>{children}</Tag>;
-  }, [activeMode, commitReaderTextEdit, headingByOffset, sectionIds, selectionMap]);
+  }, [activeMode, commitReaderTextEdit, headingByOffset, readerCanEdit, sectionIds, selectionMap]);
 
   const components = useMemo<Components>(() => ({
     h1: (props) => heading('h1', props),
@@ -1770,9 +1806,9 @@ function App() {
     p: ({ node, children, ...props }) => {
       const blockStart = node?.position?.start.offset;
       const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-      if (activeMode === 'reader' && block && blockStart !== undefined && isReaderMappedTextBlock(selectionMap!, block)) {
+      if (readerCanEdit && activeMode === 'reader' && block && blockStart !== undefined && isReaderMappedTextBlock(selectionMap!, block)) {
         return <ReaderEditableBlock as="p" blockStart={blockStart} sourceText={block.visibleText} enabled
-          onCommit={commitReaderTextEdit} className={props.className}>{children}</ReaderEditableBlock>;
+          onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} className={props.className}>{children}</ReaderEditableBlock>;
       }
       return <p {...props} data-source-block-start={blockStart}>{children}</p>;
     },
@@ -1797,7 +1833,7 @@ function App() {
       <LocalImage src={src} alt={alt} documentPath={openedDocument?.path ?? ''} />
     ),
     input: ({ node: _node, ...props }) => <input {...props} disabled readOnly />,
-  }), [activeMode, commitReaderTextEdit, heading, openedDocument?.path, openLink, selectionMap]);
+  }), [activeMode, commitReaderTextEdit, heading, openedDocument?.path, openLink, readerCanEdit, selectionMap]);
 
   const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
   const noteItems = annotationView?.items.filter((item) => item.kind === 'note') ?? [];
@@ -1806,9 +1842,9 @@ function App() {
   const filteredNotes = noteItems.filter((item) => noteFilter === 'all' ||
     (noteFilter === 'untagged' ? !item.tagId : `${TAG_VALUE_PREFIX}${item.tagId ?? ''}` === noteFilter));
   const unpaintableSet = new Set(unpaintableIds);
-  const canChangeAnnotations = activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && annotationView?.status === 'ready' &&
+  const canChangeAnnotations = activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && !readerDraftDirty && annotationView?.status === 'ready' &&
     annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading && !reattachTargetId;
-  const canReviewRelocation = activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview &&
+  const canReviewRelocation = activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && !readerDraftDirty &&
     (annotationView?.status === 'ready' || annotationView?.status === 'needs-relocation') &&
     annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading;
   const canStartRelocationAction = canReviewRelocation && !reattachTargetId;
@@ -1861,7 +1897,7 @@ function App() {
     setAnnotationPanelOpen(false);
     setActiveMode('editor');
     window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController, jumpToSection, openedDocument]);
+  }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, jumpToSection, openedDocument]);
 
   const enterEditorAtSelection = useCallback(async (probe?: SuccessfulSelectionProbe) => {
     if (!openedDocument || !readerDocument) return;
@@ -1899,7 +1935,7 @@ function App() {
     if (preview.status !== 'ready') throw new Error(preview.rejection?.message ?? '章节结构没有变化。');
     setCanvasStructurePreview(preview);
     setActiveMode('editor'); window.scrollTo({ top: 0 });
-  }, [editorController]);
+  }, [editorController.editor, editorController.open]);
 
   const cancelCanvasStructure = useCallback(() => {
     const token = canvasStructurePreview?.token;
@@ -1940,7 +1976,7 @@ function App() {
   }, [recoveryBusy, recoveryPreview, showOpenedDocument]);
 
   return (
-    <AppShell document={openedDocument} activeMode={activeMode} dirty={dirtyPreview} saving={editorController.busy}
+    <AppShell document={openedDocument} activeMode={activeMode} dirty={dirtyPreview || readerDraftDirty} saving={editorController.busy}
       opening={opening || editorController.opening} dropActive={dropActive} notice={notice}
       recentDocuments={recentDocuments}
       leftSidebarOpen={leftSidebarOpen} rightSidebarOpen={rightSidebarOpen} focusMode={focusMode}
@@ -1955,19 +1991,36 @@ function App() {
       search={{ open: readerSearchOpen, query: readerSearchQuery,
         currentIndex: readerSearchIndex, total: readerSearchCount, truncated: readerSearchTruncated }}
       onOpen={() => void openMarkdown()} onModeChange={(mode) => void changeMode(mode)}
-      onSave={() => void editorController.save()}
-      onSaveAs={() => {
-        if (!openedDocument?.temporary) {
-          setMessage('另存为尚未接入安全的 Markdown、批注和画布三文件事务；当前请先保存原文。', 'alert');
-          return;
-        }
-        void (async () => {
-          const editor = editorController.editor ?? await editorController.open();
-          if (editor) await editorController.save();
-        })();
-      }}
-      onDiscardChanges={() => void editorController.discardChanges()}
+      onSave={saveSource}
+      canSave={Boolean(editorController.editor?.editable)}
+      onSaveAs={openedDocument?.temporary ? saveSource : undefined}
+      onDiscardChanges={() => { setCanvasStructurePreview(null); void editorController.discardChanges(); }}
       workspaceStatuses={workspaceStatuses}
+      annotationDetails={<div className="annotation-summary" role="region" aria-label="批注状态与操作">
+              <strong>批注状态</strong>
+              {annotationError && <span className="annotation-warning">{annotationError}</span>}
+              {annotationLoading ? <span>正在检查…</span> : annotationView ? <>
+                <span>{annotationView.count} 条记录</span>
+                {annotationView.unresolvedCount > 0 && <span>{annotationView.unresolvedCount} 条待定位</span>}
+                {unpaintableIds.length > 0 && <span className="annotation-warning">{unpaintableIds.length} 条无法核验可见位置，未着色</span>}
+                {annotationView.pendingDraftCount > 0 && <span className="annotation-pending">{annotationView.pendingDraftCount} 份草稿尚未写回同目录，暂停修改批注</span>}
+                {(annotationView.unreadableDraftCount ?? 0) > 0 && <span className="annotation-warning">其中 {annotationView.unreadableDraftCount} 份草稿无法读取，请检查应用数据目录</span>}
+                {annotationView.status === 'read-only' && !annotationView.canReloadSource &&
+                  <span className="annotation-warning">只读：{annotationView.reason ?? '批注文件不可安全修改'}</span>}
+                {annotationView.status === 'needs-relocation' && <span className="annotation-warning">{annotationView.reason}</span>}
+                {annotationView.relocatableCount > 0 && <span>{annotationView.relocatableCount} 条可安全重定位</span>}
+                {!annotationView.canReloadSource && <button type="button" className="annotation-inline-action"
+                  onClick={() => void refreshAnnotations(documentEpoch.current)}
+                  disabled={annotationLoading || Boolean(reattachTargetId)}>重新检查</button>}
+                {canStartRelocationAction && (annotationView.status === 'needs-relocation' || annotationView.relocatableCount > 0) &&
+                  <button type="button" className="annotation-inline-action" onClick={applyRelocations}>
+                    {annotationView.relocatableCount > 0
+                      ? `应用 ${annotationView.relocatableCount} 条安全重定位`
+                      : '确认当前版本并保留待定位'}
+                  </button>}
+                {!highlightSupported && <span className="annotation-warning">当前环境不支持正文高亮着色</span>}
+              </> : <span className="annotation-warning">{annotationError ?? '尚未读取批注状态'}</span>}
+            </div>}
       onDocumentRecovery={() => void openDocumentRecovery()}
       onReloadSource={() => void reloadMarkdown()}
       onOpenSearch={openReaderSearch} onCloseSearch={closeReaderSearch}
@@ -2004,10 +2057,8 @@ function App() {
           sharedEditSession={editorController.editSession}
           onUndo={editorController.undo}
           onRedo={editorController.redo}
-          onSave={() => void editorController.save()}
           onRecoverDraft={(id) => void editorController.restoreDraft(id)}
           onDiscardDraft={(id) => void editorController.discardDraft(id)}
-          onDiscardChanges={() => { setCanvasStructurePreview(null); void editorController.discardChanges(); }}
           onDiscardSourceBackup={(id) => void editorController.discardSourceBackup(id)}
           canvasStructurePreview={canvasStructurePreview}
           onCancelCanvasStructure={cancelCanvasStructure}
@@ -2024,17 +2075,15 @@ function App() {
       ) : activeMode === 'cards' ? (
         <CanvasView document={readerDocument!} dirty={dirtyPreview} activeSection={activeSection}
           onSectionChange={(index) => { setActiveSection(index); readerPosition.current = null; }}
-          onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} />
+          onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} onStatusChange={reportCanvasStatus} />
       ) : activeMode === 'editor' ? editorController.editor ? null : (
         <main className="source-editor-loading" role="status">正在准备源码编辑器…</main>
       ) : (
         <ReaderView sectionTree={sectionTree!} sectionIds={sectionIds} activeSection={activeSection}
           annotationsOpen={!dirtyPreview && annotationPanelOpen} onJumpToSection={jumpToSection}>
           <main className="reading-main">
-            <div className="document-kicker">MARKDOWN 文档</div>
-            <div className="document-heading-row">
-              <h1 className="document-name">{openedDocument.name}</h1>
-              <span className="read-only-badge">{dirtyPreview ? '未保存预览' : '只读'}</span>
+            <div className="reader-tools">
+              {editorController.editor?.editable === false && <span className="read-only-badge" title={editorController.editor.readOnlyReason}>只读</span>}
               {!dirtyPreview && <button ref={annotationToggleRef} type="button" className="annotation-panel-toggle"
                 aria-expanded={annotationPanelOpen} aria-controls="annotation-sidebar"
                 onClick={() => setAnnotationPanelOpen((open) => !open)}>
@@ -2042,38 +2091,14 @@ function App() {
               </button>}
             </div>
             {dirtyPreview ? <div className="annotation-summary dirty-preview" role="status" data-dirty-preview="true">
-              <strong>未保存阅读预览</strong>
-              <span>正文来自当前编辑缓冲区。旧批注不着色，新增、修改、删除与重定位均已暂停。</span>
-            </div> : <div className="annotation-summary" role="region" aria-label="批注状态与操作">
-              <strong>批注状态</strong>
-              {annotationLoading ? <span>正在检查…</span> : annotationView ? <>
-                <span>{annotationView.count} 条记录</span>
-                {annotationView.unresolvedCount > 0 && <span>{annotationView.unresolvedCount} 条待定位</span>}
-                {unpaintableIds.length > 0 && <span className="annotation-warning">{unpaintableIds.length} 条无法核验可见位置，未着色</span>}
-                {annotationView.pendingDraftCount > 0 && <span className="annotation-pending">{annotationView.pendingDraftCount} 份草稿尚未写回同目录，暂停修改批注</span>}
-                {(annotationView.unreadableDraftCount ?? 0) > 0 && <span className="annotation-warning">其中 {annotationView.unreadableDraftCount} 份草稿无法读取，请检查应用数据目录</span>}
-                {annotationView.status === 'read-only' && !annotationView.canReloadSource &&
-                  <span className="annotation-warning">只读：{annotationView.reason ?? '批注文件不可安全修改'}</span>}
-                {annotationView.status === 'needs-relocation' && <span className="annotation-warning">{annotationView.reason}</span>}
-                {annotationView.relocatableCount > 0 && <span>{annotationView.relocatableCount} 条可安全重定位</span>}
-                {!annotationView.canReloadSource && <button type="button" className="annotation-inline-action"
-                  onClick={() => void refreshAnnotations(documentEpoch.current)}
-                  disabled={annotationLoading || Boolean(reattachTargetId)}>重新检查</button>}
-                {canStartRelocationAction && (annotationView.status === 'needs-relocation' || annotationView.relocatableCount > 0) &&
-                  <button type="button" className="annotation-inline-action" onClick={applyRelocations}>
-                    {annotationView.relocatableCount > 0
-                      ? `应用 ${annotationView.relocatableCount} 条安全重定位`
-                      : '确认当前版本并保留待定位'}
-                  </button>}
-                {!highlightSupported && <span className="annotation-warning">当前环境不支持正文高亮着色</span>}
-              </> : <span className="annotation-warning">{annotationError ?? '尚未读取批注状态'}</span>}
-            </div>}
+              <strong>未保存</strong>
+              <span>保存正文后可继续批注。</span>
+            </div> : null}
             {unsupportedExtensions.length > 0 && <div className="reading-dialect-notice" role="status">
               <strong>部分扩展按普通文字显示</strong>
               <span>检测到：{unsupportedExtensions.map((kind) => UNSUPPORTED_EXTENSION_NAMES[kind]).join('、')}。</span>
             </div>}
-            {dirtyPreview ? <p className="selection-hint">保存源码或放弃编辑后，批注操作会重新启用。</p>
-              : reattachTarget ? <div className="reattach-controls" role="region" aria-label="人工重新选择批注位置">
+            {reattachTarget ? <div className="reattach-controls" role="region" aria-label="人工重新选择批注位置">
               <div><strong>为待定位批注重新选择</strong><span>旧引文：“{reattachTarget.anchor.displayQuote}”</span></div>
               <button type="button" className="primary" onMouseDown={(event) => event.preventDefault()}
                 onClick={confirmReattach} disabled={!canReviewRelocation}>确认所选新位置</button>
@@ -2082,7 +2107,7 @@ function App() {
                 clearReaderSelection({ clearNative: true, restoreFocus: true });
                 setMessage('已取消重新选择，批注文件未修改。');
               }}>取消</button>
-            </div> : <p className="selection-hint">选择正文文字后，可直接添加高亮或批注。</p>}
+            </div> : null}
             {selectionChecking && !selectionProbe && <div className="selection-checking" role="status">
               正在检查所选文字…
             </div>}
@@ -2094,7 +2119,10 @@ function App() {
                   ? `${selectionProbe.displayQuote.slice(0, 48)}…` : selectionProbe.displayQuote}”
               </span>
               <span className="selection-meta">{countGraphemes(selectionProbe.displayQuote)} 字</span>
-              <span className="selection-capability supported">可直接编辑</span>
+              <span className="selection-capability" data-selection-capability="true">{canApplyReaderText({
+                probe: selectionProbe, left: 0, top: 0, epoch: documentEpoch.current,
+                sourceSha256: openedDocument.sourceSha256, contentSnapshot: readerDocument!.content,
+              }) ? '可编辑正文' : canChangeAnnotations ? '可批注 · 编辑请用源码' : '可复制 · 编辑请用源码'}</span>
               {!reattachTarget && <div className="selection-toolbar-actions">
                 <div className="highlight-palette" role="group" aria-label="高亮所选文字">
                   {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button"
@@ -2108,7 +2136,7 @@ function App() {
                   onClick={() => openNoteComposer()} disabled={!canChangeAnnotations}
                   aria-controls="annotation-sidebar">添加批注</button>
                 <button type="button" className="selection-source-action" onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => void enterEditorAtSelection(selectionProbe)} title="切到源码并定位当前选区">进入编辑</button>
+                  onClick={() => void enterEditorAtSelection(selectionProbe)} title="切到源码并定位当前选区">在源码中编辑</button>
               </div>}
               <button type="button" className="selection-toolbar-close"
                 onMouseDown={(event) => event.preventDefault()}
@@ -2118,7 +2146,7 @@ function App() {
             {selectionProbe && !selectionProbe.ok && selectionToolbarPosition &&
               <div className="selection-feedback unsupported" role="status"
                 data-placement={selectionToolbarPosition.placement} style={{ top: selectionToolbarPosition.top }}>
-                <strong>需要源码模式</strong><span>{selectionReasonForReader(selectionProbe.reason)}</span>
+                <strong>此选区暂不能批注</strong><span>{selectionReasonForReader(selectionProbe.reason)}</span>
                 {readerSelectionSourceOffset.current !== null && <button type="button" className="selection-source-action"
                   onMouseDown={(event) => event.preventDefault()} onClick={() => void enterEditorAtSelection()}>切到源码并定位</button>}
                 <button type="button" className="selection-toolbar-close"
@@ -2126,7 +2154,6 @@ function App() {
                   aria-label="关闭选区提示">×</button>
               </div>}
             <span className="sr-only" aria-live="polite">{selectionAnnouncement}</span>
-            <div className="document-divider" />
             {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0}
               onContextMenu={openReaderContextMenu} onKeyDown={handleReaderContextShortcut}>
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter, remarkReadingDangerousHtmlPolicy]}

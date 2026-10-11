@@ -22,6 +22,7 @@ import { extractSections } from '../core/sections';
 import { encodeMarkdownBytes } from '../core/markdown-source';
 import type { OpenedMarkdownDocument } from '../types/reader-api';
 import type { SectionTransformOperation } from '../core/section-transform';
+import type { PartStatus } from './workspace-status';
 import '@xyflow/react/dist/style.css';
 
 interface CardData extends Record<string, unknown> {
@@ -115,9 +116,10 @@ export interface CanvasViewProps {
   readonly onSectionChange: (index: number | null) => void;
   readonly onEditSection: (index: number | null) => void;
   readonly onStructurePreview: (operation: SectionTransformOperation) => Promise<void>;
+  readonly onStatusChange?: (path: string, sha256: string, status: PartStatus) => void;
 }
 
-function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditSection, onStructurePreview }: CanvasViewProps) {
+function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditSection, onStructurePreview, onStatusChange }: CanvasViewProps) {
   const flow = useReactFlow<ChapterNode>();
   const [model, setModel] = useState<CanvasStateV2 | null>(null);
   const [bindings, setBindings] = useState<readonly CanvasBinding[]>([]);
@@ -164,6 +166,18 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   const canvasResizeStart = useRef<{ y: number; height: number } | null>(null);
   const tree = useMemo(() => extractSections(document.content), [document.content]);
   const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting);
+
+  useEffect(() => {
+    const status: PartStatus = readError ? { text: '未能载入或保存，请检查画布提示', tone: 'error' }
+      : document.recoveryPending ? { text: '需要恢复', tone: 'error' }
+      : dirty ? { text: '等待正文保存', tone: 'neutral' }
+      : layoutPending ? { text: '加载中', tone: 'busy' }
+      : busy ? { text: '处理中', tone: 'busy' }
+      : unresolvedIds.length || unresolvedLinkIds.length ? { text: '有章节或箭头待修复', tone: 'warning' }
+      : loadWarning ? { text: '布局需要检查', tone: 'warning' }
+      : { text: sidecarHash ? '已载入' : '临时布局，尚未保存', tone: 'neutral' };
+    onStatusChange?.(document.path, document.sourceSha256, status);
+  }, [onStatusChange, document.path, document.sourceSha256, document.recoveryPending, dirty, readError, layoutPending, busy, unresolvedIds.length, unresolvedLinkIds.length, loadWarning, sidecarHash]);
 
   useEffect(() => {
     const current = ++generation.current;
@@ -262,7 +276,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
       if (result.status !== 'saved') { setReadError(result.reason ?? '画布未保存，请重新载入。'); setMessage(result.reason ?? '画布未保存'); return false; }
       sourceVersion.current = needsV2 ? 2 : 1;
       if (remember) { setHistory((previous) => [...previous.slice(-49), model]); setFuture([]); }
-      setModel(next); setSidecarHash(result.sidecarSha256 ?? null); setMessage('画布已保存 · Markdown 未改动');
+      setModel(next); setSidecarHash(result.sidecarSha256 ?? null); setLoadWarning(null); setMessage('画布已保存 · Markdown 未改动');
       return true;
     } catch { if (generation.current === current) { setReadError('画布保存失败，请重新载入。'); setMessage('画布保存失败，原文未修改。'); } }
     finally { saveInFlight.current = false; if (generation.current === current) setBusy(false); }

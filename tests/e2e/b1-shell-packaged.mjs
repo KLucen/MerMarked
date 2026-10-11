@@ -48,7 +48,7 @@ try {
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'new editor');
   await cdp.evaluate(`(() => { const textarea = document.querySelector('[data-editor-textarea]'); if (!(textarea instanceof HTMLTextAreaElement)) return false; const value = '# First save\\n\\n正文'; const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set; setter?.call(textarea, value); textarea.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   await mainCdp.evaluate(`process.mainModule.require('electron').dialog.showSaveDialog = async () => ({ canceled: false, filePath: ${JSON.stringify(created)} })`);
-  await click(cdp, '[data-editor-save]');
+  await click(cdp, '[data-workspace-save]');
   await waitFor(cdp, `document.querySelector('.file-name')?.textContent === 'new.md' && document.querySelector('[data-editor-status]')?.textContent.includes('已保存')`, 'first save as');
   assert.equal((await stat(created)).isFile(), true);
   assert.equal((await readFile(created, 'utf8')), '# First save\n\n正文');
@@ -56,6 +56,7 @@ try {
   await click(cdp, '[aria-label="收起左侧栏"]');
   await click(cdp, '[aria-label="展开右侧栏"]');
   await click(cdp, '[aria-label="收起右侧栏"]');
+  await click(cdp, '[aria-label="文档菜单"]');
   await click(cdp, '[aria-label="进入专注模式"]');
   assert.equal(await cdp.evaluate(`document.querySelector('[data-focus-mode="true"]') !== null`), true);
   await click(cdp, '[aria-label="退出专注模式"]');

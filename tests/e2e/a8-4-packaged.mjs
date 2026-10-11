@@ -30,9 +30,15 @@ async function waitFor(cdp, expression, label) { const deadline = Date.now() + 1
 async function click(cdp, selector) { assert.equal(await cdp.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!(element instanceof HTMLElement) || element.hasAttribute('disabled')) return false; element.click(); return true; })()`), true, `enabled element missing: ${selector}`); }
 async function drop(cdp, filePath) { const rect = await cdp.evaluate(`(() => { document.documentElement.style.scrollBehavior = 'auto'; window.scrollTo(0, 0); const target = document.querySelector('[data-markdown-drop-target]'); const box = target.getBoundingClientRect(); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; })()`); const data = { items: [], files: [filePath], dragOperationsMask: 1 }; await cdp.send('Input.dispatchDragEvent', { type: 'dragEnter', x: rect.x, y: rect.y, data }); await cdp.send('Input.dispatchDragEvent', { type: 'dragOver', x: rect.x, y: rect.y, data }); await cdp.send('Input.dispatchDragEvent', { type: 'drop', x: rect.x, y: rect.y, data }); }
 async function dragToOverlap(cdp) {
+  await cdp.send('Page.bringToFront');
+  await waitFor(cdp, `document.querySelector('[data-id="card-1"]')?.classList.contains('draggable') === true`, 'draggable card');
+  await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   const points = await cdp.evaluate(`(() => { const source = document.querySelector('[data-id="card-1"] .canvas-card-header strong').getBoundingClientRect(); const target = document.querySelector('[data-id="card-3"] .canvas-card-body').getBoundingClientRect(); return { sx: source.x + source.width / 2, sy: source.y + source.height / 2, tx: target.x + target.width / 2, ty: target.y + target.height / 2 }; })()`);
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: points.sx, y: points.sy, button: 'left', clickCount: 1, buttons: 1 });
-  for (let i = 1; i <= 15; i++) await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: points.sx + (points.tx - points.sx) * i / 15, y: points.sy + (points.ty - points.sy) * i / 15, buttons: 1 });
+  for (let i = 1; i <= 15; i++) {
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: points.sx + (points.tx - points.sx) * i / 15, y: points.sy + (points.ty - points.sy) * i / 15, buttons: 1 });
+    await new Promise((resolve) => setTimeout(resolve, 16));
+  }
   await new Promise((resolve) => setTimeout(resolve, 360));
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: points.tx, y: points.ty, button: 'left', clickCount: 1, buttons: 0 });
   try { await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-structure-preview]'))`, 'overlap preview'); }
@@ -107,7 +113,7 @@ try {
   await click(cdp, '[data-editor-undo]'); await waitFor(cdp, `document.querySelector('[data-editor-status]').textContent.includes('已保存')`, 'single undo');
   assert.equal(await cdp.evaluate(`document.querySelector('[data-editor-textarea]').value`), content.replaceAll('\r\n', '\n'));
   await click(cdp, '[data-editor-redo]'); await waitFor(cdp, `document.querySelector('[data-editor-status]').textContent.includes('未保存')`, 'single redo');
-  await click(cdp, '[data-editor-save]'); await waitFor(cdp, `document.querySelector('[data-editor-status]').textContent.includes('已保存') && document.querySelector('[data-editor-save]')?.disabled === false`, 'three-file save');
+  await click(cdp, '[data-workspace-save]'); await waitFor(cdp, `document.querySelector('[data-editor-status]').textContent.includes('已保存') && document.querySelector('[data-workspace-save]')?.disabled === true`, 'three-file save');
   const preview = previewSectionTransform(content, operation); assert.equal(preview.status, 'ready');
   const after = Buffer.concat([Buffer.from([239, 187, 191]), Buffer.from(preview.candidate)]);
   assert.deepEqual(await readFile(paths[0]), after);
