@@ -482,11 +482,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 /* B1 workspace shell: the document owns the canvas; sidebars stay optional and reversible. */
 .workspace-content { min-width: 0; min-height: calc(100vh - 72px); position: relative; }
 .topbar:has(.modebar) { gap: 12px; height: 58px; padding-inline: 18px; }
-.topbar .modebar { flex: 1 1 auto; gap: 18px; height: 42px; overflow: hidden; padding: 0 8px; }
+.topbar .modebar { flex: 0 0 auto; gap: 18px; height: 42px; padding: 0 8px; }
 .workspace-icon-button, .workspace-close-button { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 7px; color: #5f6d82; cursor: pointer; display: inline-flex; flex: 0 0 auto; justify-content: center; min-height: 32px; min-width: 32px; padding: 0; transition: background-color 160ms ease-out, border-color 160ms ease-out, color 160ms ease-out, transform 120ms ease-out; }
 .workspace-icon-button:hover, .workspace-close-button:hover { background: #f0f4fa; border-color: #d6dfec; color: #315eb7; }
 .workspace-icon-button:active, .workspace-close-button:active, .open-button:active, .welcome-open:active { transform: scale(.97); }
-.workspace-topbar-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 7px; min-width: 0; }
+.workspace-topbar-actions { align-items: center; display: flex; flex: 1 1 auto; justify-content: flex-end; gap: 7px; min-width: 0; }
 .workspace-topbar-actions .file-status { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .workspace-save-actions { align-items: center; display: flex; flex: 0 0 auto; gap: 4px; }
 .workspace-save-button, .workspace-discard-button { align-items: center; border: 1px solid #c5d2e4; border-radius: 6px; cursor: pointer; display: inline-flex; font-size: 11px; gap: 5px; min-height: 30px; padding: 0 8px; white-space: nowrap; }
@@ -666,4 +666,42 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
   .source-editor-textarea { font-size: 12px; padding: 14px 12px; }
   .selection-toolbar-actions { gap: 5px; }
   .selection-toolbar .highlight-choice { padding-inline: 6px; }
+}
+
+/* UX1: one workspace command row; details appear only when requested. */
+[hidden] { display: none !important; }
+.workspace-current-name { flex: 0 1 200px; margin-right: auto; }
+.workspace-popover { flex: 0 0 auto; position: relative; }
+.workspace-popover-trigger { align-items: center; background: transparent; border: 1px solid transparent; border-radius: 6px; color: #59677a; cursor: pointer; display: flex; font-size: 12px; min-height: 32px; min-width: 32px; justify-content: center; padding: 5px 8px; }
+.workspace-popover-trigger:hover, .workspace-popover-trigger[aria-expanded='true'] { background: #eef3fa; }
+.workspace-popover-trigger > span { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-document-status.warning .workspace-popover-trigger { color: #875719; }
+.workspace-document-status.error .workspace-popover-trigger { color: #a33636; font-weight: 650; }
+.workspace-popover-panel { background: #fff; border: 1px solid #dce3ed; border-radius: 8px; box-shadow: 0 8px 28px #1f2e4926; display: grid; gap: 4px; max-height: calc(100dvh - 80px); overflow: auto; padding: 8px; position: absolute; right: 0; top: calc(100% + 6px); width: min(280px, calc(100vw - 24px)); z-index: 20; }
+.workspace-popover-panel > button { align-items: center; background: transparent; border: 0; border-radius: 5px; color: #34435b; cursor: pointer; display: flex; font-size: 13px; gap: 8px; min-height: 34px; padding: 7px 9px; text-align: left; }
+.workspace-popover-panel > button:hover:not(:disabled) { background: #eef3fa; }
+.workspace-popover-panel button:disabled { cursor: not-allowed; opacity: .5; }
+.workspace-popover-panel kbd { color: #7d899a; font-family: inherit; font-size: 11px; margin-left: auto; }
+.workspace-status-details { display: grid; font-size: 13px; gap: 9px; padding: 9px; }
+.workspace-popover-panel .annotation-summary { align-items: start; flex-direction: column; margin-top: 0; padding: 10px 9px; }
+.start-recovery { background: transparent; border: 0; color: #68768b; cursor: pointer; font-size: 12px; margin: 8px 24px; }
+.reader-tools { align-items: center; display: flex; min-height: 30px; margin-bottom: 16px; }
+.reading-main { padding-top: 22px; }
+.source-editor-header { margin-bottom: 12px; }
+.source-editor-main { padding-top: 18px; }
+@media (max-width: 720px) {
+  .workspace-current-name { display: none; }
+  .workspace-popover-trigger > span { max-width: 100px; }
+  .workspace-popover-panel { position: fixed; right: 8px; top: 60px; }
+  .workspace-topbar-actions { gap: 3px; }
+  .workspace-save-button { width: 32px; justify-content: center; }
+  .workspace-save-button > span { display: none; }
+  .workspace-topbar-actions > .workspace-icon-button, .workspace-topbar-actions > .open-drop-target { display: none; }
+  .workspace-topbar-actions > .workspace-icon-button[aria-controls="reader-searchbar"] { display: inline-flex; }
+  .source-editor-header { align-items: stretch; }
+}
+@media (max-width: 420px) {
+  .topbar .modebar { gap: 8px; }
+  .workspace-popover-trigger { padding-inline: 5px; }
+  .workspace-popover-trigger > span { max-width: 82px; }
 }

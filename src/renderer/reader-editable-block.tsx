@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef } from 'react';
+import { createElement, useEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode, ClipboardEvent, FormEvent } from 'react';
 
 interface ReaderEditableBlockProps {
@@ -7,6 +7,7 @@ interface ReaderEditableBlockProps {
   readonly sourceText: string;
   readonly enabled: boolean;
   readonly onCommit: (blockStart: number, sourceText: string, text: string) => void;
+  readonly onDraftChange: (dirty: boolean) => void;
   readonly children: ReactNode;
   readonly className?: string;
   readonly id?: string;
@@ -37,6 +38,7 @@ export function ReaderEditableBlock({
   sourceText,
   enabled,
   onCommit,
+  onDraftChange,
   children,
   className,
   id,
@@ -44,6 +46,7 @@ export function ReaderEditableBlock({
 }: ReaderEditableBlockProps) {
   const elementRef = useRef<HTMLElement | null>(null);
   const originalRef = useRef(sourceText);
+  const [restoreVersion, setRestoreVersion] = useState(0);
   const draftRef = useRef(sourceText);
   const editingRef = useRef(false);
   const composingRef = useRef(false);
@@ -58,8 +61,10 @@ export function ReaderEditableBlock({
   const restore = () => {
     const element = elementRef.current;
     if (!element) return;
-    element.textContent = originalRef.current;
+    // Recreate the original React children so formatting and link handlers survive Escape.
+    setRestoreVersion((version) => version + 1);
     draftRef.current = originalRef.current;
+    onDraftChange(false);
   };
 
   const handleInput = (event: FormEvent<HTMLElement>) => {
@@ -69,6 +74,7 @@ export function ReaderEditableBlock({
       return;
     }
     draftRef.current = text;
+    onDraftChange(text !== originalRef.current);
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLElement>) => {
@@ -77,11 +83,13 @@ export function ReaderEditableBlock({
     if (/\r|\n/u.test(text)) return;
     insertPlainText(text);
     draftRef.current = event.currentTarget.textContent ?? '';
+    onDraftChange(draftRef.current !== originalRef.current);
   };
 
   const commitDraft = () => {
     editingRef.current = false;
     const next = draftRef.current;
+    onDraftChange(false);
     if (next !== originalRef.current) onCommit(blockStart, originalRef.current, next);
   };
 
@@ -113,6 +121,7 @@ export function ReaderEditableBlock({
   };
 
   return createElement(as, {
+    key: restoreVersion,
     ref: (element: HTMLElement | null) => { elementRef.current = element; },
     id,
     tabIndex,

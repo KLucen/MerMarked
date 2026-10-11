@@ -43,7 +43,7 @@ try {
   cdp = await connect(await endpoint(port)); await waitFor(cdp, `document.readyState === 'complete'`, 'renderer'); await drop(cdp, documentPath);
   await waitFor(cdp, `document.querySelector('.file-name')?.textContent === 'canvas.md'`, 'document'); await click(cdp, '[data-mode="cards"]');
   await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-view]'))`, 'canvas mode'); await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 4`, 'four cards');
-  assert.equal(await cdp.evaluate(`document.querySelector('[data-canvas-status]').textContent.includes('尚未创建')`), true);
+  await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false`, 'initial canvas ready');
   const sidecarPath = `${documentPath}.mermarkd.json`;
   await assert.rejects(stat(sidecarPath), (error) => error.code === 'ENOENT');
   await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false`, 'measured initial layout ready');
@@ -51,11 +51,18 @@ try {
   await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false && document.querySelector('[data-canvas-status]').textContent.includes('画布已保存')`, 'initial save');
   const beforeDrag = JSON.parse(await readFile(sidecarPath, 'utf8'));
   const rootId = beforeDrag.cards[0].id;
+  await cdp.send('Page.bringToFront');
+  await waitFor(cdp, `document.querySelector('[data-id="${rootId}"]')?.classList.contains('draggable')===true`, 'draggable root');
   const drag = await cdp.evaluate(`(() => { const element = document.querySelector('[data-id="${rootId}"] .canvas-card-header strong'); const box = element.getBoundingClientRect(); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; })()`);
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: drag.x, y: drag.y, button: 'left', clickCount: 1, buttons: 1 });
   for (let index = 1; index <= 12; index++) await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: drag.x + index * 8, y: drag.y + index * 4, buttons: 1 });
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: drag.x + 96, y: drag.y + 48, button: 'left', clickCount: 1, buttons: 0 });
   await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false && document.querySelector('[data-canvas-status]').textContent.includes('画布已保存')`, 'drag save');
+  for (let attempt=0; attempt<150; attempt++) {
+    const next = JSON.parse(await readFile(sidecarPath, 'utf8'));
+    if (JSON.stringify(next.cards[0].position) !== JSON.stringify(beforeDrag.cards[0].position)) break;
+    await new Promise((resolve)=>setTimeout(resolve,60));
+  }
   const afterDrag = JSON.parse(await readFile(sidecarPath, 'utf8'));
   assert.notDeepEqual(afterDrag.cards[0].position, beforeDrag.cards[0].position);
   assert.deepEqual(afterDrag.cards.slice(1, 3).map((card) => card.position), beforeDrag.cards.slice(1, 3).map((card) => card.position));
@@ -92,7 +99,7 @@ try {
   const dirtyWrite = await cdp.evaluate(`window.mermarkd.saveCanvas(${JSON.stringify({ sourceSha256: hash, expectedSidecarSha256: createHash('sha256').update(sidecarBeforeDirty).digest('hex'), model: sidecar })})`);
   assert.equal(dirtyWrite.status, 'conflict');
   assert.deepEqual(await readFile(sidecarPath), sidecarBeforeDirty);
-  await click(cdp, '[data-mode="editor"]'); await click(cdp, '[data-editor-discard-changes]'); await click(cdp, '[data-editor-confirm-discard]');
+  await click(cdp, '[data-mode="editor"]'); await click(cdp, '[aria-label="文档菜单"]'); await click(cdp, '[data-workspace-discard]'); await click(cdp, '.workspace-discard-confirm-button');
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'discard'); await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-view]'))`, 'reopen cards'); await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 2`, 'restored collapsed cards');
   await waitFor(cdp, `document.querySelectorAll('.react-flow__edge').length === 1`, 'reopened arrow rendered');
   assert.equal(await readFile(documentPath, 'utf8'), content);

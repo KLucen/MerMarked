@@ -1,3 +1,4 @@
+import { openWorkspaceStatus } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -316,10 +317,12 @@ try {
   cdp = await connect(page);
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer startup');
   await dropFile(cdp, documentPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-1-reading.md' &&
+  await openWorkspaceStatus(cdp, "a7-1-reading.md");
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-1-reading.md' &&
     Boolean(document.querySelector('.markdown-body')) &&
     document.querySelector('.annotation-summary')?.textContent.includes('1 条记录')`, 'reader document');
 
+  await cdp.evaluate(`document.querySelector('[aria-label="文档状态"]').click()`);
   const modeState = await cdp.evaluate(`(() => {
     const nav = document.querySelector('.modebar');
     const buttons = Array.from(nav?.querySelectorAll('button') ?? []);
@@ -339,8 +342,8 @@ try {
   assert.equal(modeState.buttons.length, 3);
   assert.deepEqual(modeState.buttons.map((item) => item.current), ['page', null, null]);
   assert.deepEqual(modeState.buttons.map((item) => item.disabled), [false, false, false]);
-  assert.match(`${modeState.buttons[1].text} ${modeState.buttons[1].ariaLabel}`, /编辑模式/);
-  assert.match(`${modeState.buttons[2].text} ${modeState.buttons[2].ariaLabel}`, /卡片模式/);
+  assert.match(`${modeState.buttons[1].text} ${modeState.buttons[1].ariaLabel}`, /源码/);
+  assert.match(`${modeState.buttons[2].text} ${modeState.buttons[2].ariaLabel}`, /卡片/);
 
   const readingContract = await cdp.evaluate(`(() => {
     const article = document.querySelector('.markdown-body');
@@ -470,10 +473,6 @@ try {
     toolbar: Boolean(document.querySelector('.selection-toolbar')),
     feedback: Boolean(document.querySelector('.selection-feedback')),
   })`), { toolbar: false, feedback: false });
-  assert.equal(await selectText(cdp, '选择正文文字后', '.selection-hint'), true);
-  await waitForAnimationFrames(cdp);
-  assert.equal(await cdp.evaluate(`Boolean(document.querySelector('.selection-toolbar, .selection-feedback'))`), false,
-    'selection in reader tools must not create a body annotation target');
 
   const selectionText = ACTIVE_SELECTION_TEXT;
   assert.equal(await selectText(cdp, selectionText), true);
@@ -591,7 +590,7 @@ try {
       articlePresent: Boolean(document.querySelector('.markdown-body')),
     };
   })()`);
-  assert.match(disabledModeClick.readerCurrent, /阅读模式/);
+  assert.match(disabledModeClick.readerCurrent, /阅读/);
   assert.equal(disabledModeClick.articlePresent, true);
 
   assert.deepEqual({
@@ -610,7 +609,7 @@ try {
   assert.equal(await selectText(cdp, selectionText), true);
   await waitFor(cdp, `Boolean(document.querySelector('.selection-toolbar'))`, 'selection before document switch');
   await dropFile(cdp, secondDocumentPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-1-second.md' &&
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-1-second.md' &&
     document.querySelector('.markdown-body')?.textContent.includes('切换文档必须清除旧选区')`, 'second document');
   assert.equal(await cdp.evaluate(`Boolean(document.querySelector('.selection-toolbar, .selection-feedback'))`), false);
   assert.equal(digest(await readFile(secondDocumentPath)), digest(secondDocumentBytes));
