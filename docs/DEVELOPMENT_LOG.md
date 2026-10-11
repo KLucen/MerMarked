@@ -1072,3 +1072,5 @@ git diff --check -- src/core/canvas-scene.ts src/core/canvas-scene-v2.ts src/ren
 ### 提交与剩余边界
 
 分支 `codex/ux1-workspace-simplification`。先用 `445efe0` 保存工作区原有 B1.2–B1.5 前置实现与设计评审，再单独提交 UX1 代码、测试和日志；个人试读 fixture 与 hash 命名副本保留本地不提交。安装包仅本地生成，本轮不执行公开发行，也不声称已经过安装/卸载、真实中文 IME、多显示器 DPI 或大文档性能验收。下一批推进 UX2 共享面板与专注模式。
+
+GitHub 同步结果：实现提交 `51d9fa7` 已推送至 `origin/codex/ux1-workspace-simplification`，前置提交 `445efe0` 一并上传。尝试通过 GitHub 连接器创建 PR 时返回 403 `Resource not accessible by integration`，未创建 PR、未合并 main；源码分支上传成功，不受该连接器权限影响。
