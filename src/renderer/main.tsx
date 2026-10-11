@@ -292,6 +292,7 @@ function App() {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [editorFocusRequest, setEditorFocusRequest] = useState(0);
+  const [editorFocusOffset, setEditorFocusOffset] = useState<number | null>(null);
   const [opening, setOpening] = useState(false);
   const [notice, setNotice] = useState<AppNotice | null>(null);
   const [activeSection, setActiveSection] = useState<number | null>(null);
@@ -347,6 +348,8 @@ function App() {
   const readerSearchMatches = useRef<readonly VisibleSearchMatch[]>([]);
   const sectionNavigationLock = useRef<number | null>(null);
   const sectionNavigationTimer = useRef<number | null>(null);
+  const readerPosition = useRef<{ path: string; scrollY: number; activeSection: number | null } | null>(null);
+  const readerSelectionSourceOffset = useRef<number | null>(null);
   const noteComposerRef = useRef<HTMLTextAreaElement>(null);
   const annotationToggleRef = useRef<HTMLButtonElement>(null);
   const annotationSidebarRef = useRef<HTMLElement>(null);
@@ -382,6 +385,7 @@ function App() {
     }
     const previous = selectionTarget.current;
     selectionTarget.current = null;
+    readerSelectionSourceOffset.current = null;
     selectionFeedbackRange.current = null;
     setSelectionProbe(null);
     closeReaderContextMenu(false);
@@ -450,6 +454,7 @@ function App() {
     clearReaderSearchPaint();
     const epoch = ++documentEpoch.current;
     setOpenedDocument(opened);
+    setEditorFocusOffset(null);
     setActiveSection(null);
     setReaderSearchOpen(false);
     setReaderSearchQuery('');
@@ -474,6 +479,19 @@ function App() {
     (message, alert) => setMessage(message, alert ? 'alert' : 'status'),
   );
   const dirtyPreview = Boolean(editorController.editor?.dirty);
+  const workspaceStatuses = useMemo(() => ({
+    source: dirtyPreview ? '未保存' : annotationView?.canReloadSource ? '外部变化' : '已保存',
+    annotations: dirtyPreview
+      ? '等待正文保存'
+      : annotationLoading
+        ? '检查中'
+        : annotationView?.status === 'ready'
+          ? '可用'
+          : annotationView?.status === 'needs-relocation'
+            ? '待定位'
+            : '只读',
+    canvas: dirtyPreview || annotationView?.canReloadSource ? '等待正文确认' : '可编辑',
+  }), [annotationLoading, annotationView?.canReloadSource, annotationView?.status, dirtyPreview]);
   const readerDocument = useMemo(() => {
     if (!openedDocument || !editorController.editor?.dirty) return openedDocument;
     return { ...openedDocument, content: editorController.editor.content };
@@ -578,6 +596,7 @@ function App() {
     const epoch = ++documentEpoch.current;
     setOpenedDocument(opened);
     setActiveMode('reader');
+    readerPosition.current = null;
     setActiveSection(null);
     setReaderSearchOpen(false);
     setReaderSearchQuery('');
@@ -1073,11 +1092,16 @@ function App() {
     setSelectionChecking(false);
     setSelectionProbe(result);
     positionSelectionFeedback(range);
+    const sourceBlock = sourceBlockFor(range.startContainer);
+    const sourceBlockOffset = sourceBlock?.dataset.sourceBlockStart ? Number(sourceBlock.dataset.sourceBlockStart) : null;
+    readerSelectionSourceOffset.current = result.ok
+      ? result.blockStart
+      : sourceBlockOffset !== null && Number.isSafeInteger(sourceBlockOffset) ? sourceBlockOffset : null;
     highlightRegistry()?.delete(ACTIVE_SELECTION_MARK_NAME);
     selectionFeedbackRange.current = range.cloneRange();
     if (!result.ok) {
       selectionTarget.current = null;
-      setSelectionAnnouncement(`此选区暂不能批注。${selectionReasonForReader(result.reason)}`);
+      setSelectionAnnouncement(`需要源码模式。${selectionReasonForReader(result.reason)}`);
       return;
     }
     const origin = sourceBlockFor(range.startContainer) ??
@@ -1808,6 +1832,9 @@ function App() {
 
   const changeMode = useCallback(async (mode: AppMode) => {
     if (!openedDocument || mode === activeMode) return;
+    if (activeMode === 'reader') {
+      readerPosition.current = { path: openedDocument.path, scrollY: window.scrollY, activeSection };
+    }
     clearReaderSelection({ clearNative: true });
     closeReaderSearch();
     setNoteComposer(null);
@@ -1815,25 +1842,52 @@ function App() {
     setReattachTargetId(null);
     if (mode === 'reader') {
       setActiveMode('reader');
-      if (activeSection !== null) window.requestAnimationFrame(() => jumpToSection(activeSection));
-      else window.scrollTo({ top: 0 });
+      const savedPosition = readerPosition.current;
+      window.requestAnimationFrame(() => {
+        if (savedPosition?.path === openedDocument.path) window.scrollTo({ top: savedPosition.scrollY, behavior: 'auto' });
+        else if (savedPosition?.activeSection !== null && savedPosition?.activeSection !== undefined) jumpToSection(savedPosition.activeSection);
+        else window.scrollTo({ top: 0, behavior: 'auto' });
+      });
       return;
     }
     if (mode === 'cards') {
       setAnnotationPanelOpen(false);
       setActiveMode('cards');
-      window.scrollTo({ top: 0 });
+      window.scrollTo({ top: 0, behavior: 'auto' });
       return;
     }
     const next = editorController.editor ?? await editorController.open();
     if (!next) return;
     setAnnotationPanelOpen(false);
     setActiveMode('editor');
-    window.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController, jumpToSection, openedDocument]);
+
+  const enterEditorAtSelection = useCallback(async (probe?: SuccessfulSelectionProbe) => {
+    if (!openedDocument || !readerDocument) return;
+    const sourceOffset = probe?.sourceStart ?? readerSelectionSourceOffset.current;
+    if (sourceOffset === undefined || sourceOffset === null || !Number.isSafeInteger(sourceOffset)) {
+      setMessage('这段文字没有可定位的源码范围，请在编辑模式中查找。', 'alert');
+      return;
+    }
+    const bomOffset = readerDocument.content.startsWith('\uFEFF') ? 1 : 0;
+    const normalizedOffset = markdownToEditorText(
+      readerDocument.content.slice(0, bomOffset + sourceOffset),
+    ).length;
+    const sectionOffset = bomOffset + sourceOffset;
+    const containingSection = sectionTree?.sections
+      .filter((section) => section.subtreeRange.start <= sectionOffset && sectionOffset < section.subtreeRange.end)
+      .at(-1)?.index ?? activeSection;
+    setActiveSection(containingSection ?? null);
+    setEditorFocusOffset(normalizedOffset);
+    setEditorFocusRequest((request) => request + 1);
+    clearReaderSelection({ clearNative: true });
+    await changeMode('editor');
+  }, [activeSection, changeMode, clearReaderSelection, openedDocument, readerDocument, sectionTree, setMessage]);
 
   const editCanvasSection = useCallback((index: number | null) => {
     setActiveSection(index);
+    setEditorFocusOffset(null);
     setEditorFocusRequest((request) => request + 1);
     void changeMode('editor');
   }, [changeMode]);
@@ -1886,7 +1940,7 @@ function App() {
   }, [recoveryBusy, recoveryPreview, showOpenedDocument]);
 
   return (
-    <AppShell document={openedDocument} activeMode={activeMode} dirty={dirtyPreview}
+    <AppShell document={openedDocument} activeMode={activeMode} dirty={dirtyPreview} saving={editorController.busy}
       opening={opening || editorController.opening} dropActive={dropActive} notice={notice}
       recentDocuments={recentDocuments}
       leftSidebarOpen={leftSidebarOpen} rightSidebarOpen={rightSidebarOpen} focusMode={focusMode}
@@ -1901,6 +1955,19 @@ function App() {
       search={{ open: readerSearchOpen, query: readerSearchQuery,
         currentIndex: readerSearchIndex, total: readerSearchCount, truncated: readerSearchTruncated }}
       onOpen={() => void openMarkdown()} onModeChange={(mode) => void changeMode(mode)}
+      onSave={() => void editorController.save()}
+      onSaveAs={() => {
+        if (!openedDocument?.temporary) {
+          setMessage('另存为尚未接入安全的 Markdown、批注和画布三文件事务；当前请先保存原文。', 'alert');
+          return;
+        }
+        void (async () => {
+          const editor = editorController.editor ?? await editorController.open();
+          if (editor) await editorController.save();
+        })();
+      }}
+      onDiscardChanges={() => void editorController.discardChanges()}
+      workspaceStatuses={workspaceStatuses}
       onDocumentRecovery={() => void openDocumentRecovery()}
       onReloadSource={() => void reloadMarkdown()}
       onOpenSearch={openReaderSearch} onCloseSearch={closeReaderSearch}
@@ -1924,7 +1991,9 @@ function App() {
           saveMessage={editorController.error}
           sections={editorSections}
           activeSectionKey={activeSection === null ? null : String(activeSection)}
-          focusOffset={editorFocusRequest > 0 && activeSection !== null ? editorSections.find((section) => section.key === String(activeSection))?.sourceOffset : undefined}
+          focusOffset={editorFocusOffset ?? (editorFocusRequest > 0 && activeSection !== null
+            ? editorSections.find((section) => section.key === String(activeSection))?.sourceOffset
+            : undefined)}
           focusRequestKey={editorFocusRequest}
           recoveryDrafts={editorController.editor.recoveryDrafts}
           recoveryMessage={editorController.editor.recoveryDrafts.length > 0
@@ -1954,7 +2023,8 @@ function App() {
           onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)} />
       ) : activeMode === 'cards' ? (
         <CanvasView document={readerDocument!} dirty={dirtyPreview} activeSection={activeSection}
-          onSectionChange={setActiveSection} onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} />
+          onSectionChange={(index) => { setActiveSection(index); readerPosition.current = null; }}
+          onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} />
       ) : activeMode === 'editor' ? editorController.editor ? null : (
         <main className="source-editor-loading" role="status">正在准备源码编辑器…</main>
       ) : (
@@ -2024,6 +2094,7 @@ function App() {
                   ? `${selectionProbe.displayQuote.slice(0, 48)}…` : selectionProbe.displayQuote}”
               </span>
               <span className="selection-meta">{countGraphemes(selectionProbe.displayQuote)} 字</span>
+              <span className="selection-capability supported">可直接编辑</span>
               {!reattachTarget && <div className="selection-toolbar-actions">
                 <div className="highlight-palette" role="group" aria-label="高亮所选文字">
                   {HIGHLIGHT_COLORS.map(({ value, name }) => <button key={value} type="button"
@@ -2036,6 +2107,8 @@ function App() {
                 <button type="button" className="add-note-button" onMouseDown={(event) => event.preventDefault()}
                   onClick={() => openNoteComposer()} disabled={!canChangeAnnotations}
                   aria-controls="annotation-sidebar">添加批注</button>
+                <button type="button" className="selection-source-action" onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => void enterEditorAtSelection(selectionProbe)} title="切到源码并定位当前选区">进入编辑</button>
               </div>}
               <button type="button" className="selection-toolbar-close"
                 onMouseDown={(event) => event.preventDefault()}
@@ -2045,7 +2118,9 @@ function App() {
             {selectionProbe && !selectionProbe.ok && selectionToolbarPosition &&
               <div className="selection-feedback unsupported" role="status"
                 data-placement={selectionToolbarPosition.placement} style={{ top: selectionToolbarPosition.top }}>
-                <strong>此选区暂不能批注</strong><span>{selectionReasonForReader(selectionProbe.reason)}</span>
+                <strong>需要源码模式</strong><span>{selectionReasonForReader(selectionProbe.reason)}</span>
+                {readerSelectionSourceOffset.current !== null && <button type="button" className="selection-source-action"
+                  onMouseDown={(event) => event.preventDefault()} onClick={() => void enterEditorAtSelection()}>切到源码并定位</button>}
                 <button type="button" className="selection-toolbar-close"
                   onClick={() => clearReaderSelection({ clearNative: true, restoreFocus: true })}
                   aria-label="关闭选区提示">×</button>

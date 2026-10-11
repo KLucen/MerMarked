@@ -90,7 +90,11 @@ export async function arrangeCanvas(tree: SectionTree, state: CanvasState, bindi
       children: group.map((card) => ({ id: card.id, ...(sizes.get(card.id) ?? { width: 300, height: Math.max(150, minimumHeights[card.id] ?? 150) }) })),
       edges: group.slice(1).map((card, index) => ({ id: `order-${index}`, sources: [group[index].id], targets: [card.id] })) });
     const parentHeight = parentId ? Math.max(150, minimumHeights[parentId] ?? 150) : 0;
-    const positions = new Map(graph.children?.map((node) => [node.id, { x: (node.x ?? 0) + (parentId ? 24 : 0), y: (node.y ?? 0) + parentHeight }]));
+    // Keep the first root group away from the viewport corner. The position is
+    // still persisted in the canvas sidecar, so the parent no longer appears
+    // to be pinned to (0, 0) after every automatic arrangement.
+    const rootPadding = parentId ? 0 : 80;
+    const positions = new Map(graph.children?.map((node) => [node.id, { x: (node.x ?? 0) + (parentId ? 24 : rootPadding), y: (node.y ?? 0) + parentHeight + rootPadding }]));
     model = { ...model, cards: model.cards.map((card) => positions.has(card.id) ? { ...card, position: positions.get(card.id)! } : card) };
     if (parentId) sizes.set(parentId, { width: Math.max(300, (graph.width ?? 0) + 48), height: (graph.height ?? 150) + parentHeight + 24 });
   };

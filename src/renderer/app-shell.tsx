@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { FilePlus2, FolderOpen, Maximize2, Minimize2, PanelLeft, PanelRight, X } from 'lucide-react';
+import { FilePlus2, FolderOpen, Maximize2, Minimize2, PanelLeft, PanelRight, RotateCcw, Save, X } from 'lucide-react';
 import type { OpenedMarkdownDocument } from '../types/reader-api';
 
 export type NoticeKind = 'status' | 'alert';
@@ -30,6 +30,7 @@ export interface AppShellProps {
   readonly document: OpenedMarkdownDocument | null;
   readonly activeMode?: AppMode;
   readonly dirty?: boolean;
+  readonly saving?: boolean;
   readonly fileStatus?: string;
   readonly opening: boolean;
   readonly dropActive: boolean;
@@ -45,6 +46,14 @@ export interface AppShellProps {
   readonly onToggleLeftSidebar?: () => void;
   readonly onToggleRightSidebar?: () => void;
   readonly onToggleFocusMode?: () => void;
+  readonly onSave?: () => void;
+  readonly onSaveAs?: () => void;
+  readonly onDiscardChanges?: () => void;
+  readonly workspaceStatuses?: {
+    readonly source: string;
+    readonly annotations: string;
+    readonly canvas: string;
+  };
   readonly rightSidebar?: ReactNode;
   readonly search: ReaderSearchState;
   readonly onOpen: () => void;
@@ -96,6 +105,7 @@ export function AppShell({
   document,
   activeMode = 'reader',
   dirty = false,
+  saving = false,
   fileStatus,
   opening,
   dropActive,
@@ -111,6 +121,10 @@ export function AppShell({
   onToggleLeftSidebar,
   onToggleRightSidebar,
   onToggleFocusMode,
+  onSave,
+  onSaveAs,
+  onDiscardChanges,
+  workspaceStatuses,
   rightSidebar,
   search,
   onOpen,
@@ -131,6 +145,20 @@ export function AppShell({
 }: AppShellProps) {
   const searchInput = useRef<HTMLInputElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
+  const leftSidebarTrigger = useRef<HTMLButtonElement>(null);
+  const rightSidebarTrigger = useRef<HTMLButtonElement>(null);
+  const workspaceSidebar = useRef<HTMLElement>(null);
+  const [discardConfirmation, setDiscardConfirmation] = useState(false);
+
+  const closeWorkspaceSidebar = (side: 'left' | 'right') => {
+    const isOpen = side === 'left' ? leftSidebarOpen : rightSidebarOpen;
+    if (!isOpen) return;
+    if (side === 'left') onToggleLeftSidebar?.();
+    else onToggleRightSidebar?.();
+    window.requestAnimationFrame(() => {
+      (side === 'left' ? leftSidebarTrigger : rightSidebarTrigger).current?.focus();
+    });
+  };
 
   const closeSearchAndRestoreFocus = () => {
     onCloseSearch();
@@ -149,10 +177,72 @@ export function AppShell({
   }, [activeMode, document, onOpenSearch]);
 
   useEffect(() => {
+    if (!dirty) setDiscardConfirmation(false);
+  }, [dirty]);
+
+  useEffect(() => {
+    const handleSaveShortcut = (event: KeyboardEvent) => {
+      if (!document || !(event.ctrlKey || event.metaKey) ||
+          event.key.toLocaleLowerCase() !== 's') return;
+      event.preventDefault();
+      if (saving) return;
+      if (event.shiftKey) onSaveAs?.();
+      else if (dirty) onSave?.();
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  }, [dirty, document, onSave, onSaveAs, saving]);
+
+  useEffect(() => {
     if (!search.open) return;
     searchInput.current?.focus();
     searchInput.current?.select();
   }, [search.open]);
+
+  useEffect(() => {
+    if (!leftSidebarOpen && !rightSidebarOpen) return;
+    const narrow = window.matchMedia('(max-width: 720px)').matches;
+    const previousBodyOverflow = window.document.body.style.overflow;
+    if (narrow) window.document.body.style.overflow = 'hidden';
+    const handleWorkspaceSidebarKeys = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeWorkspaceSidebar(leftSidebarOpen ? 'left' : 'right');
+        return;
+      }
+      if (event.key !== 'Tab' || !window.matchMedia('(max-width: 720px)').matches) return;
+      const panel = workspaceSidebar.current;
+      if (!panel) return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.getClientRects().length > 0);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && window.document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && window.document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', handleWorkspaceSidebarKeys);
+    const focusPanel = window.requestAnimationFrame(() => {
+      if (window.matchMedia('(max-width: 720px)').matches) {
+        workspaceSidebar.current?.querySelector<HTMLElement>('.workspace-close-button')?.focus();
+      }
+    });
+    return () => {
+      window.removeEventListener('keydown', handleWorkspaceSidebarKeys);
+      window.cancelAnimationFrame(focusPanel);
+      if (narrow) window.document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [leftSidebarOpen, rightSidebarOpen]);
 
   const handleSearchKeys = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -181,7 +271,7 @@ export function AppShell({
       {!document ? <div className="brand" aria-label="MerMarkd">
         <span className="brand-mark" aria-hidden="true">M</span>
         <span className="brand-name">MerMarkd</span>
-      </div> : <button type="button" className="workspace-icon-button" onClick={onToggleLeftSidebar}
+      </div> : <button ref={leftSidebarTrigger} type="button" className="workspace-icon-button" onClick={onToggleLeftSidebar}
         aria-label={leftSidebarOpen ? '收起左侧栏' : '展开左侧栏'} aria-expanded={leftSidebarOpen} title={leftSidebarOpen ? '收起左侧栏' : '展开左侧栏'}>
         <PanelLeft size={17} aria-hidden="true" />
       </button>}
@@ -192,12 +282,34 @@ export function AppShell({
       {document ? <div className="workspace-topbar-actions">
         <span className="file-name workspace-current-name" title={document.temporary ? '尚未保存到磁盘' : document.path}>{document.name}</span>
         <span className={dirty ? 'file-status dirty' : 'file-status'} title={document.temporary ? '尚未保存到磁盘' : document.path}>{documentStatus}</span>
+        {onSave && <div className="workspace-save-actions" role="group" aria-label="文档保存操作">
+          <button type="button" className="workspace-save-button" data-workspace-save="true" aria-keyshortcuts="Control+S" onClick={onSave} disabled={!dirty || saving}
+            title="保存 Markdown（Ctrl+S）">
+            <Save size={15} aria-hidden="true" />{saving ? '保存中…' : '保存'}
+          </button>
+          {onDiscardChanges && !discardConfirmation && <button type="button" className="workspace-discard-button" data-workspace-discard="true"
+            onClick={() => setDiscardConfirmation(true)} disabled={!dirty || saving} title="放弃未保存的 Markdown 修改">
+            <RotateCcw size={14} aria-hidden="true" />放弃
+          </button>}
+          {onDiscardChanges && discardConfirmation && <span className="workspace-discard-confirm" role="group" aria-label="确认放弃未保存修改">
+            <span>放弃修改？</span>
+            <button type="button" className="workspace-discard-confirm-button" onClick={() => { setDiscardConfirmation(false); onDiscardChanges(); }} disabled={saving}>确定</button>
+            <button type="button" className="workspace-discard-cancel-button" onClick={() => setDiscardConfirmation(false)} disabled={saving}>取消</button>
+          </span>}
+          {onSaveAs && <button type="button" className="workspace-save-as-button" data-workspace-save-as="true" aria-keyshortcuts="Control+Shift+S" onClick={onSaveAs} disabled={saving}
+            title="另存为 Markdown（Ctrl+Shift+S）">另存为</button>}
+        </div>}
+        {workspaceStatuses && <div className="workspace-status-summary" aria-label="文档各部分状态">
+          <span data-workspace-status="source">正文：{workspaceStatuses.source}</span>
+          <span data-workspace-status="annotations">批注：{workspaceStatuses.annotations}</span>
+          <span data-workspace-status="canvas">画布：{workspaceStatuses.canvas}</span>
+        </div>}
         <button type="button" className="workspace-icon-button" onClick={onToggleFocusMode}
           aria-label={focusMode ? '退出专注模式' : '进入专注模式'} aria-pressed={focusMode}
           title={focusMode ? '退出专注模式' : '进入专注模式'}>
           {focusMode ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
         </button>
-        <button type="button" className="workspace-icon-button" onClick={onToggleRightSidebar}
+        <button ref={rightSidebarTrigger} type="button" className="workspace-icon-button" onClick={onToggleRightSidebar}
           aria-label={rightSidebarOpen ? '收起右侧栏' : '展开右侧栏'} aria-expanded={rightSidebarOpen} title={rightSidebarOpen ? '收起右侧栏' : '展开右侧栏'}>
           <PanelRight size={17} aria-hidden="true" />
         </button>
@@ -267,9 +379,11 @@ export function AppShell({
       <span>{notice.text}</span>
       <button type="button" onClick={onDismissNotice} aria-label="关闭提示">×</button>
     </div>}
-    {document && !focusMode && leftSidebarOpen && <aside className="workspace-sidebar workspace-sidebar-left" aria-label="文档导航">
+    {document && !focusMode && (leftSidebarOpen || rightSidebarOpen) && <button type="button" className="workspace-sidebar-backdrop"
+      aria-label="关闭侧栏" tabIndex={-1} onClick={() => closeWorkspaceSidebar(leftSidebarOpen ? 'left' : 'right')} />}
+    {document && !focusMode && leftSidebarOpen && <aside ref={workspaceSidebar} className="workspace-sidebar workspace-sidebar-left" role="dialog" aria-modal="true" aria-label="文档导航">
       <div className="workspace-sidebar-header"><div><span className="workspace-sidebar-kicker">WORKSPACE</span><h2>文档导航</h2></div>
-        <button type="button" className="workspace-close-button" onClick={onToggleLeftSidebar} aria-label="收起左侧栏"><X size={15} /></button></div>
+        <button type="button" className="workspace-close-button" onClick={() => closeWorkspaceSidebar('left')} aria-label="收起左侧栏"><X size={15} /></button></div>
       <section className="workspace-sidebar-section"><h3>最近打开</h3>
         {recentDocuments.length === 0 ? <p className="workspace-sidebar-empty">还没有最近文档。</p> : <ul className="recent-document-list">
           {recentDocuments.map((item) => <li key={item.path} className={item.path === document.path ? 'current' : undefined}>
@@ -281,9 +395,9 @@ export function AppShell({
       </section>
       <section className="workspace-sidebar-section workspace-sidebar-hint"><h3>当前工作区</h3><p>切换视图不会写入 Markdown。关闭侧栏可获得更宽的正文空间。</p></section>
     </aside>}
-    {document && !focusMode && rightSidebarOpen && <aside className="workspace-sidebar workspace-sidebar-right" aria-label="文档信息">
+    {document && !focusMode && rightSidebarOpen && <aside ref={workspaceSidebar} className="workspace-sidebar workspace-sidebar-right" role="dialog" aria-modal="true" aria-label="文档信息">
       <div className="workspace-sidebar-header"><div><span className="workspace-sidebar-kicker">DOCUMENT</span><h2>文档信息</h2></div>
-        <button type="button" className="workspace-close-button" onClick={onToggleRightSidebar} aria-label="收起右侧栏"><X size={15} /></button></div>
+        <button type="button" className="workspace-close-button" onClick={() => closeWorkspaceSidebar('right')} aria-label="收起右侧栏"><X size={15} /></button></div>
       {rightSidebar ?? <div className="workspace-sidebar-section"><dl className="document-info-list"><div><dt>文件名</dt><dd>{document.name}</dd></div><div><dt>路径</dt><dd title={document.temporary ? undefined : document.path}>{document.temporary ? '尚未保存到磁盘' : document.path}</dd></div><div><dt>编码</dt><dd>UTF-8{document.bomByteLength ? ' · BOM' : ''}</dd></div><div><dt>状态</dt><dd className={dirty || document.temporary ? 'dirty' : undefined}>{document.temporary ? '新建 · 待首次保存' : documentStatus}</dd></div></dl></div>}
     </aside>}
     <div className="workspace-content">{children}</div>

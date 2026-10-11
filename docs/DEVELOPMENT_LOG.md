@@ -884,3 +884,159 @@ node tests/e2e/a8-5-packaged.mjs
 ### 后续边界
 
 跨多个 inline leaf 的结构化格式、多行/跨块编辑、列表紧凑项无段落映射、复杂 HTML 和真实中文 IME 设备仍保持保守限制；本批不改变三文件保存事务，也不把 dirty 期间的批注/画布候选直接写盘。
+
+## 2026-10-04 · B1.2 工作区级保存与阅读位置连续性
+
+### 触发问题
+
+试用反馈显示，阅读模式进入 dirty 后缺少明显的保存入口，用户需要猜测应切到源码模式完成保存；三种模式切换时也容易丢失阅读附近位置，导致同一份文档像被打开了多个互不关联的页面。
+
+### 实现
+
+- `AppShell` 在 dirty 状态下显示工作区级保存、放弃和二次确认控件，并注册统一的 `Ctrl+S`。保存状态复用 `useMarkdownEditor` 的主进程事务，未新增文件写入路径。
+- 移除源码视图自身的保存快捷键监听，避免与工作区级快捷键重复触发；源码视图仍保留显式保存按钮。
+- `main.tsx` 在离开阅读模式时记录当前文档路径和 `window.scrollY`，返回同一文档时恢复滚动位置；从卡片编辑指定章节时清除旧位置并按章节重新定位。
+- 顶栏保存动作采用短时按压反馈和明确文字，未加入键盘触发动画；放弃确认保留在工作区内，避免浏览器原生确认框打断上下文。
+
+### 修改文件
+
+- `src/renderer/app-shell.tsx`
+- `src/renderer/main.tsx`
+- `src/renderer/editor-view.tsx`
+- `src/renderer/style.css`
+- `docs/PROGRESS.md`
+- `docs/DEVELOPMENT_LOG.md`
+
+### 验证
+
+命令：`npm.cmd test`、`npm.cmd run typecheck`、`git diff --check`、`npm.cmd run start`。
+
+结果：全量单测 `248/248`、类型检查和 diff 检查通过。开发服务器完成 Vite renderer、main 和 preload 构建；随后 Electron 运行时下载因本机网络 `fetch failed` 退出，因此本批没有新增真实窗口截图或打包版 E2E 证据。
+
+### 边界与下一步
+
+保存、放弃和位置恢复仍需在 Electron 运行时缓存可用后执行打包版回归，特别是 420 CSS px 下顶栏布局。下一批优先收敛窄窗口工作区抽屉、焦点返回和卡片工具栏密度；批注草稿与跨块阅读编辑不在本批放宽。
+
+## 2026-10-04 · B1.3 窄窗口抽屉与画布工具栏收敛
+
+### 目标
+
+收敛窄窗口工作区侧栏和卡片画布工具栏，降低遮挡、焦点丢失和图标密度带来的使用成本，同时保持现有数据写入边界与自动化选择器稳定。
+
+### 用户反馈/需求来源
+
+继续迭代时优先处理窄窗口侧栏缺少模态边界、Escape/焦点行为不完整，以及画布工具栏连续图标难以识别的问题。
+
+### 设计决定
+
+- 左右工作区侧栏在窄屏采用遮罩抽屉；Escape、遮罩和关闭按钮共用关闭路径，关闭后把焦点还给对应顶栏入口。窄屏 Tab 只在当前抽屉内循环。
+- 抽屉使用 `100dvh`、安全区底部间距和 `overscroll-behavior: contain`；全局控件使用触控友好的 `touch-action` 与 tap highlight 设置，并保留 coarse pointer 的 16px 表单字体。
+- 画布工具栏将导航与缩放保留在前排，整理/折叠/撤销重做进入“更多”，保存和导出改为带文字的明确入口；原 `data-canvas-*` 选择器全部保留，避免已有回归脚本失效。
+
+### 修改文件
+
+- `src/renderer/app-shell.tsx`
+- `src/renderer/canvas-view.tsx`
+- `src/renderer/style.css`
+- `docs/PROGRESS.md`
+- `docs/DEVELOPMENT_LOG.md`
+
+### 测试和命令
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check -- src/renderer/app-shell.tsx src/renderer/canvas-view.tsx src/renderer/style.css
+npm.cmd run package
+```
+
+全量单测 `248/248`、类型检查和改动文件 diff 检查通过；`npm.cmd run package` 的 Vite renderer、main 和 preload 构建通过，但 Forge 在复制 Electron/native 依赖时因外网 `ETIMEDOUT` 失败。
+
+### 产物/截图
+
+本批没有新增打包版截图或安装包；Electron 运行时下载失败，无法进行真实窗口和硬件触控验收。
+
+### 失败与限制
+
+尚未在真实手机或触控设备验证抽屉手势，也未新增打包版 B1.2 保存/放弃/阅读位置回归。桌面开发环境只能证明 CSS/键盘实现与生产构建，不足以宣称移动硬件通过。
+
+### 下一步
+
+Electron 运行时缓存恢复后补跑 B1.2 与本批窄屏抽屉键盘流程，并检查 420 CSS px 顶栏与画布工具栏截图；随后再评估批注草稿和跨块阅读编辑。
+
+## 2026-10-04 · B1.4 工作区状态、选区能力提示与画布结构可发现性
+
+### 触发问题
+
+上一批虽然把保存和窄屏抽屉放进工作区，但保存入口仍只在 dirty 时出现；阅读模式的复杂选区只能看到失败提示，不能直接跳到对应源码；画布的结构变更入口与普通布局操作混在一起，卡片也缺少章节路径和快捷结构动作。
+
+### 实现
+
+- 顶栏始终保留保存、放弃和另存为入口，并新增正文/批注/画布三段状态摘要。`Ctrl+S` 与 `Ctrl+Shift+S` 统一由 `AppShell` 处理；新建临时文档的后者进入首次路径选择，已有文档则给出明确的三文件事务未开放提示，未绕过现有保存安全门槛。
+- 阅读选区显示“可直接编辑”或“需要源码模式”。可取得源码块起点时，按钮会切换到源码并将编辑器焦点定位到对应的 BOM/换行归一化偏移；可证明选区另有“进入编辑”入口。
+- 模式快照增加阅读章节：切入卡片/编辑时仍回到各自顶部，返回阅读时恢复原滚动位置和章节；卡片显示标题路径并提供卡片级提升一级命令。
+- 画布属性面板明确分成“结构操作”和“布局与关系”，层级选择显示深度；窄屏属性区限制高度并允许独立滚动，避免压缩或裁切画布。
+- `src/renderer/index.html` 与镜像入口补充 `viewport-fit=cover`、`interactive-widget=resizes-content`，与既有 `100dvh`、安全区和 `overscroll-behavior` 配套；未把桌面模拟当作手机硬件验收。
+
+### 修改文件
+
+- `src/renderer/app-shell.tsx`
+- `src/renderer/main.tsx`
+- `src/renderer/canvas-view.tsx`
+- `src/renderer/style.css`
+- `docs/PROGRESS.md`
+- `docs/DEVELOPMENT_LOG.md`
+
+### 验证
+
+`npm.cmd test` 通过 `248/248`；`npm.cmd run typecheck` 通过。`git diff --check` 仅保留已有用户 fixture 的 EOF 空行提示。`npm.cmd run package` 的 renderer/main/preload 生产构建通过，但 Forge 在复制 Electron/native 依赖时因网络 `ETIMEDOUT` 失败，未新增安装器或真实窗口截图。
+
+### 后续边界
+
+另存为三文件事务、dirty 批注草稿、Worker/虚拟化、大文档性能预算、多文档会话、外部文件 watcher、扩展语义渲染和真实多显示器 DPI/卸载残留仍未闭合；本批不把这些能力标成已完成。
+
+## 2026-10-04 · B1.5 卡片画布布局恢复与可调空间
+
+### 触发问题
+
+卡片模式中父章节经常停在画布左上角；画布容器高度固定，卡片可移动空间受限；`mixed-layout.md` 的旧 sidecar 还保存了脱离当前场景的极端视口，载入后卡片实际存在但用户看到空白画布。
+
+### 实现
+
+- `arrangeCanvas` 为顶层组增加 80px 画布边距。渲染器在检测到新卡片、源结构未匹配变化、未初始化坐标或根卡片仍位于默认角落时重新布局，子卡片仍保留相对父组坐标。
+- `canvas-scene-v2` 增加嵌套场景边界计算和视口相交核验；视口完全在场景外时自动调用 `fitView`，避免无条件恢复 stale viewport。
+- `fitView` 完成后把 React Flow 的实际 viewport 回写到内存模型，后续拖动或显式保存不会重新提交旧的脱离场景视口。
+- sidecar 解析失败时保留原文件，回退到当前 Markdown 的内存模型并显示信息提示，而不是把错误状态当作空画布。无法构造当前场景时仍进入原有安全错误路径。
+- 画布工作区增加底部指针拖拽条，调整高度范围为 `360–1200px`；窄窗口把同一高度应用到 React Flow 区域，属性面板仍独立滚动。
+
+### 验证
+
+```powershell
+npm.cmd test
+npm.cmd run typecheck
+git diff --check -- src/core/canvas-scene.ts src/core/canvas-scene-v2.ts src/renderer/canvas-view.tsx src/renderer/style.css tests/core/canvas-scene.test.ts tests/core/canvas-scene-v2.test.ts
+```
+
+结果：全量单测 `249/249`、类型检查通过；核心画布测试覆盖顶层边距和过期视口回退。Electron 窗口拖拽和 `mixed-layout.md` 实机回归待运行时缓存可用后补跑。
+
+## 2026-10-11 · 简约性与实用性设计评审（仅规划）
+
+### 目标与需求来源
+
+用户要求检查当前项目与简约、实用的成熟产品体验之间的差距，并列出下一步改进方案。
+
+### 评审与设计建议
+
+基于当前源码、较新的进度/ADR 和历史打包截图，识别重复工具栏、状态与行为冲突、分散侧栏、专注模式覆盖不完整、受限编辑反馈和画布表单密度等问题。使用 `emil-design-eng` 技能，并核对 Microsoft 命令栏与 Obsidian 面板/模式官方说明。形成 UX1–UX5 顺序，优先统一入口和能力提示，再推进共享面板、连续任务、画布和视觉质量。所有建议仍待实施，未形成新的架构决定。
+
+### 修改文件
+
+新增 `docs/DESIGN_REVIEW_2026-10-11.md`；更新 `docs/PROGRESS.md` 和本日志。产品源文件与用户既有修改未由本轮改动。
+
+### 检查、产物与限制
+
+执行源码搜索/读取，查看 `out/qa/dpi-1-installed.png`、`out/qa/a8-4-wide.png`、`out/qa/b1-shell-wide.png`，并运行 `git diff --check -- docs/DESIGN_REVIEW_2026-10-11.md docs/PROGRESS.md docs/DEVELOPMENT_LOG.md`。截图来自历史构建，本轮未生成最新窗口截图，未进行用户实测或重新执行单测、类型检查、打包；不把旧界面截图当作最新切片验收。文档产物留在本地，未提交或上传 GitHub。
+
+### 下一步
+
+实施 UX1：统一模式/能力文案、合并正文保存入口、收起正常状态下的维护和结构表单，并用当前构建验证 clean/dirty/冲突/临时文档与窄窗口状态。

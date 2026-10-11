@@ -18,6 +18,7 @@ test('ELK produces nested relative positions and complete enclosing sizes withou
   const { model, bindings, tree } = await fixture();
   const arranged = await arrangeCanvas(tree, model, bindings);
   const scene = buildCanvasScene(tree, arranged, bindings);
+  assert.ok(arranged.cards[0].position.x >= 80 && arranged.cards[0].position.y >= 80);
   for (const card of scene.cards) if (card.parentId) {
     const parent = scene.cards.find((entry) => entry.id === card.parentId)!;
     assert.ok(card.position.x >= 24 && card.position.y >= 150);
