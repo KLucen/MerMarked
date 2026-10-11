@@ -1,7 +1,9 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { FilePlus2, FolderOpen, Maximize2, Minimize2, PanelLeft, PanelRight, X } from 'lucide-react';
+import { FilePlus2, FolderOpen, Maximize2, Minimize2, MoreHorizontal, PanelLeft, PanelRight, RotateCcw, Save, Search, X } from 'lucide-react';
 import type { OpenedMarkdownDocument } from '../types/reader-api';
+import { summarizeWorkspaceStatus, type WorkspaceStatuses } from './workspace-status';
+import { WorkspacePopover } from './workspace-popover';
 
 export type NoticeKind = 'status' | 'alert';
 
@@ -30,6 +32,8 @@ export interface AppShellProps {
   readonly document: OpenedMarkdownDocument | null;
   readonly activeMode?: AppMode;
   readonly dirty?: boolean;
+  readonly saving?: boolean;
+  readonly canSave?: boolean;
   readonly fileStatus?: string;
   readonly opening: boolean;
   readonly dropActive: boolean;
@@ -45,6 +49,11 @@ export interface AppShellProps {
   readonly onToggleLeftSidebar?: () => void;
   readonly onToggleRightSidebar?: () => void;
   readonly onToggleFocusMode?: () => void;
+  readonly onSave?: () => void;
+  readonly onSaveAs?: () => void;
+  readonly onDiscardChanges?: () => void;
+  readonly workspaceStatuses?: WorkspaceStatuses;
+  readonly annotationDetails?: ReactNode;
   readonly rightSidebar?: ReactNode;
   readonly search: ReaderSearchState;
   readonly onOpen: () => void;
@@ -77,17 +86,17 @@ function ModeNavigation({
     <button type="button" className={activeMode === 'reader' ? 'mode-tab current' : 'mode-tab'}
       aria-current={activeMode === 'reader' ? 'page' : undefined}
       data-mode="reader" disabled={!documentAvailable}
-      onClick={() => onModeChange?.('reader')}>阅读模式</button>
+      onClick={() => onModeChange?.('reader')}>阅读</button>
     <button type="button" className={activeMode === 'editor' ? 'mode-tab current' : 'mode-tab'}
       aria-current={activeMode === 'editor' ? 'page' : undefined}
       data-mode="editor" disabled={!documentAvailable || !onModeChange}
       onClick={() => onModeChange?.('editor')}>
-      编辑模式
+      源码
     </button>
     <button type="button" className={activeMode === 'cards' ? 'mode-tab current' : 'mode-tab'} data-mode="cards"
       aria-current={activeMode === 'cards' ? 'page' : undefined} disabled={!documentAvailable || !onModeChange}
       onClick={() => onModeChange?.('cards')}>
-      卡片模式
+      卡片
     </button>
   </nav>;
 }
@@ -96,6 +105,8 @@ export function AppShell({
   document,
   activeMode = 'reader',
   dirty = false,
+  saving = false,
+  canSave = true,
   fileStatus,
   opening,
   dropActive,
@@ -111,6 +122,11 @@ export function AppShell({
   onToggleLeftSidebar,
   onToggleRightSidebar,
   onToggleFocusMode,
+  onSave,
+  onSaveAs,
+  onDiscardChanges,
+  workspaceStatuses,
+  annotationDetails,
   rightSidebar,
   search,
   onOpen,
@@ -131,6 +147,20 @@ export function AppShell({
 }: AppShellProps) {
   const searchInput = useRef<HTMLInputElement>(null);
   const searchTrigger = useRef<HTMLButtonElement>(null);
+  const leftSidebarTrigger = useRef<HTMLButtonElement>(null);
+  const rightSidebarTrigger = useRef<HTMLButtonElement>(null);
+  const workspaceSidebar = useRef<HTMLElement>(null);
+  const [discardConfirmation, setDiscardConfirmation] = useState(false);
+
+  const closeWorkspaceSidebar = (side: 'left' | 'right') => {
+    const isOpen = side === 'left' ? leftSidebarOpen : rightSidebarOpen;
+    if (!isOpen) return;
+    if (side === 'left') onToggleLeftSidebar?.();
+    else onToggleRightSidebar?.();
+    window.requestAnimationFrame(() => {
+      (side === 'left' ? leftSidebarTrigger : rightSidebarTrigger).current?.focus();
+    });
+  };
 
   const closeSearchAndRestoreFocus = () => {
     onCloseSearch();
@@ -149,10 +179,72 @@ export function AppShell({
   }, [activeMode, document, onOpenSearch]);
 
   useEffect(() => {
+    if (!dirty) setDiscardConfirmation(false);
+  }, [dirty]);
+
+  useEffect(() => {
+    const handleSaveShortcut = (event: KeyboardEvent) => {
+      if (!document || !(event.ctrlKey || event.metaKey) ||
+          event.key.toLocaleLowerCase() !== 's') return;
+      event.preventDefault();
+      if (saving || event.isComposing) return;
+      if (event.shiftKey) onSaveAs?.();
+      else if (canSave && (dirty || document.temporary)) onSave?.();
+    };
+    window.addEventListener('keydown', handleSaveShortcut);
+    return () => window.removeEventListener('keydown', handleSaveShortcut);
+  }, [canSave, dirty, document, onSave, onSaveAs, saving]);
+
+  useEffect(() => {
     if (!search.open) return;
     searchInput.current?.focus();
     searchInput.current?.select();
   }, [search.open]);
+
+  useEffect(() => {
+    if (!leftSidebarOpen && !rightSidebarOpen) return;
+    const narrow = window.matchMedia('(max-width: 720px)').matches;
+    const previousBodyOverflow = window.document.body.style.overflow;
+    if (narrow) window.document.body.style.overflow = 'hidden';
+    const handleWorkspaceSidebarKeys = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopPropagation();
+        closeWorkspaceSidebar(leftSidebarOpen ? 'left' : 'right');
+        return;
+      }
+      if (event.key !== 'Tab' || !window.matchMedia('(max-width: 720px)').matches) return;
+      const panel = workspaceSidebar.current;
+      if (!panel) return;
+      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.getClientRects().length > 0);
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && window.document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && window.document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener('keydown', handleWorkspaceSidebarKeys);
+    const focusPanel = window.requestAnimationFrame(() => {
+      if (window.matchMedia('(max-width: 720px)').matches) {
+        workspaceSidebar.current?.querySelector<HTMLElement>('.workspace-close-button')?.focus();
+      }
+    });
+    return () => {
+      window.removeEventListener('keydown', handleWorkspaceSidebarKeys);
+      window.cancelAnimationFrame(focusPanel);
+      if (narrow) window.document.body.style.overflow = previousBodyOverflow;
+    };
+  }, [leftSidebarOpen, rightSidebarOpen]);
 
   const handleSearchKeys = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -166,14 +258,8 @@ export function AppShell({
     }
   };
 
-  const displayedFileStatus = fileStatus ?? (document
-    ? document.temporary ? '新建 · 首次保存待处理'
-      : activeMode === 'cards' ? dirty ? '结构预览 · 源码未保存' : '卡片画布 · 原文未修改' : activeMode === 'editor'
-        ? dirty ? '源码编辑 · 未保存' : '源码编辑 · 已保存'
-        : dirty ? '阅读预览 · 源码未保存' : '只读 · 未修改'
-    : '本地 Markdown 阅读器');
-
-  const documentStatus = dirty ? '未保存' : displayedFileStatus;
+  const summary = workspaceStatuses ? summarizeWorkspaceStatus(workspaceStatuses) : null;
+  const documentStatus = fileStatus ?? summary?.text ?? (document?.temporary ? '待首次保存' : dirty ? '未保存' : '已保存');
 
   return <div className="app-shell" data-active-mode={activeMode} data-dirty={dirty ? 'true' : 'false'}
     data-document-open={document ? 'true' : 'false'} data-focus-mode={focusMode ? 'true' : 'false'}>
@@ -181,7 +267,7 @@ export function AppShell({
       {!document ? <div className="brand" aria-label="MerMarkd">
         <span className="brand-mark" aria-hidden="true">M</span>
         <span className="brand-name">MerMarkd</span>
-      </div> : <button type="button" className="workspace-icon-button" onClick={onToggleLeftSidebar}
+      </div> : <button ref={leftSidebarTrigger} type="button" className="workspace-icon-button" onClick={onToggleLeftSidebar}
         aria-label={leftSidebarOpen ? '收起左侧栏' : '展开左侧栏'} aria-expanded={leftSidebarOpen} title={leftSidebarOpen ? '收起左侧栏' : '展开左侧栏'}>
         <PanelLeft size={17} aria-hidden="true" />
       </button>}
@@ -191,13 +277,47 @@ export function AppShell({
       </div>}
       {document ? <div className="workspace-topbar-actions">
         <span className="file-name workspace-current-name" title={document.temporary ? '尚未保存到磁盘' : document.path}>{document.name}</span>
-        <span className={dirty ? 'file-status dirty' : 'file-status'} title={document.temporary ? '尚未保存到磁盘' : document.path}>{documentStatus}</span>
+        <WorkspacePopover key={`status-${document.path}`} label="文档状态" className={`workspace-document-status ${summary?.tone ?? 'neutral'}`}
+          trigger={<span data-workspace-summary="true">{documentStatus}</span>}>
+          {workspaceStatuses && <div className="workspace-status-details" aria-label="文档各部分状态">
+            <span data-workspace-status="source">正文：{workspaceStatuses.source.text}</span>
+            <span data-workspace-status="annotations">批注：{workspaceStatuses.annotations.text}</span>
+            <span data-workspace-status="canvas">画布：{workspaceStatuses.canvas.text}</span>
+          </div>}
+          {annotationDetails}
+        </WorkspacePopover>
+        {activeMode === 'reader' && <button ref={searchTrigger} type="button" className="workspace-icon-button"
+          onClick={onOpenSearch} aria-label="查找正文" title="查找正文（Ctrl+F）" aria-expanded={search.open} aria-controls="reader-searchbar">
+          <Search size={17} aria-hidden="true" />
+        </button>}
+        {onSave && <div className="workspace-save-actions" role="group" aria-label="文档保存操作">
+          <button type="button" className="workspace-save-button" data-workspace-save="true" aria-label="保存正文" aria-keyshortcuts="Control+S" onClick={onSave} disabled={!canSave || (!dirty && !document.temporary) || saving}
+            title="保存 Markdown（Ctrl+S）">
+            <Save size={15} aria-hidden="true" /><span>{saving ? '保存中…' : '保存'}</span>
+          </button>
+        </div>}
+        <WorkspacePopover key={`menu-${document.path}`} label="文档菜单" trigger={<MoreHorizontal size={18} aria-hidden="true" />}>
+          <button type="button" onClick={onOpen} disabled={opening || dirty}><FolderOpen size={15} aria-hidden="true" />打开文档 <kbd>Ctrl+O</kbd></button>
+          {onSaveAs && <button type="button" data-workspace-save-as="true" aria-keyshortcuts="Control+Shift+S" onClick={onSaveAs} disabled={saving}>选择保存位置…</button>}
+          {onDiscardChanges && !discardConfirmation && <button type="button" data-workspace-discard="true"
+            onClick={() => setDiscardConfirmation(true)} disabled={!dirty || saving} title="放弃未保存的 Markdown 修改">
+            <RotateCcw size={14} aria-hidden="true" />放弃未保存修改
+          </button>}
+          {onDiscardChanges && discardConfirmation && <span className="workspace-discard-confirm" role="group" aria-label="确认放弃未保存修改">
+            <span>放弃修改？</span>
+            <button type="button" className="workspace-discard-confirm-button" onClick={() => { setDiscardConfirmation(false); onDiscardChanges(); }} disabled={saving}>确定</button>
+            <button type="button" className="workspace-discard-cancel-button" onClick={() => setDiscardConfirmation(false)} disabled={saving}>取消</button>
+          </span>}
+          <button type="button" onClick={onToggleRightSidebar}>文档信息</button>
+          {onDocumentRecovery && <button type="button" data-open-document-recovery="true" onClick={onDocumentRecovery} disabled={opening}>检查保存恢复</button>}
         <button type="button" className="workspace-icon-button" onClick={onToggleFocusMode}
           aria-label={focusMode ? '退出专注模式' : '进入专注模式'} aria-pressed={focusMode}
           title={focusMode ? '退出专注模式' : '进入专注模式'}>
           {focusMode ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
+          {focusMode ? '退出专注模式' : '进入专注模式'}
         </button>
-        <button type="button" className="workspace-icon-button" onClick={onToggleRightSidebar}
+        </WorkspacePopover>
+        <button ref={rightSidebarTrigger} type="button" className="workspace-icon-button" onClick={onToggleRightSidebar}
           aria-label={rightSidebarOpen ? '收起右侧栏' : '展开右侧栏'} aria-expanded={rightSidebarOpen} title={rightSidebarOpen ? '收起右侧栏' : '展开右侧栏'}>
           <PanelRight size={17} aria-hidden="true" />
         </button>
@@ -207,10 +327,8 @@ export function AppShell({
           onDragOver={onDropTargetOver}
           onDragLeave={onDropTargetLeave}
           onDrop={onDropTargetDrop}>
-          <button className="open-button" type="button" onClick={onOpen} disabled={opening || dirty}
-            title={dirty ? '请先保存或放弃当前编辑' : '打开另一份 Markdown'}>
-            <FolderOpen size={15} aria-hidden="true" />
-            <span>{opening ? '正在打开…' : '打开'}</span>
+          <button type="button" className="workspace-icon-button" aria-label="打开文档" title="打开文档（Ctrl+O）" onClick={onOpen} disabled={opening || dirty}>
+            <FolderOpen size={17} aria-hidden="true" />
           </button>
         </div>
       </div> : <div className={dropActive ? 'open-drop-target active' : 'open-drop-target'}
@@ -231,14 +349,8 @@ export function AppShell({
     {!document && <div className="startbar" aria-label="开始页操作"><span>本地优先的 Markdown 工作区</span>
       {onNewDocument && <button type="button" className="startbar-new" onClick={onNewDocument} disabled={opening}><FilePlus2 size={14} aria-hidden="true" />新建 Markdown</button>}
     </div>}
-    {!focusMode && (onDocumentRecovery || document) && <div className="workspace-utilitybar">
-      {onDocumentRecovery && <button type="button" className="search-open-button" data-open-document-recovery="true"
-        onClick={onDocumentRecovery} disabled={opening}>检查保存恢复</button>}
-      {activeMode === 'reader' && <button ref={searchTrigger} type="button" className="search-open-button"
-        onClick={onOpenSearch} disabled={!document} aria-expanded={search.open} aria-controls="reader-searchbar">
-        查找正文 <span aria-hidden="true">Ctrl+F</span>
-      </button>}
-    </div>}
+    {!document && onDocumentRecovery && <button type="button" className="start-recovery" data-open-document-recovery="true"
+      onClick={onDocumentRecovery} disabled={opening}>检查保存恢复</button>}
     {activeMode === 'reader' && search.open && <div id="reader-searchbar" className="reader-searchbar" role="search"
       onKeyDown={(event) => {
         if (event.key !== 'Escape' || event.target === searchInput.current) return;
@@ -267,9 +379,11 @@ export function AppShell({
       <span>{notice.text}</span>
       <button type="button" onClick={onDismissNotice} aria-label="关闭提示">×</button>
     </div>}
-    {document && !focusMode && leftSidebarOpen && <aside className="workspace-sidebar workspace-sidebar-left" aria-label="文档导航">
+    {document && !focusMode && (leftSidebarOpen || rightSidebarOpen) && <button type="button" className="workspace-sidebar-backdrop"
+      aria-label="关闭侧栏" tabIndex={-1} onClick={() => closeWorkspaceSidebar(leftSidebarOpen ? 'left' : 'right')} />}
+    {document && !focusMode && leftSidebarOpen && <aside ref={workspaceSidebar} className="workspace-sidebar workspace-sidebar-left" role="dialog" aria-modal="true" aria-label="文档导航">
       <div className="workspace-sidebar-header"><div><span className="workspace-sidebar-kicker">WORKSPACE</span><h2>文档导航</h2></div>
-        <button type="button" className="workspace-close-button" onClick={onToggleLeftSidebar} aria-label="收起左侧栏"><X size={15} /></button></div>
+        <button type="button" className="workspace-close-button" onClick={() => closeWorkspaceSidebar('left')} aria-label="收起左侧栏"><X size={15} /></button></div>
       <section className="workspace-sidebar-section"><h3>最近打开</h3>
         {recentDocuments.length === 0 ? <p className="workspace-sidebar-empty">还没有最近文档。</p> : <ul className="recent-document-list">
           {recentDocuments.map((item) => <li key={item.path} className={item.path === document.path ? 'current' : undefined}>
@@ -281,9 +395,9 @@ export function AppShell({
       </section>
       <section className="workspace-sidebar-section workspace-sidebar-hint"><h3>当前工作区</h3><p>切换视图不会写入 Markdown。关闭侧栏可获得更宽的正文空间。</p></section>
     </aside>}
-    {document && !focusMode && rightSidebarOpen && <aside className="workspace-sidebar workspace-sidebar-right" aria-label="文档信息">
+    {document && !focusMode && rightSidebarOpen && <aside ref={workspaceSidebar} className="workspace-sidebar workspace-sidebar-right" role="dialog" aria-modal="true" aria-label="文档信息">
       <div className="workspace-sidebar-header"><div><span className="workspace-sidebar-kicker">DOCUMENT</span><h2>文档信息</h2></div>
-        <button type="button" className="workspace-close-button" onClick={onToggleRightSidebar} aria-label="收起右侧栏"><X size={15} /></button></div>
+        <button type="button" className="workspace-close-button" onClick={() => closeWorkspaceSidebar('right')} aria-label="收起右侧栏"><X size={15} /></button></div>
       {rightSidebar ?? <div className="workspace-sidebar-section"><dl className="document-info-list"><div><dt>文件名</dt><dd>{document.name}</dd></div><div><dt>路径</dt><dd title={document.temporary ? undefined : document.path}>{document.temporary ? '尚未保存到磁盘' : document.path}</dd></div><div><dt>编码</dt><dd>UTF-8{document.bomByteLength ? ' · BOM' : ''}</dd></div><div><dt>状态</dt><dd className={dirty || document.temporary ? 'dirty' : undefined}>{document.temporary ? '新建 · 待首次保存' : documentStatus}</dd></div></dl></div>}
     </aside>}
     <div className="workspace-content">{children}</div>

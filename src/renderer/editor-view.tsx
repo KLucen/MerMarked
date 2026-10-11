@@ -87,11 +87,9 @@ export interface MarkdownEditorViewProps {
   readonly sharedEditSession?: MarkdownEditSession | null;
   readonly onUndo?: () => MarkdownEditSelection | null;
   readonly onRedo?: () => MarkdownEditSelection | null;
-  readonly onSave: () => void;
   readonly onCursorChange?: (cursor: SourceEditorCursor) => void;
   readonly onRecoverDraft?: (id: string) => void;
   readonly onDiscardDraft?: (id: string) => void;
-  readonly onDiscardChanges?: () => void;
   readonly onDiscardSourceBackup?: (id: string) => void;
   readonly canvasStructurePreview?: SectionStructurePreview | null;
   readonly onConfirmCanvasStructure?: (token: string, onAccepted: (content: string) => void) => Promise<boolean>;
@@ -208,11 +206,9 @@ export function MarkdownEditorView({
   sharedEditSession,
   onUndo,
   onRedo,
-  onSave,
   onCursorChange,
   onRecoverDraft,
   onDiscardDraft,
-  onDiscardChanges,
   onDiscardSourceBackup,
   canvasStructurePreview = null,
   onConfirmCanvasStructure,
@@ -235,7 +231,7 @@ export function MarkdownEditorView({
   const [replacement, setReplacement] = useState('');
   const [searchIndex, setSearchIndex] = useState(0);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [confirmDiscardChanges, setConfirmDiscardChanges] = useState(false);
+  const [structureToolsOpen, setStructureToolsOpen] = useState(false);
   const [moveSourceIndex, setMoveSourceIndex] = useState<number | null>(null);
   const [moveTargetIndex, setMoveTargetIndex] = useState<number | null>(null);
   const [levelSectionIndex, setLevelSectionIndex] = useState<number | null>(null);
@@ -322,7 +318,7 @@ export function MarkdownEditorView({
     editRevision.current += 1;
     updateHistoryControls();
     setActionMessage(null);
-    setConfirmDiscardChanges(false);
+    setStructureToolsOpen(false);
     emitValue(nextValue, nextSelection);
   }, [emitValue, reportSelection, updateHistoryControls, usesSharedHistory]);
 
@@ -526,14 +522,11 @@ export function MarkdownEditorView({
       } else if (key === 'h') {
         event.preventDefault();
         openSearch(true);
-      } else if (key === 's') {
-        event.preventDefault();
-        if (!saving && !readOnly) onSave();
       }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [active, onSave, openSearch, readOnly, saving]);
+  }, [active, openSearch]);
 
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
@@ -765,10 +758,7 @@ export function MarkdownEditorView({
     </aside>}
     <main className="source-editor-main">
       <header className="source-editor-header">
-        <div>
-          <span className="source-editor-kicker">MARKDOWN 源码</span>
-          <h1>{documentName}</h1>
-        </div>
+        <span className="source-editor-kicker">源码</span>
         <div className="source-editor-actions" aria-label="源码编辑操作">
           <button type="button" data-editor-undo="true" onClick={undo}
             disabled={!canUndo || sourceIsReadOnly || saving}>撤销</button>
@@ -777,19 +767,8 @@ export function MarkdownEditorView({
           <button type="button" data-editor-find="true" onClick={() => openSearch(false)}>查找</button>
           <button type="button" data-editor-replace="true" onClick={() => openSearch(true)}
             disabled={sourceIsReadOnly}>替换</button>
-          <button type="button" className="primary" data-editor-save="true" onClick={onSave}
-            disabled={sourceIsReadOnly || saving}>{saving ? '正在保存…' : '保存'}</button>
-          {dirty && onDiscardChanges && !confirmDiscardChanges && <button type="button"
-            data-editor-discard-changes="true" onClick={() => setConfirmDiscardChanges(true)} disabled={saving}>
-            放弃并重载
-          </button>}
-          {dirty && onDiscardChanges && confirmDiscardChanges && <span className="source-discard-confirm" role="group"
-            aria-label="确认放弃未保存源码">
-            <span>确定放弃未保存内容？</span>
-            <button type="button" className="danger" data-editor-confirm-discard="true"
-              onClick={() => { setConfirmDiscardChanges(false); onDiscardChanges(); }} disabled={saving}>确定放弃</button>
-            <button type="button" onClick={() => setConfirmDiscardChanges(false)} disabled={saving}>取消</button>
-          </span>}
+          {sections && sections.length > 0 && <button type="button" data-editor-structure-toggle="true"
+            aria-expanded={structureToolsOpen} aria-controls="source-structure-tools" onClick={() => setStructureToolsOpen((value) => !value)}>章节操作</button>}
         </div>
       </header>
 
@@ -832,7 +811,7 @@ export function MarkdownEditorView({
         {markdownToEditorText(canvasStructurePreview.source) !== value && <p role="alert">源码在预览后变化，请取消并重新生成预览。</p>}
       </section>}
 
-      {!canvasStructurePreview && sections && sections.length > 0 && <section className="source-structure" aria-label="章节源码变换" data-editor-structure="true">
+      {!canvasStructurePreview && sections && sections.length > 0 && <section id="source-structure-tools" hidden={!structureToolsOpen} className="source-structure" aria-label="章节源码变换" data-editor-structure="true">
         <div className="source-structure-heading">
           <div><strong>章节源码变换</strong><span>所有操作先生成候选，确认后作为一次编辑进入撤销栈。</span></div>
         </div>
@@ -938,7 +917,7 @@ export function MarkdownEditorView({
       </div>}
 
       <div className="source-editor-frame">
-        <textarea ref={textareaRef} className="source-editor-textarea" data-editor-textarea="true"
+        <textarea ref={textareaRef} className="source-editor-textarea" data-editor-textarea="true" title={documentName}
           aria-label="Markdown 源码" value={value} readOnly={sourceIsReadOnly || saving}
           onChange={handleTextChange} onKeyDown={handleEditorKeyDown}
           onContextMenu={openContextMenu}

@@ -146,9 +146,10 @@ try {
   cdp = await connect(await endpoint(port));
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer startup');
   await dropFile(cdp, documentPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'structure.md'`, 'document');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'structure.md'`, 'document');
   await click(cdp, '[data-mode="editor"]');
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-structure]'))`, 'structure panel');
+  await click(cdp, '[data-editor-structure-toggle]');
   await setSelect(cdp, '[data-structure-source]', 1);
   await setSelect(cdp, '[data-structure-target]', 2);
   await click(cdp, '[data-editor-preview-move]');
@@ -205,7 +206,7 @@ try {
   await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value === ${JSON.stringify(candidate)}`, 'redo transform');
   assert.deepEqual(await readFile(sidecarPath), sidecarBytes);
   assert.equal((await stat(sidecarPath)).mtimeMs, sidecarMtime);
-  await click(cdp, '[data-editor-save]');
+  await click(cdp, '[data-workspace-save]');
   await waitFor(cdp, `document.querySelector('[data-editor-status]')?.textContent.includes('已保存')`, 'explicit save');
   assert.deepEqual(await readFile(documentPath), Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(candidate.replaceAll('\n', '\r\n'))]));
   const saved = parseAnnotationYaml(await readFile(sidecarPath, 'utf8'));
@@ -218,7 +219,7 @@ try {
   assert.equal(loaded.items[0].note, model.annotations[0].note);
   assert.equal(loaded.items[1].note, model.annotations[1].note);
   await dropFile(cdp, documentPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'structure.md'`, 'reopen');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'structure.md'`, 'reopen');
   assert.equal((await cdp.evaluate('window.mermarkd.loadAnnotations()')).unresolvedCount, 1);
   console.log(JSON.stringify({ status: 'passed', preview: true, annotationImpact: true, cancel: true,
     rejection: true, stalePreviewBlocked: true, narrowIpc: true, apply: true, undo: true, redo: true, dirtySidecarUnchanged: true,

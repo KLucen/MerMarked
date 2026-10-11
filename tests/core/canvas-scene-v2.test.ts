@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { buildCanvasSceneV2 } from '../../src/core/canvas-scene-v2.ts';
+import { buildCanvasSceneV2, isCanvasViewportVisible } from '../../src/core/canvas-scene-v2.ts';
 import { reconcileCanvasStateV2 } from '../../src/core/canvas-state-v2.ts';
 import { extractSections } from '../../src/core/sections.ts';
 
@@ -54,4 +54,12 @@ test('v2 scene hides descendants through the parent fold while retaining link en
   assert.equal(scene.cards.find((card) => card.id === 'card-1')?.hidden, true);
   assert.equal(scene.cards.find((card) => card.id === 'card-2')?.hidden, true);
   assert.deepEqual(scene.links[0], { id: 'link-1', from: 'card-0', to: 'card-0', label: '归纳', hiddenEndpoint: true });
+});
+
+test('stale persisted viewport is rejected when it cannot see the current cards', async () => {
+  const input = source('# Parent\n\n## Child\n');
+  const reconciled = await reconcileCanvasStateV2(null, input, (() => { let index = 0; return () => `card-${index++}`; })());
+  const scene = buildCanvasSceneV2(input.content, extractSections(input.content), reconciled.model, reconciled.bindings);
+  assert.equal(isCanvasViewportVisible({ x: 0, y: 0, zoom: 1 }, scene.cards, 800, 600), true);
+  assert.equal(isCanvasViewportVisible({ x: -80, y: -19_242, zoom: 0.6 }, scene.cards, 800, 600), false);
 });

@@ -1,3 +1,4 @@
+import { openWorkspaceStatus } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -303,7 +304,8 @@ try {
   const firstPort = 10_350 + Math.floor(Math.random() * 150);
   running = await launch(firstPort, appData, localAppData, userData);
   await dropFile(running.cdp, documentPath);
-  await waitFor(running.cdp, `document.querySelector('.document-name')?.textContent === 'a7-4-mapping.md' &&
+  await openWorkspaceStatus(running.cdp, "a7-4-mapping.md");
+  await waitFor(running.cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-4-mapping.md' &&
     document.querySelector('.annotation-summary')?.textContent.includes('4 条记录')`, 'mapping fixture');
 
   const yamlBeforeEdit = await snapshot(sidecarPath);
@@ -352,6 +354,7 @@ try {
     'overlapping annotation must retain its old basis, range, and timestamp');
 
   await click(running.cdp, '[data-mode="reader"]');
+  await openWorkspaceStatus(running.cdp);
   await waitFor(running.cdp, `document.querySelector('.annotation-summary')?.textContent.includes('4 条记录') &&
     document.querySelector('.annotation-summary')?.textContent.includes('1 条待定位')`,
   'mixed anchor state after save');
@@ -362,7 +365,8 @@ try {
   assert.equal(immediateView.relocatableCount, 0);
 
   await dropFile(running.cdp, noSidecarPath);
-  await waitFor(running.cdp, `document.querySelector('.document-name')?.textContent === 'a7-4-no-sidecar.md' &&
+  await openWorkspaceStatus(running.cdp, "a7-4-no-sidecar.md");
+  await waitFor(running.cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-4-no-sidecar.md' &&
     document.querySelector('.annotation-summary')?.textContent.includes('0 条记录')`, 'no-sidecar fixture');
   assert.equal(await fileExists(noSidecarAnnotationPath), false);
   await click(running.cdp, '[data-mode="editor"]');
@@ -384,7 +388,8 @@ try {
   const restartPort = 10_550 + Math.floor(Math.random() * 150);
   running = await launch(restartPort, appData, localAppData, userData);
   await dropFile(running.cdp, documentPath);
-  await waitFor(running.cdp, `document.querySelector('.document-name')?.textContent === 'a7-4-mapping.md' &&
+  await openWorkspaceStatus(running.cdp, "a7-4-mapping.md");
+  await waitFor(running.cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-4-mapping.md' &&
     document.querySelector('.annotation-summary')?.textContent.includes('4 条记录') &&
     document.querySelector('.annotation-summary')?.textContent.includes('1 条待定位')`,
   'restarted mixed anchor state');

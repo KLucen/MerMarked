@@ -69,11 +69,13 @@ try {
   cdp = await connect(await endpoint(port)); mainCdp = await connect(await endpoint(inspectorPort, 'node'));
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer');
   await mainCdp.evaluate(`process.mainModule.require('electron').dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [${JSON.stringify(missing.journal)}] })`);
+  if (await cdp.evaluate(`Boolean(document.querySelector('[aria-label="文档菜单"]')) && !document.querySelector('[data-open-document-recovery]')`)) await click(cdp, '[aria-label="文档菜单"]');
   await click(cdp, '[data-open-document-recovery]'); await waitFor(cdp, `Boolean(document.querySelector('[data-document-recovery]'))`, 'recovery dialog');
   await click(cdp, '[data-recovery-select]'); await waitFor(cdp, `document.querySelector('[data-recovery-confirm]')?.disabled === false`, 'missing-source preview');
   const before = await Promise.all(missing.paths.map(optionalBytes));
   await click(cdp, '[aria-label="关闭保存恢复"]');
   for (let i = 0; i < before.length; i++) assert.deepEqual(await optionalBytes(missing.paths[i]), before[i]);
+  if (await cdp.evaluate(`Boolean(document.querySelector('[aria-label="文档菜单"]')) && !document.querySelector('[data-open-document-recovery]')`)) await click(cdp, '[aria-label="文档菜单"]');
   await click(cdp, '[data-open-document-recovery]'); await waitFor(cdp, `document.querySelector('[data-recovery-select]')?.disabled === false`, 'second recovery open');
   await click(cdp, '[data-recovery-select]'); await waitFor(cdp, `document.querySelector('[data-recovery-confirm]')?.disabled === false`, 'missing-source second preview');
   await click(cdp, '[data-recovery-confirm]'); await waitFor(cdp, `document.querySelector('.file-name')?.textContent === '原路径缺失.md' && !document.querySelector('[data-document-recovery]')`, 'missing-source recovered');
@@ -81,6 +83,7 @@ try {
   await drop(cdp, partial.document.path); await waitFor(cdp, `Boolean(document.querySelector('[data-document-recovery-pending]'))`, 'partial save warning');
   assert.equal(await cdp.evaluate(`window.mermarkd.openMarkdownEditor().then(() => false, () => true)`), true);
   assert.equal((await cdp.evaluate(`window.mermarkd.saveCanvas({})`)).status, 'conflict');
+  if (await cdp.evaluate(`Boolean(document.querySelector('[aria-label="文档菜单"]')) && !document.querySelector('[data-open-document-recovery]')`)) await click(cdp, '[aria-label="文档菜单"]');
   await click(cdp, '[data-open-document-recovery]'); await waitFor(cdp, `Boolean(document.querySelector('[data-recovery-inspect]'))`, 'pending list');
   await click(cdp, `[data-recovery-inspect="${partial.ref.id}"]`); await waitFor(cdp, `document.querySelector('[data-recovery-confirm]')?.disabled === false`, 'partial preview');
   const qa = path.join(root, 'out', 'qa'); await mkdir(qa, { recursive: true });
@@ -94,7 +97,7 @@ try {
   await verifyAfter(partial);
   await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'recovered editor');
   await cdp.evaluate(`(() => { const element = document.querySelector('[data-editor-textarea]'); const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(element, element.value + ${JSON.stringify('后续编辑\n')}); element.dispatchEvent(new Event('input', {bubbles:true})); })()`);
-  await click(cdp, '[data-editor-save]'); await waitFor(cdp, `document.querySelector('[data-editor-status]')?.textContent.includes('已保存') && document.querySelector('[data-editor-save]')?.disabled === false`, 'later source save');
+  await click(cdp, '[data-workspace-save]'); await waitFor(cdp, `document.querySelector('[data-editor-status]')?.textContent.includes('已保存') && document.querySelector('[data-workspace-save]')?.disabled === true`, 'later source save');
   await drop(cdp, partial.document.path); await waitFor(cdp, `document.querySelector('[data-active-mode]')?.dataset.activeMode === 'reader'`, 'later reopen');
   assert.deepEqual(await cdp.evaluate('window.mermarkd.listDocumentRecovery()'), []); assert.equal(await cdp.evaluate(`Boolean(document.querySelector('[data-document-recovery-pending]'))`), false);
   await drop(cdp, conflict.document.path); await waitFor(cdp, `document.querySelector('.file-name')?.textContent === '外部冲突.md'`, 'conflict doc');
@@ -121,8 +124,9 @@ try {
   await click(cdp, '[data-canvas-structure-confirm]'); await waitFor(cdp, `document.querySelector('[data-editor-status]')?.textContent.includes('未保存')`, 'live structure dirty');
   await mainCdp.evaluate(`(() => { const fs = process.mainModule.require('node:fs/promises'); globalThis.__mermarkdOriginalLink = fs.link;
     fs.link = async (source,destination) => { if (destination === ${JSON.stringify(live.paths[1])}) throw Object.assign(new Error('injected publication failure'),{code:'EIO'}); return globalThis.__mermarkdOriginalLink(source,destination); }; })()`);
-  await click(cdp, '[data-editor-save]'); await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.readOnly === true && document.querySelector('[data-editor-status]')?.textContent.includes('结构保存未完成')`, 'live failed save frozen');
+  await click(cdp, '[data-workspace-save]'); await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.readOnly === true && document.querySelector('[data-editor-status]')?.textContent.includes('结构保存未完成')`, 'live failed save frozen');
   await mainCdp.evaluate(`process.mainModule.require('node:fs/promises').link = globalThis.__mermarkdOriginalLink`);
+  if (await cdp.evaluate(`Boolean(document.querySelector('[aria-label="文档菜单"]')) && !document.querySelector('[data-open-document-recovery]')`)) await click(cdp, '[aria-label="文档菜单"]');
   await click(cdp, '[data-open-document-recovery]');
   try { await waitFor(cdp, `document.querySelector('[data-recovery-inspect]')?.disabled === false`, 'live pending recovery'); }
   catch (error) { console.error({ items: await cdp.evaluate('window.mermarkd.listDocumentRecovery()'),

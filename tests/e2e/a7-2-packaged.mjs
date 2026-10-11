@@ -1,3 +1,4 @@
+import { openWorkspaceStatus } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -283,10 +284,12 @@ try {
   cdp = await connect(page);
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer startup');
   await dropFile(cdp, documentPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-2-semantics.md' &&
+  await openWorkspaceStatus(cdp, "a7-2-semantics.md");
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-2-semantics.md' &&
     Boolean(document.querySelector('.markdown-body')) &&
     document.querySelector('.annotation-summary')?.textContent.includes('0 条记录')`, 'semantic reader document');
 
+  await cdp.evaluate(`document.querySelector('[aria-label="文档状态"]').click()`);
   const semanticState = await cdp.evaluate(`(() => {
     const article = document.querySelector('.markdown-body');
     const text = article?.textContent ?? '';
@@ -531,7 +534,7 @@ try {
     key: 'Escape', bubbles: true, cancelable: true,
   }))`);
   await waitFor(cdp, `!document.querySelector('.reader-searchbar') &&
-    document.activeElement === document.querySelector('.search-open-button')`, 'search close and trigger focus');
+    document.activeElement === document.querySelector('[aria-controls="reader-searchbar"]')`, 'search close and trigger focus');
   const closedSearchState = await cdp.evaluate(`({
     allPaint: Boolean(CSS.highlights?.get('mermarkd-search-match')),
     currentPaint: Boolean(CSS.highlights?.get('mermarkd-current-search-match')),
@@ -550,11 +553,11 @@ try {
     document.documentElement.style.scrollBehavior = previous;
   })()`);
   await dropFile(cdp, secondDocumentPath);
-  await waitFor(cdp, `document.querySelector('.document-name')?.textContent === 'a7-2-second.md' &&
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-2-second.md' &&
     document.querySelector('.markdown-body')?.textContent.includes('切换文档后')`, 'second document');
   const switchedState = await cdp.evaluate(`({
     searchOpen: Boolean(document.querySelector('.reader-searchbar')),
-    expanded: document.querySelector('.search-open-button')?.getAttribute('aria-expanded'),
+    expanded: document.querySelector('[aria-controls="reader-searchbar"]')?.getAttribute('aria-expanded'),
     allPaint: Boolean(CSS.highlights?.get('mermarkd-search-match')),
     currentPaint: Boolean(CSS.highlights?.get('mermarkd-current-search-match')),
     currentBlocks: document.querySelectorAll('[data-search-current]').length,
