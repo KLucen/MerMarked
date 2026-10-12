@@ -14,7 +14,7 @@
 
 产物：`out/qa/ux2-{reader-wide,source-wide,canvas-wide,canvas-1200,canvas-800,canvas-420,drawer-800,drawer-420}.png`、`out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`。更大场景尝试（2228×1724）触发本机导出引擎尺寸限制，应用明确报错且没有输出裁切文件，未在 UX2 扩展该限制。安装包仅本地生成，未公开发行或重做安装/卸载、真实 IME、多显示器 DPI 与大文档性能验收。模式切换时批注草稿的既有处理未扩大；阅读编辑与批注的连续流程留待 UX3。
 
-下一步：完成本批 GitHub 提交与 PR，再推进 UX3。个人试读 fixture 和 hash 命名副本不纳入提交，P0 仍未完成。
+GitHub：实现提交 `f33326d` 已推送至 `codex/ux2-shared-panels`，已创建 [PR #2](https://github.com/KLucen/MerMarked/pull/2)，尚未合并。下一步推进 UX3。个人试读 fixture 和 hash 命名副本不纳入提交，P0 仍未完成。
 
 ## 2026-10-11 · UX1 统一入口、状态与默认首屏（已完成）
 
