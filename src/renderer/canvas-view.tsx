@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { WorkspaceTaskPanel } from './workspace-panels';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
-import { ArrowDownToLine, ArrowUpToLine, BookOpen, Crosshair, EyeOff, FileDown, FilePenLine, Focus, GripHorizontal, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpToLine, BookOpen, Crosshair, EyeOff, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { canvasCardContent } from '../core/canvas-card-content';
 import { buildCanvasSceneV2, isCanvasViewportVisible } from '../core/canvas-scene-v2';
 import {
@@ -113,13 +114,14 @@ export interface CanvasViewProps {
   readonly document: OpenedMarkdownDocument;
   readonly dirty: boolean;
   readonly activeSection: number | null;
+  readonly focusRequest?: number;
   readonly onSectionChange: (index: number | null) => void;
   readonly onEditSection: (index: number | null) => void;
   readonly onStructurePreview: (operation: SectionTransformOperation) => Promise<void>;
   readonly onStatusChange?: (path: string, sha256: string, status: PartStatus) => void;
 }
 
-function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditSection, onStructurePreview, onStatusChange }: CanvasViewProps) {
+function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onStructurePreview, onStatusChange }: CanvasViewProps) {
   const flow = useReactFlow<ChapterNode>();
   const [model, setModel] = useState<CanvasStateV2 | null>(null);
   const [bindings, setBindings] = useState<readonly CanvasBinding[]>([]);
@@ -148,11 +150,6 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   const [detachCandidate, setDetachCandidate] = useState<DragOutPromotionCandidate | null>(null);
   const [structureSource, setStructureSource] = useState('');
   const [structureTarget, setStructureTarget] = useState('');
-  const [canvasHeight, setCanvasHeight] = useState(() => {
-    const viewportHeight = typeof globalThis.window === 'undefined' ? 720 : globalThis.window.innerHeight;
-    return Math.round(Math.min(1_200, Math.max(420, viewportHeight <= 700 ? viewportHeight * 0.6 : viewportHeight - 174)));
-  });
-  const [resizingCanvas, setResizingCanvas] = useState(false);
   const generation = useRef(0);
   const saveInFlight = useRef(false);
   const initialLayout = useRef(false);
@@ -163,7 +160,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
   const feedbackAt = useRef(0);
   const nestCandidateRef = useRef<CanvasOverlapCandidate | null>(null);
   const detachCandidateRef = useRef<DragOutPromotionCandidate | null>(null);
-  const canvasResizeStart = useRef<{ y: number; height: number } | null>(null);
+  const lastFocusRequest = useRef(0);
   const tree = useMemo(() => extractSections(document.content), [document.content]);
   const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting);
 
@@ -242,24 +239,6 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
         }); }, 50);
     }).catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('初始布局失败，请重新载入画布。'); } });
   }, [bindings, minimumHeights, model, tree]);
-
-  useEffect(() => {
-    if (!resizingCanvas) return;
-    const move = (event: PointerEvent) => {
-      const start = canvasResizeStart.current;
-      if (!start) return;
-      setCanvasHeight(Math.min(1_200, Math.max(360, Math.round(start.height + event.clientY - start.y))));
-    };
-    const stop = () => { canvasResizeStart.current = null; setResizingCanvas(false); };
-    globalThis.addEventListener('pointermove', move);
-    globalThis.addEventListener('pointerup', stop, { once: true });
-    globalThis.addEventListener('pointercancel', stop, { once: true });
-    return () => {
-      globalThis.removeEventListener('pointermove', move);
-      globalThis.removeEventListener('pointerup', stop);
-      globalThis.removeEventListener('pointercancel', stop);
-    };
-  }, [resizingCanvas]);
 
   const persist = useCallback(async (next: CanvasStateV2, remember = true) => {
     if (!model || readOnly || saveInFlight.current) return false;
@@ -406,18 +385,14 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
     void persist({ ...model, cards: model.cards.map((card) => card.id === currentCard.id
       ? { ...card, size: { ...current, [dimension]: clamped } } : card) });
   }, [currentCard, currentModelCard?.size, model, persist, readOnly]);
-  const beginCanvasResize = useCallback((event: { preventDefault: () => void; clientY: number }) => {
-    event.preventDefault();
-    canvasResizeStart.current = { y: event.clientY, height: canvasHeight };
-    setResizingCanvas(true);
-  }, [canvasHeight]);
-  const nudgeCanvasHeight = useCallback((event: { key: string; preventDefault: () => void }) => {
-    const next = event.key === 'ArrowUp' ? canvasHeight - 40 : event.key === 'ArrowDown' ? canvasHeight + 40
-      : event.key === 'Home' ? 360 : event.key === 'End' ? 1_200 : null;
-    if (next === null) return;
-    event.preventDefault();
-    setCanvasHeight(Math.min(1_200, Math.max(360, next)));
-  }, [canvasHeight]);
+  useEffect(() => {
+    if (!focusRequest || lastFocusRequest.current === focusRequest || layoutPending) return;
+    let node = nodes.find((item) => item.data.sectionIndex === activeSection);
+    while (node?.hidden && node.parentId) node = nodes.find((item) => item.id === node!.parentId);
+    if (!node || node.hidden) return;
+    lastFocusRequest.current = focusRequest;
+    void flow.fitView({ nodes: [{ id: node.id }], padding: 0.4 });
+  }, [activeSection, flow, focusRequest, layoutPending, nodes]);
   const requestStructure = useCallback(async (operation: SectionTransformOperation): Promise<boolean> => {
     if (readOnly || saveInFlight.current) return false;
     setBusy(true); setMessage('正在核验结构变更…');
@@ -492,7 +467,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
       <button title="放弃当前未保存画布候选并重新载入" onClick={() => setLoadRevision((value) => value + 1)}><RefreshCw size={15} /> 重新载入画布</button>
     </div>}
     {dirty && <p className="canvas-warning" role="status">未保存结构预览，拖动、折叠、连线与画布保存已暂停。</p>}
-    <div className="canvas-workspace" style={{ '--canvas-height': `${canvasHeight}px` } as CSSProperties}>
+    <div className="canvas-workspace">
       <div className="canvas-flow" data-canvas-flow="true">
         <ReactFlow<ChapterNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} minZoom={0.05} maxZoom={8}
           nodesDraggable={!readOnly} nodesConnectable={!readOnly} edgesReconnectable={false} deleteKeyCode={null}
@@ -549,7 +524,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
           <Background variant={BackgroundVariant.Lines} color="#e3e8ed" gap={32} />
         </ReactFlow>
       </div>
-      <aside className="canvas-properties" aria-label="卡片与关系">
+      <WorkspaceTaskPanel><section className="canvas-properties" aria-label="卡片与关系">
          <h2>结构操作</h2>
          <p className="canvas-structure-hint">以下操作会先切到源码预览，确认后才修改 Markdown；普通拖动、折叠和尺寸调整只改画布。</p>
         <label>移动章节<select data-canvas-structure-source="true" value={structureSource} disabled={readOnly} onChange={(event) => setStructureSource(event.target.value)}>
@@ -592,12 +567,7 @@ function CanvasEditor({ document, dirty, activeSection, onSectionChange, onEditS
           <ul>{unresolvedIds.map((id) => <li key={id}>{model?.cards.find((card) => card.id === id)?.anchor.kind === 'heading'
             ? (model.cards.find((card) => card.id === id)!.anchor as { titlePath: readonly string[] }).titlePath.join(' / ') : '原虚拟卡片'}</li>)}</ul>
         </div>}
-      </aside>
-    </div>
-    <div className={`canvas-resize-handle${resizingCanvas ? ' active' : ''}`} role="separator" aria-orientation="horizontal"
-      aria-label="调整画布高度" aria-valuemin={360} aria-valuemax={1_200} aria-valuenow={canvasHeight} tabIndex={0}
-      title="拖动调整画布高度，或使用上下方向键" onPointerDown={beginCanvasResize} onKeyDown={nudgeCanvasHeight}>
-      <GripHorizontal size={16} aria-hidden="true" /><span>调整画布高度</span><output>{canvasHeight}px</output>
+      </section></WorkspaceTaskPanel>
     </div>
   </main>;
 }

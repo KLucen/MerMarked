@@ -1,3 +1,4 @@
+import { openWorkspaceTask } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -74,6 +75,7 @@ try {
   assert.deepEqual(JSON.parse(await readFile(sidecarPath, 'utf8')).cards[0].position, afterDrag.cards[0].position);
   await click(cdp, '[data-canvas-collapse]'); await waitFor(cdp, `document.querySelector('[data-canvas-status]').textContent.includes('画布已保存')`, 'collapse save');
   await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 2`, 'collapsed descendants');
+  await openWorkspaceTask(cdp);
   const ids = afterDrag.cards.map((card) => card.id);
   await setSelect(cdp, '[data-canvas-link-from]', ids[2]); await setSelect(cdp, '[data-canvas-link-to]', ids[3]);
   await cdp.evaluate(`(() => { const input = document.querySelector('[data-canvas-link-label]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, 'depends'); input.dispatchEvent(new Event('input', { bubbles: true })); })()`);

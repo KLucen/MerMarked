@@ -59,6 +59,7 @@ export interface SourceEditorCursor {
 
 export interface MarkdownEditorViewProps {
   readonly active?: boolean;
+  readonly outlineInShell?: boolean;
   /** Changes whenever another document replaces the current session. */
   readonly documentKey: string;
   readonly documentName: string;
@@ -185,6 +186,7 @@ function lineEndingLabel(format: MarkdownSourceFormat, editorText: string): stri
 
 export function MarkdownEditorView({
   active = true,
+  outlineInShell = false,
   documentKey,
   documentName,
   value,
@@ -282,7 +284,7 @@ export function MarkdownEditorView({
     onCursorChange?.(nextCursor);
   }, [onCursorChange]);
 
-  const selectAfterRender = useCallback((next: EditorSelection, focus = true) => {
+  const selectAfterRender = useCallback((next: EditorSelection, focus = true, reveal = false) => {
     if (selectionFrame.current !== null) window.cancelAnimationFrame(selectionFrame.current);
     selectionFrame.current = window.requestAnimationFrame(() => {
       selectionFrame.current = null;
@@ -292,6 +294,14 @@ export function MarkdownEditorView({
       const end = Math.max(start, Math.min(next.end, textarea.value.length));
       textarea.setSelectionRange(start, end, next.direction);
       if (focus) textarea.focus({ preventScroll: true });
+      if (reveal) {
+        // The source textarea never wraps; use its actual line metrics to reveal a jump.
+        const style = getComputedStyle(textarea);
+        const line = cursorFor(textarea.value, { start, end: start, direction: 'none' }).line - 1;
+        textarea.scrollTop = Math.max(0, line * parseFloat(style.lineHeight) +
+          parseFloat(style.paddingTop) - textarea.clientHeight / 3);
+        textarea.scrollLeft = 0;
+      }
       reportSelection({ ...next, start, end });
     });
   }, [reportSelection]);
@@ -410,11 +420,14 @@ export function MarkdownEditorView({
     window.requestAnimationFrame(() => contextMenuRef.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus());
   }, [contextMenu]);
 
+  const handledFocus = useRef<{ documentKey: string; request: string | number } | null>(null);
   useEffect(() => {
     if (!active || focusRequestKey === null || focusOffset === null) return;
+    if (handledFocus.current?.documentKey === documentKey && handledFocus.current.request === focusRequestKey) return;
+    handledFocus.current = { documentKey, request: focusRequestKey };
     const offset = Math.max(0, Math.min(focusOffset, currentValue.current.length));
-    selectAfterRender({ start: offset, end: offset, direction: 'none' });
-  }, [active, focusOffset, focusRequestKey, selectAfterRender]);
+    selectAfterRender({ start: offset, end: offset, direction: 'none' }, true, true);
+  }, [active, documentKey, focusOffset, focusRequestKey, selectAfterRender]);
 
   useEffect(() => {
     setSearchIndex((index) => Math.min(index, Math.max(0, search.offsets.length - 1)));
@@ -425,7 +438,7 @@ export function MarkdownEditorView({
     const normalized = (index + search.offsets.length) % search.offsets.length;
     const start = search.offsets[normalized];
     setSearchIndex(normalized);
-    selectAfterRender({ start, end: start + query.length, direction: 'forward' });
+    selectAfterRender({ start, end: start + query.length, direction: 'forward' }, true, true);
   }, [query, search.offsets, selectAfterRender]);
 
   const openSearch = useCallback((withReplace: boolean) => {
@@ -516,7 +529,7 @@ export function MarkdownEditorView({
       if (!active) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       const key = event.key.toLocaleLowerCase();
-      if (key === 'f') {
+      if (key === 'f' && !event.shiftKey) {
         event.preventDefault();
         openSearch(false);
       } else if (key === 'h') {
@@ -734,8 +747,8 @@ export function MarkdownEditorView({
     sourceFormat.lineEnding === 'mixed' ? '这份文档包含混合换行，当前仅可查看源码。' : null
   );
 
-  return <div className={sections ? 'source-editor-layout with-outline' : 'source-editor-layout'} data-editor-view="true">
-    {sections && <aside className="source-outline" aria-label="源码章节目录">
+  return <div className={sections && !outlineInShell ? 'source-editor-layout with-outline' : 'source-editor-layout'} data-editor-view="true">
+    {sections && !outlineInShell && <aside className="source-outline" aria-label="源码章节目录">
       <div className="source-outline-inner">
         <div className="source-outline-heading">源码目录 <span>{sections.length}</span></div>
         {sections.length > 0 ? <ol className="source-outline-list">

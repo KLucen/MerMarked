@@ -13,3 +13,20 @@ export async function openWorkspaceStatus(cdp, expectedName) {
   }
   throw new Error('Document status control did not become available');
 }
+
+/** Reveal the shared task panel through its visible entry point. */
+export async function openWorkspaceTask(cdp) {
+  const opened = await cdp.evaluate(`(() => {
+    const trigger = document.querySelector('[data-workspace-right-toggle]');
+    const content = document.querySelector('.workspace-task-content');
+    if (!trigger || !content) return false;
+    if (!content.getClientRects().length) trigger.click();
+    return true;
+  })()`);
+  if (!opened) throw new Error('Task panel entry missing');
+  for (let i = 0; i < 100; i++) {
+    if (await cdp.evaluate(`Boolean(document.querySelector('.workspace-task-content')?.getClientRects().length)`)) return;
+    await new Promise((resolve) => setTimeout(resolve, 60));
+  }
+  throw new Error('Task panel did not become visible');
+}

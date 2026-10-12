@@ -370,7 +370,7 @@ try {
     return innerWidth >= 780 && innerWidth <= 800 && innerHeight >= 520 &&
       outerWidth >= 790 && outerWidth <= 830 && outerHeight >= 590 && outerHeight <= 630;
   })()`, '800 by 600 application window');
-  await waitFor(cdp, `!document.querySelector('.annotation-sidebar')`, 'narrow layout sidebar closing');
+  await waitFor(cdp, `!document.querySelector('.annotation-sidebar')?.getClientRects().length`, 'narrow layout sidebar closing');
   const actualWindowState = await cdp.evaluate(`(() => {
     const root = document.documentElement;
     return {
@@ -467,13 +467,15 @@ try {
     window.dispatchEvent(new Event('scroll'));
   })()`);
 
-  assert.equal(await selectText(cdp, '章节目录', '.toc'), true);
+  if (await cdp.evaluate(`document.querySelector('#workspace-left-panel').hidden`)) await cdp.evaluate(`document.querySelector('.topbar > button').click()`);
+  assert.equal(await selectText(cdp, '章节目录', '.toc-inner'), true);
   await waitForAnimationFrames(cdp);
   assert.deepEqual(await cdp.evaluate(`({
     toolbar: Boolean(document.querySelector('.selection-toolbar')),
     feedback: Boolean(document.querySelector('.selection-feedback')),
   })`), { toolbar: false, feedback: false });
 
+  if (await cdp.evaluate(`Boolean(document.querySelector('#workspace-left-panel[aria-modal="true"]'))`)) await cdp.evaluate(`document.querySelector('#workspace-left-panel .workspace-close-button').click()`);
   const selectionText = ACTIVE_SELECTION_TEXT;
   assert.equal(await selectText(cdp, selectionText), true);
   await waitFor(cdp, `Boolean(document.querySelector('.selection-toolbar'))`,
@@ -486,7 +488,8 @@ try {
   assert.ok(overlapPriorities.stored >= 0, 'stored overlapping highlight was not painted');
   assert.ok(overlapPriorities.active > overlapPriorities.stored,
     'active selection highlight must remain visible above stored annotations');
-  assert.equal(await selectText(cdp, '章节目录', '.toc'), true);
+  if (await cdp.evaluate(`document.querySelector('#workspace-left-panel').hidden`)) await cdp.evaluate(`document.querySelector('.topbar > button').click()`);
+  assert.equal(await selectText(cdp, '章节目录', '.toc-inner'), true);
   await waitFor(cdp, `!document.querySelector('.selection-toolbar') && !document.querySelector('.selection-feedback')`,
     'outside selection clearing the cached body selection');
   const staleSelectionState = await cdp.evaluate(`({
@@ -503,6 +506,7 @@ try {
     canvas: digest(await readFile(canvasPath)),
   }, initialDigests, 'moving selection into the TOC must not reuse or persist the old body selection');
 
+  if (await cdp.evaluate(`Boolean(document.querySelector('#workspace-left-panel[aria-modal="true"]'))`)) await cdp.evaluate(`document.querySelector('#workspace-left-panel .workspace-close-button').click()`);
   const selectionStart = Date.now();
   assert.equal(await selectText(cdp, selectionText), true);
   await waitFor(cdp, `Boolean(document.querySelector('.selection-toolbar'))`, 'selection action toolbar', 2_000);

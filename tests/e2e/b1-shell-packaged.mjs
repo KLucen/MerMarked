@@ -52,13 +52,17 @@ try {
   await waitFor(cdp, `document.querySelector('.file-name')?.textContent === 'new.md' && document.querySelector('[data-editor-status]')?.textContent.includes('已保存')`, 'first save as');
   assert.equal((await stat(created)).isFile(), true);
   assert.equal((await readFile(created, 'utf8')), '# First save\n\n正文');
-  await click(cdp, '[aria-label="展开左侧栏"]');
+  if (await cdp.evaluate(`document.querySelector('#workspace-left-panel').hidden`)) await click(cdp, '.topbar > button');
   await click(cdp, '[aria-label="收起左侧栏"]');
-  await click(cdp, '[aria-label="展开右侧栏"]');
+  await click(cdp, '[data-workspace-right-toggle]');
   await click(cdp, '[aria-label="收起右侧栏"]');
   await click(cdp, '[aria-label="文档菜单"]');
   await click(cdp, '[aria-label="进入专注模式"]');
   assert.equal(await cdp.evaluate(`document.querySelector('[data-focus-mode="true"]') !== null`), true);
+  await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  if (await cdp.evaluate(`document.querySelector('[aria-label="文档菜单"]').getAttribute('aria-expanded') !== 'true'`)) {
+    await click(cdp, '[aria-label="文档菜单"]');
+  }
   await click(cdp, '[aria-label="退出专注模式"]');
   close(app); app = null;
 
@@ -68,10 +72,12 @@ try {
   await secondMain.evaluate(`process.mainModule.require('electron').dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [${JSON.stringify(existing)}] })`);
   await click(second, '[data-start-open]');
   await waitFor(second, `document.querySelector('.file-name')?.textContent === 'recent.md'`, 'opened Markdown');
-  await click(second, '[aria-label="展开左侧栏"]');
+  if (await second.evaluate(`document.querySelector('#workspace-left-panel').hidden`)) await click(second, '.topbar > button');
+  await second.evaluate(`Array.from(document.querySelectorAll('.workspace-panel-tabs button')).find(b=>b.textContent==='最近文件').click()`);
   await waitFor(second, `Boolean(document.querySelector('.workspace-sidebar-left'))`, 'left sidebar');
   assert.equal(await second.evaluate(`Boolean([...document.querySelectorAll('.recent-document-list strong')].find((item) => item.textContent === 'recent.md'))`), true);
-  await click(second, '[aria-label="展开右侧栏"]');
+  await click(second, '[data-workspace-right-toggle]');
+  await second.evaluate(`Array.from(document.querySelectorAll('#workspace-right-panel button')).find(b=>b.textContent==='文档信息').click()`);
   await waitFor(second, `Boolean(document.querySelector('.workspace-sidebar-right'))`, 'right sidebar');
   assert.equal(await second.evaluate(`document.querySelector('.document-info-list dd')?.textContent === 'recent.md'`), true);
   for (const [name, width, height] of [['wide', 1200, 800], ['narrow', 800, 700], ['mobile', 420, 800]]) {

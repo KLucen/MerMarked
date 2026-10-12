@@ -464,7 +464,7 @@ try {
   await waitFor(cdp, `Boolean(document.querySelector('[data-dirty-preview]')) &&
     document.querySelector('.markdown-body')?.textContent.includes('REPLACED_TARGET')`, 'dirty reader preview');
   const previewState = await cdp.evaluate(`({
-    annotationSidebar: Boolean(document.querySelector('.annotation-sidebar')),
+    annotationSidebar: Boolean(document.querySelector('.annotation-sidebar')?.getClientRects().length),
     selectionToolbar: Boolean(document.querySelector('.selection-toolbar')),
     highlighted: Boolean(CSS.highlights?.get('mermarkd-amber')),
   })`);

@@ -71,9 +71,14 @@ async function waitForFile(filePath) {
 }
 async function exportThroughDialog(cdp, format, target) {
   await rm(target, { force: true });
+  await waitFor(cdp, `document.querySelector('[data-canvas-export="${format}"]')?.disabled === false`, 'export ready');
+  if (await cdp.evaluate(`!document.querySelector('.canvas-toolbar-exports').open`)) {
+    await click(cdp, '.canvas-toolbar-exports > summary');
+  }
   await click(cdp, `[data-canvas-export="${format}"]`);
   try { await waitForFile(target); }
   catch (error) { console.error('export status:', await cdp.evaluate(`document.querySelector('[data-canvas-status]')?.textContent`)); throw error; }
+  await waitFor(cdp, `document.querySelector('[data-canvas-export="${format}"]')?.disabled === false`, 'export complete');
 }
 function readPngSize(bytes) { assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a'); return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) }; }
 function readJpegSize(bytes) {
@@ -114,10 +119,13 @@ try {
   const beforeMarkdown = await readFile(documentPath); const beforeYaml = await readFile(annotationsPath); const beforeCanvas = await readFile(sidecarPath);
   const loaded = await cdp.evaluate('window.mermarkd.loadCanvas()');
   const model = JSON.parse(beforeCanvas.toString('utf8'));
-  model.cards[0].position = { x: -300, y: -200 }; model.cards[1].position = { x: 240, y: 160 }; model.cards[2].position = { x: 320, y: 240 }; model.cards[3].position = { x: 900, y: 700 };
+  // Keep the root initialized so automatic layout recovery does not replace this
+  // deliberately oversized scene. The remote branch and its arrow exceed the viewport.
+  model.cards[0].position = { x: 80, y: 80 }; model.cards[1].position = { x: 240, y: 160 }; model.cards[2].position = { x: 320, y: 240 }; model.cards[3].position = { x: 1300, y: 700 };
   model.links = [{ id: 'a8-3-export-link', from: model.cards[2].id, to: model.cards[3].id, label: '跨层中文关系标签-这是一个很长的标签用于边界检查', }];
   const saved = await cdp.evaluate(`window.mermarkd.saveCanvas(${JSON.stringify({ sourceSha256: hash, expectedSidecarSha256: loaded.sidecarSha256, model })})`);
   assert.equal(saved.status, 'saved');
+  const seededCanvas = await readFile(sidecarPath);
   await click(cdp, '[data-mode="reader"]'); await waitFor(cdp, `document.querySelector('[data-active-mode]')?.getAttribute('data-active-mode') === 'reader'`, 'reader reload');
   await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 4`, 'reloaded scene');
   const outputs = {};
@@ -135,6 +143,7 @@ try {
   assert.deepEqual(outputs.jpg.size, outputs.png.size);
   assert.equal(outputs.pdf.pages, 1);
   assert.deepEqual(await readFile(documentPath), beforeMarkdown); assert.deepEqual(await readFile(annotationsPath), beforeYaml); assert.notDeepEqual(await readFile(sidecarPath), beforeCanvas);
+  assert.deepEqual(await readFile(sidecarPath), seededCanvas, 'export does not persist viewport or layout changes');
   const canvasAfterExport = await readFile(sidecarPath);
   await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'editor');
   await cdp.evaluate(`(() => { const textarea = document.querySelector('[data-editor-textarea]'); const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; setter.call(textarea, textarea.value + String.fromCharCode(10) + 'dirty'); textarea.dispatchEvent(new Event('input', { bubbles: true })); })()`);
