@@ -43,8 +43,9 @@ import type { SectionTransformOperation } from '../core/section-transform';
 import { AppShell } from './app-shell';
 import type { PartStatus, WorkspaceStatuses } from './workspace-status';
 import type { AppMode, AppNotice, NoticeKind, RecentDocumentItem } from './app-shell';
-import { EditorView } from './editor-view';
-import { ReaderView } from './reader-view';
+import { EditorView, type SourceEditorCursor } from './editor-view';
+import { ReaderView, DocumentOutline } from './reader-view';
+import { useWorkspacePanels, WorkspaceTaskPanel } from './workspace-panels';
 import { ReaderEditableBlock } from './reader-editable-block';
 import { CanvasView } from './canvas-view';
 import { DocumentRecoveryView } from './document-recovery-view';
@@ -289,9 +290,8 @@ function App() {
   const [openedDocument, setOpenedDocument] = useState<OpenedMarkdownDocument | null>(null);
   const [recentDocuments, setRecentDocuments] = useState<readonly RecentMarkdownDocument[]>([]);
   const [activeMode, setActiveMode] = useState<AppMode>('reader');
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
-  const [focusMode, setFocusMode] = useState(false);
+  const panels = useWorkspacePanels();
+  const [outlineFocusRequest, setOutlineFocusRequest] = useState(0);
   const [editorFocusRequest, setEditorFocusRequest] = useState(0);
   const [editorFocusOffset, setEditorFocusOffset] = useState<number | null>(null);
   const [opening, setOpening] = useState(false);
@@ -317,12 +317,10 @@ function App() {
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [unpaintableIds, setUnpaintableIds] = useState<readonly string[]>([]);
   const [highlightSupported, setHighlightSupported] = useState(true);
-  const [annotationPanelOpen, setAnnotationPanelOpen] = useState(
-    () => window.matchMedia('(min-width: 1101px)').matches,
-  );
-  const [narrowLayout, setNarrowLayout] = useState(
-    () => window.matchMedia('(max-width: 1100px)').matches,
-  );
+  const setAnnotationPanelOpen = useCallback((open: boolean) => {
+    if (open) panels.openRight('task');
+    else panels.close('right');
+  }, [panels.openRight, panels.close]);
   const [noteFilter, setNoteFilter] = useState('all');
   const [noteComposer, setNoteComposer] = useState<NoteComposer | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
@@ -352,9 +350,6 @@ function App() {
   const readerPosition = useRef<{ path: string; scrollY: number; activeSection: number | null } | null>(null);
   const readerSelectionSourceOffset = useRef<number | null>(null);
   const noteComposerRef = useRef<HTMLTextAreaElement>(null);
-  const annotationToggleRef = useRef<HTMLButtonElement>(null);
-  const annotationSidebarRef = useRef<HTMLElement>(null);
-  const annotationCloseRef = useRef<HTMLButtonElement>(null);
 
   const setMessage = useCallback((text: string | null, kind: NoticeKind = 'status') => {
     setNotice(text ? { kind, text } : null);
@@ -615,6 +610,12 @@ function App() {
     });
   }, [deferredEditorText]);
 
+  const reportEditorCursor = useCallback((cursor: SourceEditorCursor) => {
+    if (activeMode !== 'editor') return;
+    setActiveSection(editorSections.reduce<number | null>((current, section) =>
+      section.sourceOffset <= cursor.offset ? Number(section.key) : current, null));
+  }, [activeMode, editorSections]);
+
   const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
     setCanvasStatus(null);
     setCanvasStructurePreview(null);
@@ -643,33 +644,13 @@ function App() {
     setNoteComposer(null);
     setEditingNoteId(null);
     setReattachTargetId(null);
-    setAnnotationPanelOpen(window.matchMedia('(min-width: 1101px)').matches);
-    setLeftSidebarOpen(false);
-    setRightSidebarOpen(false);
-    setFocusMode(false);
+    panels.reset();
     setAnnotationSaving(false);
     setSummaryCopying(false);
     window.scrollTo({ top: 0 });
     void refreshRecentDocuments();
     void refreshAnnotations(epoch);
-  }, [clearReaderSearchPaint, clearReaderSelection, editorController.reset, refreshAnnotations, refreshRecentDocuments]);
-
-  useEffect(() => {
-    const media = window.matchMedia('(min-width: 1101px)');
-    let lastMatches = media.matches;
-    const updatePanelForViewport = () => {
-      const matches = media.matches;
-      setNarrowLayout(!matches);
-      if (matches !== lastMatches) setAnnotationPanelOpen(matches);
-      lastMatches = matches;
-    };
-    media.addEventListener('change', updatePanelForViewport);
-    window.addEventListener('resize', updatePanelForViewport);
-    return () => {
-      media.removeEventListener('change', updatePanelForViewport);
-      window.removeEventListener('resize', updatePanelForViewport);
-    };
-  }, []);
+  }, [clearReaderSearchPaint, clearReaderSelection, editorController.reset, panels.reset, refreshAnnotations, refreshRecentDocuments]);
 
   useEffect(() => {
     if (noteComposer) noteComposerRef.current?.focus();
@@ -682,38 +663,6 @@ function App() {
     setReattachTargetId(null);
     clearReaderSelection({ clearNative: true });
   }, [annotationView, clearReaderSelection, reattachTargetId]);
-
-  useEffect(() => {
-    if (!annotationPanelOpen) return;
-    if (!narrowLayout) return;
-    const composer = noteComposerRef.current;
-    if (noteComposer && composer && !composer.disabled) composer.focus();
-    else annotationCloseRef.current?.focus();
-    const containDrawerFocus = (event: KeyboardEvent) => {
-      if (event.key !== 'Tab') return;
-      const panel = annotationSidebarRef.current;
-      if (!panel) return;
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
-        'button:not(:disabled), textarea:not(:disabled), input:not(:disabled), select:not(:disabled), summary, a[href], [tabindex]:not([tabindex="-1"])',
-      )).filter((element) => element.offsetParent !== null);
-      if (!focusable.length) {
-        event.preventDefault();
-        panel.focus();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !panel.contains(document.activeElement))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !panel.contains(document.activeElement))) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener('keydown', containDrawerFocus);
-    return () => window.removeEventListener('keydown', containDrawerFocus);
-  }, [annotationPanelOpen, narrowLayout, noteComposer]);
 
   useEffect(() => {
     const registry = highlightRegistry();
@@ -934,23 +883,19 @@ function App() {
   }, [dirtyPreview, openMarkdown, opening, setMessage]);
 
   useEffect(() => {
+    const cancelReattachment = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented || !reattachTargetId) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      setReattachTargetId(null);
+      clearReaderSelection({ clearNative: true, restoreFocus: true });
+      setMessage('已取消重新选择，批注文件未修改。');
+    };
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return;
-      if (reattachTargetId) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        setReattachTargetId(null);
-        clearReaderSelection({ clearNative: true, restoreFocus: true });
-        setMessage('已取消重新选择，批注文件未修改。');
-        return;
-      }
-      if (annotationPanelOpen && narrowLayout) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        setAnnotationPanelOpen(false);
-        annotationToggleRef.current?.focus();
-        return;
-      }
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      if (event.target instanceof Element && event.target.closest('.workspace-popover')) return;
+      // The shell owns drawer Escape; reattachment cancellation retains priority.
+      if (panels.narrow && (panels.leftVisible || panels.rightVisible)) return;
       if (readerSearchOpen) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -965,9 +910,13 @@ function App() {
         return;
       }
     };
+    window.addEventListener('keydown', cancelReattachment, true);
     window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [annotationPanelOpen, clearReaderSearchPaint, clearReaderSelection, narrowLayout,
+    return () => {
+      window.removeEventListener('keydown', cancelReattachment, true);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [panels.narrow, panels.leftVisible, panels.rightVisible, clearReaderSearchPaint, clearReaderSelection,
     readerSearchOpen, reattachTargetId, selectionChecking, selectionProbe, setMessage]);
 
   useEffect(() => {
@@ -1007,7 +956,8 @@ function App() {
   }, [holdNavigatedSection, sectionIds]);
 
   useEffect(() => {
-    if (activeMode !== 'reader' || !readerDocument || sectionIds.length === 0) {
+    if (activeMode !== 'reader') return;
+    if (!readerDocument || sectionIds.length === 0) {
       setActiveSection(null);
       return;
     }
@@ -1636,7 +1586,7 @@ function App() {
       if (!block.hasAttribute('tabindex')) block.setAttribute('tabindex', '-1');
       block.focus({ preventScroll: true });
     }
-  }, []);
+  }, [setAnnotationPanelOpen]);
 
   const openNoteComposer = useCallback((frozenProbe?: SuccessfulSelectionProbe) => {
     const probe = frozenProbe ?? readSelection();
@@ -1656,7 +1606,7 @@ function App() {
     setNewTagName('');
     setEditingNoteId(null);
     setAnnotationPanelOpen(true);
-  }, [readSelection]);
+  }, [readSelection, setAnnotationPanelOpen]);
 
   const createNote = useCallback((event: FormEvent) => {
     event.preventDefault();
@@ -1887,14 +1837,12 @@ function App() {
       return;
     }
     if (mode === 'cards') {
-      setAnnotationPanelOpen(false);
       setActiveMode('cards');
       window.scrollTo({ top: 0, behavior: 'auto' });
       return;
     }
     const next = editorController.editor ?? await editorController.open();
     if (!next) return;
-    setAnnotationPanelOpen(false);
     setActiveMode('editor');
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, jumpToSection, openedDocument]);
@@ -1979,13 +1927,23 @@ function App() {
     <AppShell document={openedDocument} activeMode={activeMode} dirty={dirtyPreview || readerDraftDirty} saving={editorController.busy}
       opening={opening || editorController.opening} dropActive={dropActive} notice={notice}
       recentDocuments={recentDocuments}
-      leftSidebarOpen={leftSidebarOpen} rightSidebarOpen={rightSidebarOpen} focusMode={focusMode}
+      panels={panels} taskLabel={activeMode === 'cards' ? '属性' : '批注'}
+      taskAvailable={activeMode === 'cards' || (activeMode === 'reader' && !dirtyPreview)}
+      outline={<DocumentOutline sections={editorSections} activeSection={activeSection}
+        sourceMode={activeMode === 'editor'} onJumpToSection={(index) => {
+          if (panels.narrow) panels.close('left');
+          if (activeMode === 'reader') jumpToSection(index);
+          else {
+            setActiveSection(index);
+            if (activeMode === 'editor') {
+              setEditorFocusOffset(editorSections.find((section) => section.key === String(index))?.sourceOffset ?? 0);
+              setEditorFocusRequest((request) => request + 1);
+            } else setOutlineFocusRequest((request) => request + 1);
+          }
+        }} />}
       onNewDocument={() => void newMarkdown()}
       onOpenRecent={(documentPath) => void openRecentMarkdown(documentPath)}
       onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)}
-      onToggleLeftSidebar={() => { setLeftSidebarOpen((open) => !open); setRightSidebarOpen(false); }}
-      onToggleRightSidebar={() => { setRightSidebarOpen((open) => !open); setLeftSidebarOpen(false); }}
-      onToggleFocusMode={() => { setFocusMode((open) => !open); setLeftSidebarOpen(false); setRightSidebarOpen(false); }}
       sourceChangeMessage={!dirtyPreview && annotationView?.canReloadSource
         ? annotationView.reason ?? '原 Markdown 已在外部修改，请重新载入后继续。' : null}
       search={{ open: readerSearchOpen, query: readerSearchQuery,
@@ -2034,7 +1992,7 @@ function App() {
         onConfirm={() => void confirmDocumentRecovery()} onClose={closeDocumentRecovery} />}
       {openedDocument?.recoveryPending && <p className="canvas-warning" role="alert" data-document-recovery-pending="true">
         文档存在未完成保存，编辑、批注与画布写入已暂停。请打开“检查保存恢复”核验。</p>}
-      {openedDocument && editorController.editor && <div hidden={activeMode !== 'editor'}>
+      {openedDocument && editorController.editor && <div className="workspace-editor-content" hidden={activeMode !== 'editor'}>
         <EditorView documentKey={editorController.editor.epoch} documentName={openedDocument.name}
           active={activeMode === 'editor' && !recoveryOpen}
           value={editorText} sourceFormat={editorController.editor.sourceFormat}
@@ -2042,7 +2000,8 @@ function App() {
           readOnly={!editorController.editor.editable}
           readOnlyReason={editorController.editor.readOnlyReason}
           saveMessage={editorController.error}
-          sections={editorSections}
+          sections={editorSections} outlineInShell
+          onCursorChange={reportEditorCursor}
           activeSectionKey={activeSection === null ? null : String(activeSection)}
           focusOffset={editorFocusOffset ?? (editorFocusRequest > 0 && activeSection !== null
             ? editorSections.find((section) => section.key === String(activeSection))?.sourceOffset
@@ -2073,22 +2032,16 @@ function App() {
           onNew={() => void newMarkdown()} onOpenRecent={(documentPath) => void openRecentMarkdown(documentPath)}
           onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)} />
       ) : activeMode === 'cards' ? (
-        <CanvasView document={readerDocument!} dirty={dirtyPreview} activeSection={activeSection}
+        <CanvasView document={readerDocument!} dirty={dirtyPreview} activeSection={activeSection} focusRequest={outlineFocusRequest}
           onSectionChange={(index) => { setActiveSection(index); readerPosition.current = null; }}
           onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} onStatusChange={reportCanvasStatus} />
       ) : activeMode === 'editor' ? editorController.editor ? null : (
         <main className="source-editor-loading" role="status">正在准备源码编辑器…</main>
       ) : (
-        <ReaderView sectionTree={sectionTree!} sectionIds={sectionIds} activeSection={activeSection}
-          annotationsOpen={!dirtyPreview && annotationPanelOpen} onJumpToSection={jumpToSection}>
+        <ReaderView>
           <main className="reading-main">
             <div className="reader-tools">
               {editorController.editor?.editable === false && <span className="read-only-badge" title={editorController.editor.readOnlyReason}>只读</span>}
-              {!dirtyPreview && <button ref={annotationToggleRef} type="button" className="annotation-panel-toggle"
-                aria-expanded={annotationPanelOpen} aria-controls="annotation-sidebar"
-                onClick={() => setAnnotationPanelOpen((open) => !open)}>
-                {annotationPanelOpen ? '收起批注' : `批注 ${noteItems.length}`}
-              </button>}
             </div>
             {dirtyPreview ? <div className="annotation-summary dirty-preview" role="status" data-dirty-preview="true">
               <strong>未保存</strong>
@@ -2208,24 +2161,14 @@ function App() {
               <span className="reader-context-note">复杂选区请切到源码视图编辑</span>
             </div>}
           </main>
-          {!dirtyPreview && annotationPanelOpen && <>
-            <button type="button" className="annotation-drawer-backdrop" aria-label="关闭批注栏"
-              onClick={() => { setAnnotationPanelOpen(false); annotationToggleRef.current?.focus(); }} />
-            <aside ref={annotationSidebarRef} id="annotation-sidebar" className="annotation-sidebar"
-              aria-label="批注边栏" aria-labelledby="annotation-sidebar-title"
-              role={narrowLayout ? 'dialog' : undefined} aria-modal={narrowLayout ? true : undefined} tabIndex={-1}>
+          <WorkspaceTaskPanel>
+            <div id="annotation-sidebar" className="annotation-sidebar" hidden={dirtyPreview} aria-label="批注边栏">
               <div className="annotation-sidebar-inner">
-                <header className="annotation-sidebar-header">
-                  <div><h2 id="annotation-sidebar-title">批注</h2><span>{noteItems.length} 条便签</span></div>
-                  <button ref={annotationCloseRef} type="button" className="annotation-close" aria-label="关闭批注栏"
-                    onClick={() => { setAnnotationPanelOpen(false); annotationToggleRef.current?.focus(); }}>×</button>
-                </header>
-
                 {noteComposer && <form className="note-composer" onSubmit={createNote}>
                   <div className="note-form-heading">为选文添加批注</div>
                   <blockquote>{noteComposer.quote}</blockquote>
                   <label htmlFor="new-note-body">批注内容</label>
-                  <textarea id="new-note-body" ref={noteComposerRef} rows={5} value={noteDraft}
+                  <textarea id="new-note-body" ref={noteComposerRef} data-panel-autofocus rows={5} value={noteDraft}
                     disabled={!canChangeAnnotations}
                     onChange={(event) => setNoteDraft(event.target.value)}
                     onKeyDown={(event) => {
@@ -2358,8 +2301,8 @@ function App() {
                   })}</ol> : <p>还没有单独的高亮。</p>}
                 </details>
               </div>
-            </aside>
-          </>}
+            </div>
+          </WorkspaceTaskPanel>
         </ReaderView>
       )}
     </AppShell>

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
 import { FilePlus2, FolderOpen, Maximize2, Minimize2, MoreHorizontal, PanelLeft, PanelRight, RotateCcw, Save, Search, X } from 'lucide-react';
 import type { OpenedMarkdownDocument } from '../types/reader-api';
 import { summarizeWorkspaceStatus, type WorkspaceStatuses } from './workspace-status';
 import { WorkspacePopover } from './workspace-popover';
+import { WorkspaceTaskHost, type WorkspacePanels } from './workspace-panels';
 
 export type NoticeKind = 'status' | 'alert';
 
@@ -40,15 +41,13 @@ export interface AppShellProps {
   readonly notice: AppNotice | null;
   readonly sourceChangeMessage: string | null;
   readonly recentDocuments?: readonly RecentDocumentItem[];
-  readonly leftSidebarOpen?: boolean;
-  readonly rightSidebarOpen?: boolean;
-  readonly focusMode?: boolean;
+  readonly panels: WorkspacePanels;
+  readonly outline?: ReactNode;
+  readonly taskLabel: string;
+  readonly taskAvailable: boolean;
   readonly onNewDocument?: () => void;
   readonly onOpenRecent?: (path: string) => void;
   readonly onRemoveRecent?: (path: string) => void;
-  readonly onToggleLeftSidebar?: () => void;
-  readonly onToggleRightSidebar?: () => void;
-  readonly onToggleFocusMode?: () => void;
   readonly onSave?: () => void;
   readonly onSaveAs?: () => void;
   readonly onDiscardChanges?: () => void;
@@ -113,15 +112,13 @@ export function AppShell({
   notice,
   sourceChangeMessage,
   recentDocuments = [],
-  leftSidebarOpen = false,
-  rightSidebarOpen = false,
-  focusMode = false,
+  panels,
+  outline,
+  taskLabel,
+  taskAvailable,
   onNewDocument,
   onOpenRecent,
   onRemoveRecent,
-  onToggleLeftSidebar,
-  onToggleRightSidebar,
-  onToggleFocusMode,
   onSave,
   onSaveAs,
   onDiscardChanges,
@@ -149,16 +146,57 @@ export function AppShell({
   const searchTrigger = useRef<HTMLButtonElement>(null);
   const leftSidebarTrigger = useRef<HTMLButtonElement>(null);
   const rightSidebarTrigger = useRef<HTMLButtonElement>(null);
-  const workspaceSidebar = useRef<HTMLElement>(null);
+  const leftSidebar = useRef<HTMLElement>(null);
+  const rightSidebarElement = useRef<HTMLElement>(null);
+  const focusReturn = useRef<HTMLElement | null>(null);
+  const chrome = useRef<HTMLDivElement>(null);
+  const shell = useRef<HTMLDivElement>(null);
+  const [taskHost, setTaskHost] = useState<HTMLDivElement | null>(null);
+  const [leftTab, setLeftTab] = useState<'outline' | 'recent'>('outline');
+  const leftSidebarOpen = Boolean(document) && panels.leftVisible;
+  const rightSidebarOpen = Boolean(document) && panels.rightVisible;
+  const focusMode = panels.focused;
+  const modalSide = panels.narrow ? leftSidebarOpen ? 'left' : rightSidebarOpen ? 'right' : null : null;
+  const showTask = taskAvailable && panels.right === 'task';
+  const onToggleLeftSidebar = panels.toggleLeft;
+  const onToggleRightSidebar = () => panels.toggleRight(taskAvailable ? 'task' : 'info');
+  const onToggleFocusMode = useCallback(() => {
+    const active = window.document.activeElement;
+    if (!focusMode && active instanceof HTMLElement &&
+        (leftSidebar.current?.contains(active) || rightSidebarElement.current?.contains(active))) {
+      focusReturn.current = active;
+    }
+    panels.toggleFocus();
+  }, [focusMode, panels.toggleFocus]);
+
+  useEffect(() => {
+    const target = focusMode ? window.document.querySelector<HTMLElement>(
+      activeMode === 'editor' ? '[data-editor-textarea]' : activeMode === 'cards' ? '[data-canvas-flow]' : '.markdown-body',
+    ) : focusReturn.current;
+    if (!focusMode) focusReturn.current = null;
+    const frame = window.requestAnimationFrame(() => {
+      if (!target?.isConnected || !target.getClientRects().length) return;
+      if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+      target.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeMode, focusMode]);
+
+  useEffect(() => {
+    if (!chrome.current) return;
+    const update = () => shell.current?.style.setProperty('--workspace-chrome-height',
+      (chrome.current?.getBoundingClientRect().height ?? 64) + 'px');
+    const observer = new ResizeObserver(update);
+    observer.observe(chrome.current);
+    update();
+    return () => observer.disconnect();
+  }, []);
   const [discardConfirmation, setDiscardConfirmation] = useState(false);
 
   const closeWorkspaceSidebar = (side: 'left' | 'right') => {
-    const isOpen = side === 'left' ? leftSidebarOpen : rightSidebarOpen;
-    if (!isOpen) return;
-    if (side === 'left') onToggleLeftSidebar?.();
-    else onToggleRightSidebar?.();
+    panels.close(side);
     window.requestAnimationFrame(() => {
-      (side === 'left' ? leftSidebarTrigger : rightSidebarTrigger).current?.focus();
+      (side === 'left' ? leftSidebarTrigger : rightSidebarTrigger).current?.focus({ preventScroll: true });
     });
   };
 
@@ -168,8 +206,19 @@ export function AppShell({
   };
 
   useEffect(() => {
+    const handleFocusShortcut = (event: KeyboardEvent) => {
+      if (!document || event.isComposing || !(event.ctrlKey || event.metaKey) || !event.shiftKey ||
+          event.key.toLowerCase() !== 'f') return;
+      event.preventDefault();
+      onToggleFocusMode();
+    };
+    window.addEventListener('keydown', handleFocusShortcut);
+    return () => window.removeEventListener('keydown', handleFocusShortcut);
+  }, [document, onToggleFocusMode]);
+
+  useEffect(() => {
     const handleFindShortcut = (event: KeyboardEvent) => {
-      if (activeMode !== 'reader' || !document || !(event.ctrlKey || event.metaKey) ||
+      if (activeMode !== 'reader' || !document || event.shiftKey || !(event.ctrlKey || event.metaKey) ||
           event.key.toLocaleLowerCase() !== 'f') return;
       event.preventDefault();
       onOpenSearch();
@@ -202,49 +251,42 @@ export function AppShell({
   }, [search.open]);
 
   useEffect(() => {
-    if (!leftSidebarOpen && !rightSidebarOpen) return;
-    const narrow = window.matchMedia('(max-width: 720px)').matches;
-    const previousBodyOverflow = window.document.body.style.overflow;
-    if (narrow) window.document.body.style.overflow = 'hidden';
-    const handleWorkspaceSidebarKeys = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        closeWorkspaceSidebar(leftSidebarOpen ? 'left' : 'right');
-        return;
-      }
-      if (event.key !== 'Tab' || !window.matchMedia('(max-width: 720px)').matches) return;
-      const panel = workspaceSidebar.current;
-      if (!panel) return;
-      const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-      )).filter((element) => element.getClientRects().length > 0);
-      if (focusable.length === 0) {
-        event.preventDefault();
-        return;
-      }
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && window.document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && window.document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    window.addEventListener('keydown', handleWorkspaceSidebarKeys);
+    const side = modalSide;
+    const panel = side === 'left' ? leftSidebar.current : rightSidebarElement.current;
+    if (!side || !panel) return;
+    const previousOverflow = window.document.body.style.overflow;
+    window.document.body.style.overflow = 'hidden';
     const focusPanel = window.requestAnimationFrame(() => {
-      if (window.matchMedia('(max-width: 720px)').matches) {
-        workspaceSidebar.current?.querySelector<HTMLElement>('.workspace-close-button')?.focus();
+      if (!panel.contains(window.document.activeElement)) {
+        (panel.querySelector<HTMLElement>('[data-panel-autofocus]:not(:disabled)') ??
+          panel.querySelector<HTMLElement>('.workspace-close-button'))?.focus({ preventScroll: true });
       }
     });
-    return () => {
-      window.removeEventListener('keydown', handleWorkspaceSidebarKeys);
-      window.cancelAnimationFrame(focusPanel);
-      if (narrow) window.document.body.style.overflow = previousBodyOverflow;
+    const handleKeys = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        closeWorkspaceSidebar(side);
+      } else if (event.key === 'Tab') {
+        const focusable = Array.from(panel.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex]:not([tabindex="-1"])',
+        )).filter((element) => element.getClientRects().length > 0);
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        const active = window.document.activeElement;
+        if (!first || !last) { event.preventDefault(); panel.focus(); }
+        else if (event.shiftKey && (active === first || !panel.contains(active))) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && (active === last || !panel.contains(active))) { event.preventDefault(); first.focus(); }
+      }
     };
-  }, [leftSidebarOpen, rightSidebarOpen]);
+    window.addEventListener('keydown', handleKeys);
+    return () => {
+      window.cancelAnimationFrame(focusPanel);
+      window.removeEventListener('keydown', handleKeys);
+      window.document.body.style.overflow = previousOverflow;
+    };
+  }, [modalSide, panels.close]);
 
   const handleSearchKeys = (event: ReactKeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape') {
@@ -261,9 +303,9 @@ export function AppShell({
   const summary = workspaceStatuses ? summarizeWorkspaceStatus(workspaceStatuses) : null;
   const documentStatus = fileStatus ?? summary?.text ?? (document?.temporary ? '待首次保存' : dirty ? '未保存' : '已保存');
 
-  return <div className="app-shell" data-active-mode={activeMode} data-dirty={dirty ? 'true' : 'false'}
+  return <WorkspaceTaskHost.Provider value={taskHost}><div ref={shell} className="app-shell" data-active-mode={activeMode} data-dirty={dirty ? 'true' : 'false'}
     data-document-open={document ? 'true' : 'false'} data-focus-mode={focusMode ? 'true' : 'false'}>
-    <header className="topbar">
+    <div ref={chrome} className="workspace-chrome" inert={Boolean(modalSide)}><header className="topbar">
       {!document ? <div className="brand" aria-label="MerMarkd">
         <span className="brand-mark" aria-hidden="true">M</span>
         <span className="brand-name">MerMarkd</span>
@@ -308,18 +350,19 @@ export function AppShell({
             <button type="button" className="workspace-discard-confirm-button" onClick={() => { setDiscardConfirmation(false); onDiscardChanges(); }} disabled={saving}>确定</button>
             <button type="button" className="workspace-discard-cancel-button" onClick={() => setDiscardConfirmation(false)} disabled={saving}>取消</button>
           </span>}
-          <button type="button" onClick={onToggleRightSidebar}>文档信息</button>
+          <button type="button" onClick={() => panels.openRight('info')}>文档信息</button>
           {onDocumentRecovery && <button type="button" data-open-document-recovery="true" onClick={onDocumentRecovery} disabled={opening}>检查保存恢复</button>}
         <button type="button" className="workspace-icon-button" onClick={onToggleFocusMode}
-          aria-label={focusMode ? '退出专注模式' : '进入专注模式'} aria-pressed={focusMode}
-          title={focusMode ? '退出专注模式' : '进入专注模式'}>
+          aria-label={focusMode ? '退出专注模式' : '进入专注模式'} aria-pressed={focusMode} aria-keyshortcuts="Control+Shift+F"
+          title="切换专注模式（Ctrl+Shift+F）">
           {focusMode ? <Minimize2 size={16} aria-hidden="true" /> : <Maximize2 size={16} aria-hidden="true" />}
           {focusMode ? '退出专注模式' : '进入专注模式'}
+          <kbd>Ctrl+Shift+F</kbd>
         </button>
         </WorkspacePopover>
-        <button ref={rightSidebarTrigger} type="button" className="workspace-icon-button" onClick={onToggleRightSidebar}
-          aria-label={rightSidebarOpen ? '收起右侧栏' : '展开右侧栏'} aria-expanded={rightSidebarOpen} title={rightSidebarOpen ? '收起右侧栏' : '展开右侧栏'}>
-          <PanelRight size={17} aria-hidden="true" />
+        <button ref={rightSidebarTrigger} type="button" className={`workspace-icon-button workspace-task-trigger ${activeMode === 'reader' ? 'annotation-panel-toggle' : ''}`} data-workspace-right-toggle="true" onClick={onToggleRightSidebar}
+          aria-label={taskAvailable ? taskLabel : '文档信息'} aria-controls="workspace-right-panel" aria-expanded={rightSidebarOpen} title={taskAvailable ? taskLabel : '文档信息'}>
+          <PanelRight size={17} aria-hidden="true" /><span>{taskAvailable ? taskLabel : '信息'}</span>
         </button>
         <div className={dropActive ? 'open-drop-target active compact' : 'open-drop-target compact'}
           data-markdown-drop-target="true"
@@ -379,27 +422,51 @@ export function AppShell({
       <span>{notice.text}</span>
       <button type="button" onClick={onDismissNotice} aria-label="关闭提示">×</button>
     </div>}
-    {document && !focusMode && (leftSidebarOpen || rightSidebarOpen) && <button type="button" className="workspace-sidebar-backdrop"
-      aria-label="关闭侧栏" tabIndex={-1} onClick={() => closeWorkspaceSidebar(leftSidebarOpen ? 'left' : 'right')} />}
-    {document && !focusMode && leftSidebarOpen && <aside ref={workspaceSidebar} className="workspace-sidebar workspace-sidebar-left" role="dialog" aria-modal="true" aria-label="文档导航">
-      <div className="workspace-sidebar-header"><div><span className="workspace-sidebar-kicker">WORKSPACE</span><h2>文档导航</h2></div>
+    </div>
+    <div className="workspace-frame" data-left-open={leftSidebarOpen} data-right-open={rightSidebarOpen}>
+    {modalSide && <button type="button" className="workspace-sidebar-backdrop" aria-label="关闭侧栏" tabIndex={-1}
+      onClick={() => closeWorkspaceSidebar(modalSide)} />}
+    <aside ref={leftSidebar} id="workspace-left-panel" hidden={!leftSidebarOpen}
+      className="workspace-sidebar workspace-sidebar-left" role={modalSide === 'left' ? 'dialog' : undefined}
+      aria-modal={modalSide === 'left' ? true : undefined} aria-label="文档导航" tabIndex={-1}>
+      <div className="workspace-sidebar-header"><h2>文档导航</h2>
         <button type="button" className="workspace-close-button" onClick={() => closeWorkspaceSidebar('left')} aria-label="收起左侧栏"><X size={15} /></button></div>
-      <section className="workspace-sidebar-section"><h3>最近打开</h3>
+      <div className="workspace-panel-tabs" role="group" aria-label="导航内容">
+        <button type="button" aria-pressed={leftTab === 'outline'} onClick={() => setLeftTab('outline')}>目录</button>
+        <button type="button" aria-pressed={leftTab === 'recent'} onClick={() => setLeftTab('recent')}>最近文件</button>
+      </div>
+      <div className="workspace-panel-scroll" hidden={leftTab !== 'outline'}>{outline}</div>
+      <section className="workspace-panel-scroll workspace-sidebar-section" hidden={leftTab !== 'recent'} aria-label="最近文件">
         {recentDocuments.length === 0 ? <p className="workspace-sidebar-empty">还没有最近文档。</p> : <ul className="recent-document-list">
-          {recentDocuments.map((item) => <li key={item.path} className={item.path === document.path ? 'current' : undefined}>
-            <button type="button" onClick={() => onOpenRecent?.(item.path)} disabled={item.path === document.path || dirty} title={item.path}>
+          {recentDocuments.map((item) => <li key={item.path} className={item.path === document?.path ? 'current' : undefined}>
+            <button type="button" onClick={() => onOpenRecent?.(item.path)} disabled={item.path === document?.path || dirty} title={item.path}>
               <strong>{item.name}</strong><span>{item.path}</span></button>
-            <button type="button" className="recent-remove" onClick={() => onRemoveRecent?.(item.path)} aria-label={`从最近文档移除 ${item.name}`}><X size={13} /></button>
+            <button type="button" className="recent-remove" onClick={() => onRemoveRecent?.(item.path)} aria-label={'从最近文档移除 ' + item.name}><X size={13} /></button>
           </li>)}
         </ul>}
       </section>
-      <section className="workspace-sidebar-section workspace-sidebar-hint"><h3>当前工作区</h3><p>切换视图不会写入 Markdown。关闭侧栏可获得更宽的正文空间。</p></section>
-    </aside>}
-    {document && !focusMode && rightSidebarOpen && <aside ref={workspaceSidebar} className="workspace-sidebar workspace-sidebar-right" role="dialog" aria-modal="true" aria-label="文档信息">
-      <div className="workspace-sidebar-header"><div><span className="workspace-sidebar-kicker">DOCUMENT</span><h2>文档信息</h2></div>
-        <button type="button" className="workspace-close-button" onClick={() => closeWorkspaceSidebar('right')} aria-label="收起右侧栏"><X size={15} /></button></div>
-      {rightSidebar ?? <div className="workspace-sidebar-section"><dl className="document-info-list"><div><dt>文件名</dt><dd>{document.name}</dd></div><div><dt>路径</dt><dd title={document.temporary ? undefined : document.path}>{document.temporary ? '尚未保存到磁盘' : document.path}</dd></div><div><dt>编码</dt><dd>UTF-8{document.bomByteLength ? ' · BOM' : ''}</dd></div><div><dt>状态</dt><dd className={dirty || document.temporary ? 'dirty' : undefined}>{document.temporary ? '新建 · 待首次保存' : documentStatus}</dd></div></dl></div>}
-    </aside>}
-    <div className="workspace-content">{children}</div>
-  </div>;
+    </aside>
+    <div className="workspace-content" inert={Boolean(modalSide)}>{children}</div>
+    <aside ref={rightSidebarElement} id="workspace-right-panel" hidden={!rightSidebarOpen}
+      className="workspace-sidebar workspace-sidebar-right" role={modalSide === 'right' ? 'dialog' : undefined}
+      aria-modal={modalSide === 'right' ? true : undefined} aria-label={showTask ? taskLabel : '文档信息'} tabIndex={-1}>
+      <div className="workspace-sidebar-header"><h2>{showTask ? taskLabel : '文档信息'}</h2>
+        <button type="button" className="workspace-close-button annotation-close" onClick={() => closeWorkspaceSidebar('right')}
+          aria-label={showTask && activeMode === 'reader' ? '关闭批注栏' : '收起右侧栏'}><X size={15} /></button></div>
+      {taskAvailable && <div className="workspace-panel-tabs" role="group" aria-label="面板内容">
+        <button type="button" aria-pressed={showTask} onClick={() => panels.openRight('task')}>{taskLabel}</button>
+        <button type="button" aria-pressed={!showTask} onClick={() => panels.openRight('info')}>文档信息</button>
+      </div>}
+      <div ref={setTaskHost} className="workspace-panel-scroll workspace-task-content" hidden={!showTask} />
+      <div className="workspace-panel-scroll" hidden={showTask}>
+        {rightSidebar ?? (document && <div className="workspace-sidebar-section"><dl className="document-info-list">
+          <div><dt>文件名</dt><dd>{document.name}</dd></div>
+          <div><dt>路径</dt><dd title={document.temporary ? undefined : document.path}>{document.temporary ? '尚未保存到磁盘' : document.path}</dd></div>
+          <div><dt>编码</dt><dd>UTF-8{document.bomByteLength ? ' · BOM' : ''}</dd></div>
+          <div><dt>状态</dt><dd>{documentStatus}</dd></div>
+        </dl></div>)}
+      </div>
+    </aside>
+    </div>
+  </div></WorkspaceTaskHost.Provider>;
 }

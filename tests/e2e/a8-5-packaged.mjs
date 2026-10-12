@@ -1,3 +1,4 @@
+import { openWorkspaceTask } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
 import { spawn, execFileSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -117,6 +118,7 @@ try {
   await rm(lock); const recovered = await cdp.evaluate(`window.mermarkd.confirmDocumentRecovery(${JSON.stringify(lockPreview.token)})`); assert.equal(recovered.status, 'recovered'); await verifyAfter(locked);
   await drop(cdp, live.document.path); await waitFor(cdp, `document.querySelector('.file-name')?.textContent === '本轮写入失败.md'`, 'live failure document');
   await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false`, 'live failure canvas');
+  await openWorkspaceTask(cdp);
   await cdp.evaluate(`(() => { for (const [selector,value] of [['[data-canvas-structure-source]','2'],['[data-canvas-structure-parent]','0']]) {
     const element = document.querySelector(selector); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(element,value);
     element.dispatchEvent(new Event('change',{bubbles:true})); } })()`);

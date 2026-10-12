@@ -1,4 +1,4 @@
-import { openWorkspaceStatus } from './workspace-controls.mjs';
+import { openWorkspaceStatus, openWorkspaceTask } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
@@ -333,6 +333,7 @@ try {
   await waitFor(cdp, `document.querySelector('.annotation-summary')?.textContent.includes('3 条待定位') &&
     !document.querySelector('.annotation-summary')?.textContent.includes('可安全重定位')`, 'partial relocation save');
 
+  await openWorkspaceTask(cdp);
   const beganManual = await cdp.evaluate(`(() => {
     const card = Array.from(document.querySelectorAll('.note-card'))
       .find((item) => item.textContent.includes('旧关键词'));
@@ -352,6 +353,7 @@ try {
   'manual reattachment save');
 
   const sidecarBeforeSummary = await readFile(sidecarPath);
+  await openWorkspaceTask(cdp);
   await clickExact(cdp, '复制摘要');
   await waitFor(cdp, `document.querySelector('.notice')?.textContent.includes('6 条')`, 'all summary copy');
   const allSummary = readClipboard();
@@ -381,14 +383,17 @@ try {
     window.resizeTo(800, 600);
     return matchMedia('(max-width: 1100px)').matches && innerWidth <= 800;
   })()`, 'narrow viewport');
-  await waitFor(cdp, `!document.querySelector('.annotation-sidebar')`, 'narrow sidebar auto close');
+  // A visible task panel stays open when resizing, as the single modal drawer.
+  await waitFor(cdp, `Boolean(document.querySelector('#workspace-right-panel[aria-modal="true"]'))`, 'responsive annotation drawer');
+  await cdp.evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
+  await waitFor(cdp, `!document.querySelector('.annotation-sidebar')?.getClientRects().length`, 'drawer closed');
   const narrowClosed = await cdp.evaluate(`({
     width: innerWidth,
     height: innerHeight,
     outerWidth,
     outerHeight,
     scrollWidth: document.documentElement.scrollWidth,
-    sidebar: Boolean(document.querySelector('.annotation-sidebar')),
+    sidebar: Boolean(document.querySelector('.annotation-sidebar')?.getClientRects().length),
   })`);
   assert.ok(narrowClosed.width >= 780 && narrowClosed.height >= 520);
   assert.ok(narrowClosed.outerWidth >= 800 && narrowClosed.outerHeight >= 590);
@@ -400,14 +405,14 @@ try {
     return true;
   })()`);
   assert.equal(openedDrawer, true);
-  await waitFor(cdp, `Boolean(document.querySelector('.annotation-sidebar'))`, 'narrow annotation drawer');
+  await waitFor(cdp, `Boolean(document.querySelector('.annotation-sidebar')?.getClientRects().length)`, 'narrow annotation drawer');
   const drawerBounds = await cdp.evaluate(`(() => {
     const bounds = document.querySelector('.annotation-sidebar').getBoundingClientRect();
     return { left: bounds.left, right: bounds.right, width: innerWidth };
   })()`);
   assert.ok(drawerBounds.left >= 0 && drawerBounds.right <= drawerBounds.width + 1);
   await cdp.evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`);
-  await waitFor(cdp, `!document.querySelector('.annotation-sidebar')`, 'Escape closing the drawer');
+  await waitFor(cdp, `!document.querySelector('.annotation-sidebar')?.getClientRects().length`, 'Escape closing the drawer');
 
   const secondCurrentBytes = sourceBytes(fixture.currentContent.replace(
     '# 研究笔记\r\n', '# 研究笔记\r\n第二次外部编辑。\r\n',

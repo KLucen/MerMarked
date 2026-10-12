@@ -1074,3 +1074,52 @@ git diff --check -- src/core/canvas-scene.ts src/core/canvas-scene-v2.ts src/ren
 分支 `codex/ux1-workspace-simplification`。先用 `445efe0` 保存工作区原有 B1.2–B1.5 前置实现与设计评审，再单独提交 UX1 代码、测试和日志；个人试读 fixture 与 hash 命名副本保留本地不提交。安装包仅本地生成，本轮不执行公开发行，也不声称已经过安装/卸载、真实中文 IME、多显示器 DPI 或大文档性能验收。下一批推进 UX2 共享面板与专注模式。
 
 GitHub 同步结果：实现提交 `51d9fa7` 已推送至 `origin/codex/ux1-workspace-simplification`，前置提交 `445efe0` 一并上传。尝试通过 GitHub 连接器创建 PR 时返回 403 `Resource not accessible by integration`，未创建 PR、未合并 main；源码分支上传成功，不受该连接器权限影响。
+
+## 2026-10-12 · UX2 共享面板、专注模式和视口布局
+
+### 目标与需求来源
+
+用户要求继续设计方案的下一批开发，并延续 GitHub 同步。以 UX1 已合并的 PR #1 / `71b96a7` 为基线，创建 `codex/ux2-shared-panels`，实现设计评审中的 UX2。
+
+### 实现与界面复核
+
+使用 `emil-design-eng` 复核层级、键盘和操作一致性，修改多份 TSX 后按 `vercel:react-best-practices` 检查状态、精确依赖、全局监听和可访问性。复核当前打包窗口截图，结果如下：
+
+| Before | After | 用户收益 |
+| --- | --- | --- |
+| 外壳、阅读和画布分别有最近文件、目录、批注、信息、属性区域 | 左侧共享目录/最近文件，右侧按模式展示批注/属性/文档信息 | 面板入口位置稳定，减少重复占宽 |
+| 专注开关不能覆盖各视图自有辅助区 | 一份会话状态统一隐藏并恢复面板，保留隐藏表单与滚动 | 随时回到当前任务，草稿和历史不因隐藏丢失 |
+| 窄窗口不同辅助面板各自响应和管理焦点 | 单一模态抽屉、背景 inert、Tab 循环、Escape 返回入口 | 键盘不会误落到遮罩后的操作 |
+| 画布依赖固定高度和手动调整条 | 自动填满工具栏下方可用高度，属性独立滚动 | 窗口变大即可获得更多画布空间 |
+| 源码目录只改变光标偏移，目标行可能仍在屏幕外 | 显式跳转按不换行 textarea 的行高显示目标，普通重渲染不重复跳转 | 能直接看到所选章节且保持当前编辑位置 |
+
+状态方案见 ADR-037。任务组件通过固定 portal 容器进入外壳，隐藏/显示不卸载表单。Ctrl+Shift+F 可从抽屉进入正文并返回原控件，阅读和源码 Ctrl+F 排除 Shift 组合。共享目录在阅读定位标题，在源码设置光标并显示目标行，在画布聚焦对应节点或可见父节点，不自动展开或保存。
+
+### 修改文件
+
+新增 `src/renderer/workspace-panels.tsx`；调整 `app-shell.tsx`、`main.tsx`、`reader-view.tsx`、`editor-view.tsx`、`canvas-view.tsx` 和 `style.css`。新增 `tests/e2e/ux2-workspace-panels-packaged.mjs` 与 npm 脚本；旧 E2E 使用可见面板入口和可见性判断，适配常驻隐藏 DOM。更新进度、设计评审、ADR 和本日志。个人试读 fixture 与 hash 命名副本继续留在本地，未纳入此批。
+
+### 检查与结果
+
+已执行 `npm.cmd test`（252/252）、`npm.cmd run typecheck`、`npm.cmd run package`、`npm.cmd run make`；使用 `MERMARKD_ELECTRON_ZIP_DIR` 指向本机 Electron 44.4.1 缓存。没有新增依赖或修改 lockfile。
+
+最终构建的 13 组打包版 E2E 全部通过：`npm.cmd run test:e2e:ux2`、`test:e2e:ux1`、`test:e2e:b1`、`test:e2e:a6`、`test:e2e:a7-1`、`test:e2e:a7-2`、`test:e2e:a7-3b`、`test:e2e:a7-4`、`test:e2e:a7-5`、`test:e2e:a8-2`、`test:e2e:a8-3`、`test:e2e:a8-4`、`test:e2e:a8-5`（各名称均使用 npm run 执行）。UX2 专项已经通过：1200×800、800×700、420×800 CSS px 下三种模式无页面横向溢出；单抽屉/焦点循环和返回、专注期间批注与关系标签草稿保留、正文与源码位置、源码查找快捷键隔离、编辑撤销、窗口增高时画布变大。分别验证无 sidecar 时不会创建文件，以及现存 Markdown/YAML/JSON 的 bytes 和 mtime 在模式/面板/专注/尺寸切换后不变。
+
+### 排查、失败与修复
+
+- 共享目录和任务栏不再被卸载，旧脚本中“DOM 不存在”等于“面板关闭”的假设失效，改为实际可见性检查，操作前通过统一入口打开面板。A7.1 的目录选区检测仍验证不能复用正文选区，不删去数据保护断言。
+- 专项窗口截图显示源码章节选择后内容仍在顶部，补充显式跳转的滚动定位，并防止回调变化重复应用旧 focus request。专项检查目标可见、光标和滚动在专注切换后不变。
+- 新快捷键与源码 Ctrl+F 冲突，增加 Shift 分支隔离；专项验证不打开源码查找。
+- A7.2 发现全局捕获阶段的 Escape 抢先关闭阅读查找，未归还查找入口焦点。仅批注重新定位取消保留捕获优先，其余 Escape 恢复冒泡，让局部查找/编辑/抽屉先处理。
+- A8.3 的旧导出脚本未等待初始布局/上一次导出完成，且负坐标根卡触发 B1.5 已有自动恢复，导致预设的大场景缩回默认布局。改为通过导出菜单等待实际可用状态，使用初始化根位置和远处旁支覆盖视口外箭头/中文长标签，并新增导出前后画布 JSON 字节一致断言；未放宽尺寸断言或修改导出实现。
+- 新测试最初在焦点 requestAnimationFrame 执行前断言返回位置；补充渲染帧等待。B1 旧脚本使用程序化 click，不会像真实指针一样转移焦点，因此根据菜单展开状态重开，避免把仍开的菜单再次关闭。专项测试保留真实指针和键盘输入。
+
+### 产物、限制与下一步
+
+截图为 `out/qa/ux2-{reader-wide,source-wide,canvas-wide,canvas-1200,canvas-800,canvas-420,drawer-800,drawer-420}.png`；人工查看阅读、源码、宽画布、420 px 抽屉和画布。打包日志与回归日志为 `out/qa/ux2-*.log`，安装包位于 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`。这些构建产物由 `.gitignore` 排除，仅留本地。
+
+最终 Setup 为 `154,909,696` 字节，SHA-256 为 `DEAEDF0203E79704196CF886966AC13FB840B0F271EA2C3EA91321CFE1A66B5E`。A8.3 的完整 PNG/JPG 为 `1728×1024`、PDF 为 1 页，包含视口外卡片、跨层箭头和中文长标签，三份文档文件不被导出修改。尝试 `2228×1724` 场景时，本机离屏引擎实际返回 `2050×1233`，应用的尺寸核验明确报错并停止落盘；该既有引擎限制未在 UX2 扩展。
+
+本批不公开发布安装包，未重新做安装/卸载全流程、真实中文 IME、多显示器 DPI 或大文档性能验收；P0 仍进行中。隐藏面板/专注期间的草稿保留已经验收，跨模式批注草稿、dirty 批注参考与保存后继续操作仍遵守既有边界，进入 UX3。完成此批 GitHub 提交/PR 后继续按 UX3–UX5 推进。
+
+Git 基线核对：收尾 fetch 发现远端 PR #1 的合并历史更新为 `71b96a7`，其 tree 与原基线完全相同（`d4e6804ccf6439c4d616a0e9b83c30cc478d2a3a`）。在工作区和索引保持不变的前提下，将尚无 UX2 提交的本地分支基线对齐远端，避免 PR 携带旧的合并历史。相关 diff 检查通过。实现提交 `f33326d` 已推送至 `origin/codex/ux2-shared-panels`，GitHub 连接器成功创建 [PR #2](https://github.com/KLucen/MerMarked/pull/2)，目标 `main`，当前未合并；此次没有再出现权限不足错误。
