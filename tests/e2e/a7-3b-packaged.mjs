@@ -185,6 +185,8 @@ async function setInput(cdp, selector, value) {
 }
 
 async function insertEditorText(cdp, marker, inserted) {
+  // Let mode-entry focus and section positioning finish before placing the test caret.
+  await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   const focused = await cdp.evaluate(`(() => {
     const textarea = document.querySelector('[data-editor-textarea]');
     if (!(textarea instanceof HTMLTextAreaElement)) return false;

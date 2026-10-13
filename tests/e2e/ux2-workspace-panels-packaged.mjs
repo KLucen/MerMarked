@@ -154,6 +154,7 @@ try {
   await click('[data-canvas-save]');
   await wait('document.querySelector("[data-canvas-status]").textContent.includes("已保存")','seed canvas');
   await click('[data-workspace-right-toggle]');
+  await click('[data-canvas-link-composer] > summary');
   const input= '[data-canvas-link-label]';
   await click(input); await page.send('Input.insertText',{text:'暂存的关系标签'});
   await focusMode(); await focusMode();

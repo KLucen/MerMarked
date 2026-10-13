@@ -1,3 +1,4 @@
+import { CanvasStructurePreview } from './canvas-structure-preview';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
 import type { MarkdownSourceFormat } from '../core/markdown-source';
@@ -808,21 +809,9 @@ export function MarkdownEditorView({
           onClick={() => onDiscardSourceBackup(latestSourceBackupId)} disabled={saving}>清理本次恢复文件</button>}
       </section>}
 
-      {canvasStructurePreview && <section className="source-structure source-structure-preview" aria-label="卡片结构变更预览" data-canvas-structure-preview="true">
-        <p><strong>卡片结构变更：</strong>{canvasStructurePreview.summary}</p>
-        <p>{canvasStructurePreview.impact?.message}</p>
-        {canvasStructurePreview.impact?.unresolved.length ? <ul>{canvasStructurePreview.impact.unresolved.map((item) =>
-          <li key={item.id}>{item.quote}</li>)}</ul> : null}
-        <div className="source-structure-diff">
-          <div><span>变更前</span><pre>{canvasStructurePreview.source}</pre></div>
-          <div><span>变更后</span><pre data-canvas-structure-after="true">{canvasStructurePreview.candidate}</pre></div>
-        </div>
-        <p>确认只更新未保存源码；显式保存后同步批注与画布。继续改动源码时，保存将保守核验无法证明的批注和卡片身份。</p>
-        <button type="button" className="primary" data-canvas-structure-confirm="true" onClick={() => void applyCanvasStructure()}
-          disabled={saving || sourceIsReadOnly || markdownToEditorText(canvasStructurePreview.source) !== value}>确认并加入撤销栈</button>
-        <button type="button" data-canvas-structure-cancel="true" onClick={onCancelCanvasStructure} disabled={saving}>取消预览</button>
-        {markdownToEditorText(canvasStructurePreview.source) !== value && <p role="alert">源码在预览后变化，请取消并重新生成预览。</p>}
-      </section>}
+      {active && canvasStructurePreview && <CanvasStructurePreview preview={canvasStructurePreview}
+        busy={saving} confirmDisabled={sourceIsReadOnly} stale={markdownToEditorText(canvasStructurePreview.source) !== value}
+        onConfirm={() => void applyCanvasStructure()} onCancel={() => onCancelCanvasStructure?.()} />}
 
       {!canvasStructurePreview && sections && sections.length > 0 && <section id="source-structure-tools" hidden={!structureToolsOpen} className="source-structure" aria-label="章节源码变换" data-editor-structure="true">
         <div className="source-structure-heading">

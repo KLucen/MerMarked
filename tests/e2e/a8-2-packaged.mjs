@@ -76,6 +76,7 @@ try {
   await click(cdp, '[data-canvas-collapse]'); await waitFor(cdp, `document.querySelector('[data-canvas-status]').textContent.includes('画布已保存')`, 'collapse save');
   await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 2`, 'collapsed descendants');
   await openWorkspaceTask(cdp);
+  await cdp.evaluate(`document.querySelector('[data-canvas-link-composer] > summary').click()`);
   const ids = afterDrag.cards.map((card) => card.id);
   await setSelect(cdp, '[data-canvas-link-from]', ids[2]); await setSelect(cdp, '[data-canvas-link-to]', ids[3]);
   await cdp.evaluate(`(() => { const input = document.querySelector('[data-canvas-link-label]'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(input, 'depends'); input.dispatchEvent(new Event('input', { bubbles: true })); })()`);
