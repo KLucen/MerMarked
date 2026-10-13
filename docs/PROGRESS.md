@@ -1,5 +1,22 @@
 # MerMarkd 开发进度
 
+## 2026-10-13 · UX4 画布精简、原地结构预览与导出预检（当前切片已完成）
+
+基于已合并的 UX3 / [PR #3](https://github.com/KLucen/MerMarked/pull/3)（39f72eb），在 codex/ux4-canvas-clarity 完成本批。验收清单见 [UX4_ACCEPTANCE.md](UX4_ACCEPTANCE.md)。
+
+- 轻量章节组与正文卡片分层，移除重复路径、零子章节计数与常驻次要图标；选中卡片才显示编辑/操作入口。
+- 属性随卡片或箭头切换，章节序号和路径辨别重名；尺寸、结构和新增关系默认折叠，新增关系草稿与选中箭头标签独立。
+- 结构预览留在画布任务面板，先展示摘要、级别变化和批注影响，按需展开源码差异。确认只进入共享缓冲区，画布内可撤销/重做，顶栏显式保存才提交三文件。
+- 预览冻结画布持久化与导出，取消恢复坐标；模式、文档或正文变化使晚到预览失效并取消 token，旧异步操作不覆盖新画布状态。
+- 完整场景导出预检显示卡片/关系/收起数量与像素尺寸，超限说明原因并禁用三个格式。主进程和输出引擎的实际边界检查继续保留。
+- 修复源码/画布窄屏抽屉的定位优先级冲突，420 px 窗口完整显示确认和取消。
+
+验证：262/262 单元测试、类型检查、改动文件 diff 检查、生产打包与 Squirrel 安装包生成通过。15 组打包版 E2E 通过：UX4、UX3、UX2、UX1、B1、A6、A7.1、A7.2、A7.3b、A7.4、A7.5、A8.2、A8.3、A8.4、A8.5。专项比较三文件 bytes/mtime，覆盖真实拖动、取消/确认、共享撤销、重名与重复引文、晚到预览及 1200×800、800×700、420×800 CSS px。最终 make 后复跑 UX4/A8.4/A7.3b。
+
+截图和日志位于 out/qa/ux4-*。安装包 154,914,816 字节，SHA-256 6462F765793D1497EF856CC42ADA4D8471AEF9284D6706027948811D83A2F064。未新增依赖、IPC、schema 或持久化合同；个人试读 fixture 与 hash 命名副本不提交。
+
+下一批 UX5 统一字体、间距、状态与焦点反馈。真实中文 IME、多显示器物理 DPI、安装卸载完整流程和大文档 Worker/虚拟化仍未验收，P0 未完成。
+
 ## 2026-10-13 · UX3 阅读编辑与批注连续操作（当前切片已完成）
 
 基于已合并的 UX2 / [PR #2](https://github.com/KLucen/MerMarked/pull/2)（16db676），在 codex/ux3-reader-continuity 完成本批。验收清单见 [UX3_ACCEPTANCE.md](UX3_ACCEPTANCE.md)。
@@ -14,7 +31,7 @@
 
 产物为 out/qa/ux3-*.png 和 out/qa/ux3-*.log；安装包生成结果、哈希和 GitHub 同步见开发日志。数据决定见 ADR-038，没有新增依赖、schema 或 IPC。个人试读 fixture 与 hash 命名副本不提交。
 
-GitHub：实现提交 `a9e9114` 已推送至 `origin/codex/ux3-reader-continuity`，连接器成功创建 [PR #3](https://github.com/KLucen/MerMarked/pull/3)，目标 main，尚未合并。
+GitHub：实现提交 `a9e9114` 已推送至 `origin/codex/ux3-reader-continuity`，连接器成功创建 [PR #3](https://github.com/KLucen/MerMarked/pull/3)，已合并至 main（39f72eb）。
 
 本批未开放多行/跨块富文本编辑，程序化组合事件不等于真实中文 IME 验收。安装/卸载、真实多显示器 DPI、大文档 Worker/虚拟化与性能仍待验收，P0 未完成。下一批 UX4 精简画布的卡片层级、按选中项显示的操作、结构预览与导出说明。
 
@@ -59,7 +76,7 @@ GitHub：实现提交 `f33326d` 已推送至 `codex/ux2-shared-panels`，已创�
 
 验证：源码搜索与定向读取、历史截图人工检查、官方交互指南核对、`git diff --check -- docs/DESIGN_REVIEW_2026-10-11.md docs/PROGRESS.md docs/DEVELOPMENT_LOG.md`。本轮为文档评审，未运行类型检查、单测、打包或新的 Electron 窗口；历史验证结果不作为本轮实测。P0 与最新实现的真实窗口回归仍按原记录待验收。
 
-> 2026-10-13。当前阶段：P0 可行性原型，仍进行中。UX1、UX2 已合并；UX3 当前切片已完成并通过 14 组窗口回归，下一批 UX4。P0 剩余性能、真实 IME、安装/卸载与多显示器 DPI 门槛未闭合。历史切片验证见下文，开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-13。当前阶段：P0 可行性原型，仍进行中。UX1、UX2、UX3 已合并；UX4 当前切片已完成并通过 15 组窗口回归，下一批 UX5。P0 剩余性能、真实 IME、安装/卸载与多显示器 DPI 门槛未闭合。历史切片验证见下文，开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## B1.3 窄窗口抽屉与画布工具栏收敛（当前切片已完成）
 

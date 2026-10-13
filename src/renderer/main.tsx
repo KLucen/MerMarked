@@ -566,6 +566,12 @@ function App() {
     return true;
   }, [activeMode, editorController.editor, editorController.open, editorController.changeEditorText, openedDocument, readerCanEdit, readerDocument, reportReaderEditRestriction, setMessage]);
   const [canvasStructurePreview, setCanvasStructurePreview] = useState<SectionStructurePreview | null>(null);
+  const canvasStructureRequest = useRef(0);
+  const canvasStructureContext = useRef({ document: openedDocument, content: readerDocument?.content,
+    mode: activeMode, dirty: dirtyPreview || readerDraftDirty });
+  canvasStructureContext.current = { document: openedDocument, content: readerDocument?.content,
+    mode: activeMode, dirty: dirtyPreview || readerDraftDirty };
+  useEffect(() => () => { canvasStructureRequest.current += 1; }, []);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryItems, setRecoveryItems] = useState<readonly DocumentRecoveryItem[]>([]);
   const [recoveryPreview, setRecoveryPreview] = useState<DocumentRecoveryPreview | null>(null);
@@ -633,6 +639,7 @@ function App() {
   }, [activeMode, editorSections]);
 
   const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
+    canvasStructureRequest.current += 1;
     noteDocumentKey.current += 1;
     setReaderEditFeedback(null);
     setNoteReselecting(false);
@@ -1871,6 +1878,8 @@ function App() {
 
   const changeMode = useCallback(async (mode: AppMode) => {
     if (!openedDocument || mode === activeMode) return;
+    // A preview requested from the old mode must not reopen a panel later.
+    canvasStructureRequest.current += 1;
     if (activeMode === 'reader') {
       readerPosition.current = { path: openedDocument.path, scrollY: window.scrollY, activeSection };
     }
@@ -1940,20 +1949,38 @@ function App() {
   }, [changeMode]);
 
   const previewCanvasStructure = useCallback(async (operation: SectionTransformOperation) => {
+    const source = canvasStructureContext.current;
+    if (!source.document || source.mode !== 'cards' || source.dirty) {
+      throw new Error('请先保存或放弃源码编辑，再调整章节结构。');
+    }
+    const request = ++canvasStructureRequest.current;
+    const epoch = documentEpoch.current;
+    const isCurrent = () => {
+      const current = canvasStructureContext.current;
+      return request === canvasStructureRequest.current && epoch === documentEpoch.current &&
+        current.mode === 'cards' && !current.dirty && current.document?.path === source.document?.path &&
+        current.document?.sourceSha256 === source.document?.sourceSha256 && current.content === source.content;
+    };
     const editor = editorController.editor ?? await editorController.open();
+    if (!isCurrent()) throw new Error('文档或模式已变化，请重新预览章节结构。');
     if (!editor || editor.dirty) throw new Error('请先保存或放弃源码编辑，再调整章节结构。');
     const preview = await window.mermarkd.previewSectionStructure(operation);
+    if (!isCurrent() || preview.sourceSha256 !== source.document.sourceSha256 || preview.source !== source.content) {
+      if (preview.token) void window.mermarkd.cancelSectionStructure(preview.token).catch(() => undefined);
+      throw new Error('文档或模式已变化，已取消过期的结构预览。');
+    }
     if (preview.status !== 'ready') throw new Error(preview.rejection?.message ?? '章节结构没有变化。');
     setCanvasStructurePreview(preview);
-    setActiveMode('editor'); window.scrollTo({ top: 0 });
-  }, [editorController.editor, editorController.open]);
+    panels.openRight('task');
+  }, [editorController.editor, editorController.open, panels.openRight]);
 
   const cancelCanvasStructure = useCallback(() => {
+    canvasStructureRequest.current += 1;
     const token = canvasStructurePreview?.token;
     if (token) void window.mermarkd.cancelSectionStructure(token).catch(() => undefined);
     setCanvasStructurePreview(null);
     setMessage('结构预览已取消，卡片位置与原文件保持不变。');
-  }, [canvasStructurePreview]);
+  }, [canvasStructurePreview, setMessage]);
 
   const openDocumentRecovery = useCallback(async () => {
     setRecoveryOpen(true); setRecoveryBusy(true); setRecoveryError(null); setRecoveryPreview(null);
@@ -2015,7 +2042,7 @@ function App() {
       onSave={saveSource}
       canSave={Boolean(editorController.editor?.editable)}
       onSaveAs={openedDocument?.temporary ? saveSource : undefined}
-      onDiscardChanges={() => { setCanvasStructurePreview(null); void editorController.discardChanges(); }}
+      onDiscardChanges={() => { canvasStructureRequest.current += 1; setCanvasStructurePreview(null); void editorController.discardChanges(); }}
       workspaceStatuses={workspaceStatuses}
       annotationDetails={<div className="annotation-summary" role="region" aria-label="批注状态与操作">
               <strong>批注状态</strong>
@@ -2111,7 +2138,17 @@ function App() {
       ) : activeMode === 'cards' ? (
         <CanvasView document={readerDocument!} dirty={dirtyPreview} activeSection={activeSection} focusRequest={outlineFocusRequest}
           onSectionChange={(index) => { setActiveSection(index); readerPosition.current = null; }}
-          onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} onStatusChange={reportCanvasStatus} />
+          onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} onStatusChange={reportCanvasStatus}
+          onOpenProperties={() => panels.openRight('task')}
+          canUndoSource={editorController.canUndo} canRedoSource={editorController.canRedo}
+          onUndoSource={() => { editorController.undo(); }} onRedoSource={() => { editorController.redo(); }}
+          structurePreview={canvasStructurePreview} structureBusy={editorController.busy}
+          onCancelStructure={cancelCanvasStructure} onConfirmStructure={async () => {
+            if (!canvasStructurePreview?.token) return false;
+            const accepted = await editorController.confirmStructure(canvasStructurePreview.token, () => undefined);
+            if (accepted) setCanvasStructurePreview(null);
+            return accepted;
+          }} />
       ) : activeMode === 'editor' ? editorController.editor ? null : (
         <main className="source-editor-loading" role="status">正在准备源码编辑器…</main>
       ) : (

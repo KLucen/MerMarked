@@ -394,8 +394,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-link-actions { display: grid; gap: 6px; margin-top: 8px; }
 .canvas-properties p, .canvas-properties li { overflow-wrap: anywhere; }
 .canvas-unresolved { color: #825d20; }
-.canvas-chapter { width: 100%; height: 100%; box-sizing: border-box; border: 1px dashed #bcccd2; border-radius: 7px; background: #fafdfc88; box-shadow: 0 2px 3px #203d4610; position: relative; transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease; }
-.canvas-chapter.selected { border: 2px solid #277865; box-shadow: 0 0 0 2px #d9eee6; }
+.canvas-chapter { width: 100%; height: 100%; box-sizing: border-box; border: 1px solid transparent; border-radius: 9px; position: relative; transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease; }
+.canvas-chapter-group { border: 1px dashed #cbd4dc; background: #f3f6f966; }
+.canvas-chapter.selected > .canvas-card-body { border-color: #3976b9; box-shadow: 0 0 0 2px #dceafb; }
+.canvas-chapter-group.selected { border-color: #7ca3ce; }
 .canvas-chapter.nest-candidate { border-color: #c69338; background: #fff9ecaa; box-shadow: 0 0 0 3px #f1d89a, 0 5px 18px #9d731c24; }
 .canvas-chapter.nest-ready { border-color: #b36a20; background: #fff3d5cc; box-shadow: 0 0 0 4px #efc06a, 0 7px 24px #9d731c3d; animation: canvas-nest-pulse 820ms ease-in-out infinite alternate; }
 .canvas-chapter.detach-candidate { border-color: #5681a0; box-shadow: 0 0 0 3px #cbddea; }
@@ -405,12 +407,13 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-card-header strong { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; min-width: 0; }
 .canvas-card-heading { display: grid; gap: 3px; min-width: 0; }
 .canvas-card-path { color: #718094; font-size: 10px; font-weight: 500; line-height: 1.3; max-width: 230px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.canvas-card-body { position: absolute; width: 100%; box-sizing: border-box; border: 1px solid #bcccd2; border-radius: 7px; background: #fafdfc; box-shadow: 0 2px 3px #203d4610; overflow: auto; }
+.canvas-card-body { position: absolute; width: 100%; box-sizing: border-box; border: 1px solid #ccd5de; border-radius: 8px; background: #fff; box-shadow: 0 2px 5px #203d460a; overflow: auto; }
 .canvas-card-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.canvas-card-actions[hidden] { display: none; }
 .canvas-card-actions button { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
 .canvas-card-summary { font-size: 12px; line-height: 1.5; margin: 4px 14px; max-width: none; overflow-wrap: anywhere; }
 .canvas-card-full { max-height: 360px; overflow: auto; white-space: pre-wrap; }
-.canvas-card-count { display: block; margin: 8px 14px; font-size: 11px; color: #58746c; }
+.canvas-card-count { display: flex; align-items: center; gap: 4px; background: #f3f6fa; border: 0; border-radius: 4px; padding: 4px 6px; margin: 8px 14px; font-size: 11px; color: #52687f; cursor: pointer; }
 .canvas-nest-indicator, .canvas-detach-indicator { border-radius: 4px; margin: 8px 14px; padding: 6px; font-size: 11px; text-align: center; max-width: none; }
 .canvas-nest-indicator { border: 1px solid #d9b45f; color: #785314; background: #fff5d8; }
 .canvas-detach-indicator { border: 1px solid #9fb6d0; color: #315273; background: #edf4fb; }
@@ -725,7 +728,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .workspace-sidebar .toc-title { font-size: 13px; min-width: 0; max-width: 100%; }
 .workspace-sidebar .annotation-sidebar { background: transparent; border: 0; box-shadow: none; position: static; width: auto; max-width: none; }
 .workspace-sidebar .annotation-sidebar-inner { height: auto; max-height: none; overflow: visible; padding: 8px 16px 24px; position: static; }
-.workspace-sidebar .canvas-properties { background: transparent; border: 0; overflow: visible; padding: 12px 16px 24px; }
+.workspace-sidebar .canvas-properties { background: transparent; border: 0; max-height: none; overflow: visible; padding: 12px 16px 24px; }
 .canvas-properties input, .canvas-properties select { border: 1px solid #ced8de; border-radius: 5px; background: #fff; color: #253345; min-height: 32px; padding: 5px 8px; font: inherit; width: 100%; }
 .canvas-properties button { background: #fff; border: 1px solid #ced8de; border-radius: 6px; color: #354a56; cursor: pointer; }
 .canvas-properties button:disabled { opacity: .45; cursor: not-allowed; }
@@ -748,7 +751,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 @media (max-width: 1100px) {
   .workspace-frame[data-left-open], .workspace-frame[data-right-open] { grid-template-columns: minmax(0, 1fr); }
   .workspace-sidebar-backdrop { background: rgb(27 36 51 / 30%); display: block; inset: 0; position: fixed; z-index: 40; }
-  .workspace-frame .workspace-sidebar { bottom: 0; box-shadow: 0 0 28px rgb(34 47 68 / 18%); height: 100dvh; max-height: 100dvh; padding-bottom: env(safe-area-inset-bottom, 0px); position: fixed; top: 0; width: min(340px, calc(100vw - 24px)); z-index: 41; }
+  .app-shell .workspace-frame .workspace-sidebar { bottom: 0; box-shadow: 0 0 28px rgb(34 47 68 / 18%); height: 100dvh; max-height: 100dvh; padding-bottom: env(safe-area-inset-bottom, 0px); position: fixed; top: 0; width: min(340px, calc(100vw - 24px)); z-index: 41; }
   .workspace-sidebar-left { left: 0; }
   .workspace-sidebar-right { right: 0; }
 }
@@ -769,3 +772,33 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .reader-edit-feedback textarea { box-sizing: border-box; width: 100%; margin-block: 8px; font: inherit; resize: vertical; }
 .reader-feedback-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 .reader-feedback-actions button, .note-composer > button, .annotation-summary > button { min-height: 32px; border: 1px solid #cbd7e5; border-radius: 6px; background: #fff; color: #244e98; padding: 5px 10px; cursor: pointer; }
+
+/* UX4: emphasize content; reveal secondary canvas controls in context. */
+.canvas-inspector-section { border-top: 1px solid #e0e6ed; margin-top: 16px; padding-top: 12px; }
+.canvas-inspector-section > summary, .canvas-structure-review details > summary { cursor: pointer; padding-block: 4px; color: #354a56; font-weight: 600; }
+.canvas-inspector-path, .canvas-inspector-total, .canvas-structure-hint { color: #68788c; font-size: 12px; line-height: 1.6; }
+.canvas-inspector-total { border-top: 1px solid #e0e6ed; margin-top: 20px; padding-top: 12px; }
+.canvas-structure-review { margin: 0; padding: 0; border: 0; background: transparent; font-size: 13px; line-height: 1.65; }
+.canvas-structure-review h2 { margin-bottom: 12px; }
+.canvas-structure-summary { font-weight: 600; }
+.canvas-structure-review .source-structure-diff { grid-template-columns: minmax(0, 1fr); margin-top: 10px; }
+.canvas-review-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.canvas-properties .canvas-review-actions > button { flex: 1 1 100px; width: auto; }
+.canvas-properties .canvas-review-actions > .primary { background: #315eb7; border-color: #315eb7; color: #fff; }
+.canvas-source-history { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.canvas-source-history > span { flex: 1 1 240px; }
+.canvas-source-history > button { border: 1px solid #d6c7a7; border-radius: 5px; background: #fff; color: #755316; padding: 5px 8px; cursor: pointer; }
+.canvas-toolbar-export-menu { width: 270px; max-width: calc(100vw - 24px); padding: 12px; }
+.canvas-export-info { flex-basis: 100%; font-size: 12px; line-height: 1.6; white-space: normal; }
+.canvas-export-info strong { font-size: 13px; }
+.canvas-export-info p { margin: 5px 0; color: #637287; }
+.canvas-export-info [role='alert'] { color: #9b471d; }
+@media (max-width: 720px) {
+  .canvas-toolbar-exports { position: static; }
+  .canvas-toolbar { position: relative; }
+  .canvas-toolbar-export-menu { left: 12px; right: auto; top: 44px; }
+}
+@media (forced-colors: active) {
+  .canvas-chapter-group { border-color: CanvasText; }
+  .canvas-chapter.selected > .canvas-card-body { outline: 2px solid Highlight; }
+}

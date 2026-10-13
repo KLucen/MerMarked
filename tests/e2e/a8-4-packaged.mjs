@@ -92,6 +92,10 @@ try {
   await click(cdp, '[data-canvas-structure-cancel]'); await click(cdp, '[data-mode="cards"]');
   await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 4 && document.querySelector('[data-canvas-save]')?.disabled === false`, 'cancelled canvas');
   assert.deepEqual(await readFile(paths[2]), originalCanvas);
+  // The in-canvas preview keeps its inspector open; fit the narrower workspace
+  // before the next actual drag so the destination is not behind the panel.
+  await click(cdp, '[aria-label="适应全图"]');
+  await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   await dragToOverlap(cdp);
   const qa = path.join(root, 'out', 'qa'); await mkdir(qa, { recursive: true });
   for (const [name, width, height] of [['wide', 1200, 900], ['narrow', 800, 700]]) {

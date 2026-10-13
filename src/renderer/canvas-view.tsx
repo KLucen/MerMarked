@@ -1,8 +1,10 @@
+import { preflightCanvasExport } from '../core/canvas-export-preflight';
+import { CanvasStructurePreview } from './canvas-structure-preview';
 import { WorkspaceTaskPanel } from './workspace-panels';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
-import { ArrowDownToLine, ArrowUpToLine, BookOpen, Crosshair, EyeOff, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpToLine, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { canvasCardContent } from '../core/canvas-card-content';
 import { buildCanvasSceneV2, isCanvasViewportVisible } from '../core/canvas-scene-v2';
 import {
@@ -21,7 +23,7 @@ import { arrangeCanvasV2, CANVAS_CARD_SIZE_LIMITS, CANVAS_DEFAULT_CARD_SIZE, pro
 import type { CanvasBodyDisplay, CanvasStateV2 } from '../core/canvas-state-v2';
 import { extractSections } from '../core/sections';
 import { encodeMarkdownBytes } from '../core/markdown-source';
-import type { OpenedMarkdownDocument } from '../types/reader-api';
+import type { OpenedMarkdownDocument, SectionStructurePreview } from '../types/reader-api';
 import type { SectionTransformOperation } from '../core/section-transform';
 import type { PartStatus } from './workspace-status';
 import '@xyflow/react/dist/style.css';
@@ -42,10 +44,9 @@ interface CardData extends Record<string, unknown> {
   readOnly: boolean;
   sectionIndex: number | null;
   fold: () => void;
-  toggleBody: () => void;
   edit: () => void;
-  promote: () => void;
-  canPromote: boolean;
+  properties: () => void;
+  hiddenLinks: number;
   measure: (height: number) => void;
 }
 type ChapterNode = Node<CardData, 'chapter'>;
@@ -60,28 +61,25 @@ function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
     actualObserver.observe(element); measure();
     return () => actualObserver.disconnect();
   }, [data.measure]);
-  const chapterClass = ['canvas-chapter', selected && 'selected', data.nestStatus && `nest-${data.nestStatus}`,
+  const chapterClass = ['canvas-chapter', data.childCount > 0 && !data.descendantsCollapsed && 'canvas-chapter-group', selected && 'selected', data.nestStatus && `nest-${data.nestStatus}`,
     data.detachStatus && `detach-${data.detachStatus}`].filter(Boolean).join(' ');
   return <div className={chapterClass}>
     <Handle type="target" position={Position.Left} isConnectable={!data.readOnly} />
     <div ref={body} className="canvas-card-body" style={{ left: data.contentPosition.x, top: data.contentPosition.y,
       width: data.size.width, height: data.size.height }}><div className="canvas-card-header">
-      <div className="canvas-card-heading"><strong>{data.title}</strong><span className="canvas-card-path" title={`章节路径：${data.pathLabel}`}>{data.pathLabel}</span></div>
-      <div className="canvas-card-actions nodrag">
+      <div className="canvas-card-heading"><strong title={data.pathLabel}>{data.title}</strong></div>
+      <div className="canvas-card-actions nodrag" hidden={!selected}>
         <button type="button" title="编辑本节" aria-label="编辑本节" onClick={data.edit}><FilePenLine size={15} /></button>
-        <button type="button" title={data.canPromote ? '提升一级（会修改 Markdown 结构）' : '已是顶层章节'} aria-label={data.canPromote ? '提升一级' : '已是顶层章节'} disabled={data.readOnly || !data.canPromote} onClick={data.promote}><ArrowUpToLine size={15} /></button>
-        <button type="button" title={data.bodyDisplay === 'hidden' ? '显示正文摘要' : data.bodyDisplay === 'preview' ? '展开全部正文' : '收起正文'}
-          aria-label={data.bodyDisplay === 'hidden' ? '显示正文摘要' : data.bodyDisplay === 'preview' ? '展开全部正文' : '收起正文'} disabled={data.readOnly} onClick={data.toggleBody}>
-          {data.bodyDisplay === 'hidden' ? <EyeOff size={15} /> : <BookOpen size={15} />}
-        </button>
-        {data.childCount > 0 && <button type="button" title={data.descendantsCollapsed ? '展开子章节' : '收起子章节'}
-          aria-label={data.descendantsCollapsed ? '展开子章节' : '收起子章节'} disabled={data.readOnly} onClick={data.fold}>
-          {data.descendantsCollapsed ? <ArrowDownToLine size={15} /> : <ArrowUpToLine size={15} />}
-        </button>}
+        <button type="button" title="卡片操作" aria-label="卡片操作" onClick={data.properties}><MoreHorizontal size={15} /></button>
       </div>
     </div>
     {data.bodyDisplay !== 'hidden' && <p className={data.bodyDisplay === 'full' ? 'canvas-card-summary canvas-card-full' : 'canvas-card-summary'}>{(data.bodyDisplay === 'full' ? data.fullText : data.summary) || '暂无正文'}</p>}
-    <span className="canvas-card-count">{data.hiddenDescendants ? `${data.hiddenDescendants} 个章节已收起` : `${data.childCount} 个直接子章节`}</span>
+    {data.childCount > 0 && <button type="button" className="canvas-card-count nodrag" disabled={data.readOnly} onClick={data.fold}
+      aria-label={data.descendantsCollapsed ? '展开子章节' : '收起子章节'}>
+      {data.descendantsCollapsed ? <ArrowDownToLine size={13} /> : <ArrowUpToLine size={13} />}
+      {data.hiddenDescendants ? data.hiddenDescendants + ' 个章节已收起' : data.childCount + ' 个子章节'}
+      {data.hiddenLinks > 0 && <span> · {data.hiddenLinks} 条关联</span>}
+    </button>}
     {data.nestStatus && <div className="canvas-nest-indicator" role="status">
       {data.nestStatus === 'ready' ? '松开以预览设为子章节' : '继续重叠并短暂停留'}
     </div>}
@@ -118,10 +116,19 @@ export interface CanvasViewProps {
   readonly onSectionChange: (index: number | null) => void;
   readonly onEditSection: (index: number | null) => void;
   readonly onStructurePreview: (operation: SectionTransformOperation) => Promise<void>;
+  readonly structurePreview: SectionStructurePreview | null;
+  readonly structureBusy: boolean;
+  readonly onConfirmStructure: () => Promise<boolean>;
+  readonly onCancelStructure: () => void;
+  readonly onOpenProperties: () => void;
+  readonly canUndoSource: boolean;
+  readonly canRedoSource: boolean;
+  readonly onUndoSource: () => void;
+  readonly onRedoSource: () => void;
   readonly onStatusChange?: (path: string, sha256: string, status: PartStatus) => void;
 }
 
-function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onStructurePreview, onStatusChange }: CanvasViewProps) {
+function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onStructurePreview, onStatusChange, structurePreview, structureBusy, onConfirmStructure, onCancelStructure, onOpenProperties, canUndoSource, canRedoSource, onUndoSource, onRedoSource }: CanvasViewProps) {
   const flow = useReactFlow<ChapterNode>();
   const [model, setModel] = useState<CanvasStateV2 | null>(null);
   const [bindings, setBindings] = useState<readonly CanvasBinding[]>([]);
@@ -134,6 +141,8 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const [readError, setReadError] = useState<string | null>(null);
   const [loadWarning, setLoadWarning] = useState<string | null>(null);
   const [message, setMessage] = useState('正在加载画布…');
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const [selectedLinkLabel, setSelectedLinkLabel] = useState('');
   const [selectedLink, setSelectedLink] = useState<string | null>(null);
   const [label, setLabel] = useState('');
   const [from, setFrom] = useState('');
@@ -162,7 +171,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const detachCandidateRef = useRef<DragOutPromotionCandidate | null>(null);
   const lastFocusRequest = useRef(0);
   const tree = useMemo(() => extractSections(document.content), [document.content]);
-  const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting);
+  const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
 
   useEffect(() => {
     const status: PartStatus = readError ? { text: '未能载入或保存，请检查画布提示', tone: 'error' }
@@ -178,7 +187,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
 
   useEffect(() => {
     const current = ++generation.current;
-    setModel(null); setLayoutPending(true); setReadError(null); setLoadWarning(null); setBusy(false); setMessage('正在加载画布…'); setHistory([]); setFuture([]); setMinimumHeights({}); setSelectedLink(null);
+    setModel(null); setLayoutPending(true); setReadError(null); setLoadWarning(null); setBusy(false); setMessage('正在加载画布…'); setHistory([]); setFuture([]); setMinimumHeights({}); setSelectedLink(null); setSelectedCardId(null);
     void (async () => {
       const loadedResult = await window.mermarkd.loadCanvasV2();
       const sidecarInvalid = loadedResult.status === 'invalid';
@@ -265,6 +274,23 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
     setMinimumHeights((previous) => previous[id] === height ? previous : { ...previous, [id]: height });
   }, []);
   const scene = useMemo(() => model ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights) : null, [bindings, document.content, minimumHeights, model, tree]);
+  useEffect(() => {
+    if (activeSection !== null) {
+      setSelectedCardId(bindings.find(binding => binding.sectionIndex === activeSection)?.id ?? null);
+      setSelectedLink(null);
+      setStructureSource(String(activeSection));
+    }
+  }, [activeSection, bindings, focusRequest]);
+  const selectCard = (id: string) => {
+    const binding = bindings.find(item => item.id === id);
+    setSelectedCardId(binding ? id : null); setSelectedLink(null);
+    setStructureSource(binding?.sectionIndex === null || binding?.sectionIndex === undefined ? '' : String(binding.sectionIndex));
+    if (binding) onSectionChange(binding.sectionIndex);
+  };
+  const selectLink = (id: string) => {
+    const link = model?.links.find(item => item.id === id);
+    setSelectedCardId(null); setSelectedLink(link?.id ?? null); setSelectedLinkLabel(link?.label ?? '');
+  };
   const updateDragFeedback = useCallback((event: unknown, node: ChapterNode) => {
     feedbackAt.current = performance.now();
     const sourceIndex = bindings.find((binding) => binding.id === node.id)?.sectionIndex ?? null;
@@ -321,7 +347,6 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   useEffect(() => {
     if (!model || !scene) { setNodes([]); return; }
     setNodes(scene.cards.map((card): ChapterNode => {
-      const section = card.sectionIndex === null ? null : tree.sections[card.sectionIndex];
       const titlePath: string[] = [];
       let pathIndex = card.sectionIndex;
       while (pathIndex !== null && pathIndex !== undefined) {
@@ -331,26 +356,17 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
         pathIndex = pathSection.parentIndex;
       }
       return { id: card.id, type: 'chapter', parentId: card.parentId, position: card.position,
-        hidden: card.hidden, selected: card.sectionIndex !== null && card.sectionIndex === activeSection,
+        hidden: card.hidden, selected: card.id === selectedCardId && !selectedLink,
         draggable: !readOnly, connectable: !readOnly, style: { width: card.width, height: card.height },
         data: { ...canvasCardContent(document.content, tree, card.sectionIndex), pathLabel: titlePath.join(' / ') || (card.sectionIndex === null ? '文档' : '未命名章节'), sectionIndex: card.sectionIndex, hiddenDescendants: card.hiddenDescendants,
           bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, size: card.size ?? CANVAS_DEFAULT_CARD_SIZE, descendantsCollapsed: card.descendantsCollapsed, readOnly,
           fold: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? { ...item, descendantsCollapsed: !item.descendantsCollapsed } : item) }); },
-          toggleBody: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? {
-            ...item, bodyDisplay: item.bodyDisplay === 'hidden' ? 'preview' : item.bodyDisplay === 'preview' ? 'full' : 'hidden',
-          } : item) }); },
           edit: () => onEditSection(card.sectionIndex),
-          canPromote: Boolean(section && section.depth > 1),
-          promote: () => {
-            if (!section || section.depth <= 1 || readOnly || saveInFlight.current) return;
-            setBusy(true); setMessage('正在核验结构变更…');
-            void onStructurePreview({ kind: 'promote', sectionIndex: section.index, targetDepth: section.depth - 1 })
-              .catch((error) => setMessage(error instanceof Error ? error.message : '结构预览失败，请重新检查文档。'))
-              .finally(() => setBusy(false));
-          },
+          properties: onOpenProperties,
+          hiddenLinks: scene.links.filter(link => link.hiddenEndpoint && (link.from === card.id || link.to === card.id)).length,
           measure: (height) => measured(card.id, height) } };
     }));
-  }, [activeSection, document.content, measured, model, onEditSection, onStructurePreview, persist, readOnly, scene, tree]);
+  }, [selectedCardId, selectedLink, document.content, measured, model, onEditSection, onOpenProperties, persist, readOnly, scene, tree]);
 
   useEffect(() => {
     setNodes((previous) => previous.map((node) => ({ ...node, data: {
@@ -369,7 +385,11 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
     if (!model || !connection.source || !connection.target || readOnly) return;
     void persist({ ...model, links: [...model.links, { id: crypto.randomUUID(), from: connection.source, to: connection.target, label }] });
   }, [label, model, persist, readOnly]);
-  const titleFor = (id: string) => nodes.find((node) => node.id === id)?.data.title ?? id;
+  const titleFor = (id: string) => {
+    const node = nodes.find(item => item.id === id);
+    if (!node) return '未定位章节';
+    return node.data.sectionIndex === null ? node.data.title : (node.data.sectionIndex + 1) + '. ' + node.data.pathLabel;
+  };
   const currentCard = nodes.find((node) => node.selected);
   const currentModelCard = currentCard && model?.cards.find((card) => card.id === currentCard.id);
   const updateCardSize = useCallback((dimension: 'width' | 'height', rawValue: string) => {
@@ -395,14 +415,25 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   }, [activeSection, flow, focusRequest, layoutPending, nodes]);
   const requestStructure = useCallback(async (operation: SectionTransformOperation): Promise<boolean> => {
     if (readOnly || saveInFlight.current) return false;
+    const current = generation.current;
     setBusy(true); setMessage('正在核验结构变更…');
-    try { await onStructurePreview(operation); return true; }
-    catch (error) { setMessage(error instanceof Error ? error.message : '结构预览失败，请重新检查文档。'); return false; }
-    finally { setBusy(false); }
+    try {
+      await onStructurePreview(operation);
+      if (generation.current !== current) return false;
+      setMessage('结构预览已完成 · Markdown 未改动'); return true;
+    } catch (error) {
+      if (generation.current === current) setMessage(error instanceof Error ? error.message : '结构预览失败，请重新检查文档。');
+      return false;
+    } finally { if (generation.current === current) setBusy(false); }
   }, [onStructurePreview, readOnly]);
+  const exportPreflight = useMemo(() => {
+    if (!scene) return null;
+    try { return preflightCanvasExport(scene.cards, scene.links, { padding: 48 }); }
+    catch { return null; }
+  }, [scene]);
   const searchMatches = nodes.filter((node) => !node.hidden && node.data.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   const exportCanvas = useCallback(async (format: 'png' | 'jpg' | 'pdf') => {
-    if (!scene || exporting || readOnly || busy || Boolean(readError)) return;
+    if (!scene || !exportPreflight?.allowed || exporting || readOnly || busy || Boolean(readError)) return;
     setExporting(format); setExportMessage(null);
     try {
       const cards = scene.cards.map(({ contentPosition: _contentPosition, size: _size, bodyDisplay: _bodyDisplay, descendantsCollapsed: _descendantsCollapsed, ...card }) => card);
@@ -414,7 +445,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
     } finally {
       setExporting(null);
     }
-  }, [busy, document.sourceSha256, exporting, readError, readOnly, scene]);
+  }, [busy, document.sourceSha256, exporting, exportPreflight, readError, readOnly, scene]);
 
   return <main className="canvas-mode" data-canvas-view="true">
     <div className="canvas-toolbar" role="toolbar" aria-label="画布工具">
@@ -445,11 +476,20 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       <details className="canvas-toolbar-exports">
         <summary title="导出画布"><FileDown size={17} aria-hidden="true" /><span>导出</span></summary>
         <div className="canvas-toolbar-export-menu" role="group" aria-label="导出画布">
-          <button className="canvas-toolbar-labeled" title="导出 PNG" aria-label="导出 PNG" data-canvas-export="png" disabled={!scene || readOnly || Boolean(exporting) || busy || Boolean(readError)}
+          <div className="canvas-export-info" data-canvas-export-preflight="true">
+            <strong>导出完整画布</strong>
+            <p>包含视口外的卡片、箭头和标签，保留当前折叠状态。</p>
+            {exportPreflight ? <>
+              <p>{exportPreflight.visibleCardCount} 张卡片 · {exportPreflight.linkCount} 条关系{exportPreflight.hiddenCardCount > 0 ? ' · ' + exportPreflight.hiddenCardCount + ' 张已收起' : ''}</p>
+              <p>{exportPreflight.width} × {exportPreflight.height} px</p>
+              {!exportPreflight.allowed && <p role="alert">{exportPreflight.reason}</p>}
+            </> : <p>等待画布范围就绪。</p>}
+          </div>
+          <button className="canvas-toolbar-labeled" title="导出 PNG" aria-label="导出 PNG" data-canvas-export="png" disabled={!exportPreflight?.allowed || readOnly}
             onClick={() => void exportCanvas('png')}>{exporting === 'png' ? <RefreshCw className="spin" size={17} /> : <ImageDown size={17} />}<span>PNG</span></button>
-          <button className="canvas-toolbar-labeled" title="导出 JPG" aria-label="导出 JPG" data-canvas-export="jpg" disabled={!scene || readOnly || Boolean(exporting) || busy || Boolean(readError)}
+          <button className="canvas-toolbar-labeled" title="导出 JPG" aria-label="导出 JPG" data-canvas-export="jpg" disabled={!exportPreflight?.allowed || readOnly}
             onClick={() => void exportCanvas('jpg')}>{exporting === 'jpg' ? <RefreshCw className="spin" size={17} /> : <ImageDown size={17} />}<span>JPG</span></button>
-          <button className="canvas-toolbar-labeled" title="导出 PDF" aria-label="导出 PDF" data-canvas-export="pdf" disabled={!scene || readOnly || Boolean(exporting) || busy || Boolean(readError)}
+          <button className="canvas-toolbar-labeled" title="导出 PDF" aria-label="导出 PDF" data-canvas-export="pdf" disabled={!exportPreflight?.allowed || readOnly}
             onClick={() => void exportCanvas('pdf')}>{exporting === 'pdf' ? <RefreshCw className="spin" size={17} /> : <FileDown size={17} />}<span>PDF</span></button>
         </div>
       </details>
@@ -466,14 +506,22 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
     {readError && <div className="canvas-warning" role="alert">{readError}
       <button title="放弃当前未保存画布候选并重新载入" onClick={() => setLoadRevision((value) => value + 1)}><RefreshCw size={15} /> 重新载入画布</button>
     </div>}
-    {dirty && <p className="canvas-warning" role="status">未保存结构预览，拖动、折叠、连线与画布保存已暂停。</p>}
+    {(dirty || canRedoSource) && <div className="canvas-warning canvas-source-history" role="status">
+      <span>{dirty ? '正文修改尚未保存；保存或撤销后可继续调整画布。' : '正文修改已撤销，可重做。'}</span>
+      <button type="button" data-canvas-source-undo="true" disabled={!canUndoSource || structureBusy || Boolean(structurePreview)} onClick={onUndoSource}>撤销正文修改</button>
+      <button type="button" data-canvas-source-redo="true" disabled={!canRedoSource || structureBusy || Boolean(structurePreview)} onClick={onRedoSource}>重做正文修改</button>
+    </div>}
     <div className="canvas-workspace">
       <div className="canvas-flow" data-canvas-flow="true">
         <ReactFlow<ChapterNode> nodes={nodes} edges={edges} nodeTypes={nodeTypes} minZoom={0.05} maxZoom={8}
           nodesDraggable={!readOnly} nodesConnectable={!readOnly} edgesReconnectable={false} deleteKeyCode={null}
           panOnDrag={[1, 2]} panActivationKeyCode="Space" selectionOnDrag
-          onNodesChange={(changes) => setNodes((previous) => applyNodeChanges(changes, previous))}
-          onNodeClick={(_event, node) => onSectionChange(bindings.find((binding) => binding.id === node.id)?.sectionIndex ?? null)}
+          onNodesChange={(changes) => {
+            setNodes(previous => applyNodeChanges(changes, previous));
+            const chosen = changes.find(change => change.type === 'select' && change.selected);
+            if (chosen && chosen.type === 'select' && chosen.id !== selectedCardId) selectCard(chosen.id);
+          }}
+          onNodeClick={(_event, node) => selectCard(node.id)}
           onNodeDragStart={(event, node) => {
             const sourceIndex = bindings.find((binding) => binding.id === node.id)?.sectionIndex ?? null;
             dragStart.current = { nodeId: node.id, sectionIndex: sourceIndex, position: { ...node.position }, screenRect: domRectForNode(node.id) ?? undefined,
@@ -497,19 +545,21 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
             const detachReady = detach && detach.escapeRatio >= 0.7 &&
               detach.dwellMs + Math.max(0, now - feedbackAt.current) >= 280
               ? { ...detach, status: 'ready' as const } : detach;
+            const dragGeneration = generation.current;
             const clearDrag = () => {
+              if (generation.current !== dragGeneration) return;
               dragStart.current = null; nestDwell.current = null; detachDwell.current = null;
               nestCandidateRef.current = null; detachCandidateRef.current = null;
               setNestCandidate(null); setDetachCandidate(null); setDraggingId(null);
             };
             if (sourceIndex !== null && sourceIndex !== undefined && candidateReady?.status === 'ready') {
               void requestStructure({ kind: 'move', sourceIndex, targetIndex: bindings.find((binding) => binding.id === candidateReady.targetId)?.sectionIndex ?? -1 })
-                .then((accepted) => { if (!accepted && start) setNodes((items) => items.map((item) => item.id === node.id ? { ...item, position: start.position } : item)); clearDrag(); });
+                .then(() => { if (generation.current !== dragGeneration) return; if (start) setNodes((items) => items.map((item) => item.id === node.id ? { ...item, position: start.position } : item)); clearDrag(); });
               return;
             }
             if (sourceIndex !== null && sourceIndex !== undefined && detachReady?.status === 'ready') {
               void requestStructure(detachReady.operation)
-                .then((accepted) => { if (!accepted && start) setNodes((items) => items.map((item) => item.id === node.id ? { ...item, position: start.position } : item)); clearDrag(); });
+                .then(() => { if (generation.current !== dragGeneration) return; if (start) setNodes((items) => items.map((item) => item.id === node.id ? { ...item, position: start.position } : item)); clearDrag(); });
               return;
             }
             void persist({ ...model, cards: model.cards.map((card) => card.id === node.id
@@ -517,55 +567,96 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
                 y: Math.max(node.parentId ? Math.max(150, minimumHeights[node.parentId] ?? 150) : -1_000_000, node.position.y) } } : card) })
               .finally(clearDrag);
           }}
-          onConnect={addLink} onEdgeClick={(_event, edge) => { setSelectedLink(edge.id); setLabel(model?.links.find((link) => link.id === edge.id)?.label ?? ''); }}
-          onPaneClick={() => setSelectedLink(null)}
+          onConnect={addLink} onEdgeClick={(_event, edge) => selectLink(edge.id)}
+          onPaneClick={() => { setSelectedLink(null); setSelectedCardId(null); }}
           onMoveEnd={(event, viewport) => { if (event && model && !readOnly) void persist({ ...model, viewport }); }}
           proOptions={{ hideAttribution: true }}>
           <Background variant={BackgroundVariant.Lines} color="#e3e8ed" gap={32} />
         </ReactFlow>
       </div>
       <WorkspaceTaskPanel><section className="canvas-properties" aria-label="卡片与关系">
-         <h2>结构操作</h2>
-         <p className="canvas-structure-hint">以下操作会先切到源码预览，确认后才修改 Markdown；普通拖动、折叠和尺寸调整只改画布。</p>
-        <label>移动章节<select data-canvas-structure-source="true" value={structureSource} disabled={readOnly} onChange={(event) => setStructureSource(event.target.value)}>
-          <option value="">选择章节</option>{tree.sections.map((section) => <option key={section.index} value={section.index}>{section.title} · {section.depth} 级</option>)}
-        </select></label>
-        <label>新父章节<select data-canvas-structure-parent="true" value={structureTarget} disabled={readOnly} onChange={(event) => setStructureTarget(event.target.value)}>
-          <option value="">选择章节</option>{tree.sections.map((section) => <option key={section.index} value={section.index}>{section.title} · {section.depth} 级</option>)}
-        </select></label>
-        <button data-canvas-preview-structure="true" disabled={readOnly || !structureSource || !structureTarget}
-          onClick={() => void requestStructure({ kind: 'move', sourceIndex: Number(structureSource), targetIndex: Number(structureTarget) })}>预览设为子章节</button>
-        <button data-canvas-preview-promote="true" disabled={readOnly || !structureSource || tree.sections[Number(structureSource)]?.depth <= 1}
-          onClick={() => void requestStructure({ kind: 'promote', sectionIndex: Number(structureSource), targetDepth: tree.sections[Number(structureSource)].depth - 1 })}>预览提升一级</button>
-        <h2>布局与关系</h2>
-        <p className="canvas-structure-hint">这里的移动、折叠、缩放、连线和导出不会改 Markdown。</p>
-        <label>起点<select data-canvas-link-from="true" value={from} disabled={readOnly} onChange={(event) => setFrom(event.target.value)}>
-          {bindings.map((item) => <option value={item.id} key={item.id}>{titleFor(item.id)}</option>)}
-        </select></label>
-        <label>终点<select data-canvas-link-to="true" value={to} disabled={readOnly} onChange={(event) => setTo(event.target.value)}>
-          {bindings.map((item) => <option value={item.id} key={item.id}>{titleFor(item.id)}</option>)}
-        </select></label>
-        <label>连线标签<input data-canvas-link-label="true" value={label} maxLength={100} disabled={readOnly} onChange={(event) => setLabel(event.target.value)} /></label>
-        <button data-canvas-add-link="true" disabled={!model || !from || !to || readOnly} onClick={() => addLink({ source: from, target: to })}><Plus size={16} /> 添加箭头</button>
-        {selectedLink && <div className="canvas-link-actions">
-          <button disabled={readOnly} onClick={() => model && void persist({ ...model, links: model.links.map((link) => link.id === selectedLink ? { ...link, label } : link) })}><Link2 size={16} /> 更新标签</button>
-          <button data-canvas-delete-link="true" disabled={readOnly} onClick={() => { if (model) void persist({ ...model, links: model.links.filter((link) => link.id !== selectedLink) }); setSelectedLink(null); }}><Trash2 size={16} /> 删除箭头</button>
-        </div>}
-        <h2>章节卡片尺寸</h2>
-        {currentCard && currentModelCard ? <>
-          <p className="canvas-structure-hint">调整当前卡片的正文画布，尺寸会随画布布局一起保存。</p>
-          <label>宽度（px）<input type="number" min={CANVAS_CARD_SIZE_LIMITS.minWidth} max={CANVAS_CARD_SIZE_LIMITS.maxWidth} step={8}
-            value={currentModelCard.size?.width ?? CANVAS_DEFAULT_CARD_SIZE.width} disabled={readOnly}
-            onChange={(event) => updateCardSize('width', event.target.value)} /></label>
-          <label>高度（px）<input type="number" min={CANVAS_CARD_SIZE_LIMITS.minHeight} max={CANVAS_CARD_SIZE_LIMITS.maxHeight} step={8}
-            value={currentModelCard.size?.height ?? CANVAS_DEFAULT_CARD_SIZE.height} disabled={readOnly}
-            onChange={(event) => updateCardSize('height', event.target.value)} /></label>
-        </> : <p className="canvas-structure-hint">先选择一张章节卡片，再调整其宽高。</p>}
-        <p>{bindings.length} 张卡片 · {model?.links.length ?? 0} 条箭头</p>
-        {unresolvedIds.length > 0 && <div className="canvas-unresolved" role="status">
+        {structurePreview ? <CanvasStructurePreview preview={structurePreview} busy={structureBusy}
+          stale={structurePreview.source !== document.content || dirty}
+          onConfirm={() => void onConfirmStructure()} onCancel={onCancelStructure} /> : <>
+          <h2>{selectedLink ? '箭头' : currentCard ? '章节卡片' : '画布'}</h2>
+          <label>选择卡片<select data-canvas-card-picker="true" value={currentCard?.id ?? ''}
+            onChange={event => selectCard(event.target.value)}>
+            <option value="">选择一张卡片</option>{bindings.map(item => <option value={item.id} key={item.id}>{titleFor(item.id)}</option>)}
+          </select></label>
+          {Boolean(model?.links.length) && <label>选择箭头<select data-canvas-link-picker="true" value={selectedLink ?? ''}
+            onChange={event => selectLink(event.target.value)}>
+            <option value="">选择一条箭头</option>{model?.links.map(link => <option key={link.id} value={link.id}>
+              {link.label || '未命名箭头'} · {titleFor(link.from)} → {titleFor(link.to)}
+            </option>)}
+          </select></label>}
+          {selectedLink ? <div className="canvas-link-inspector" data-canvas-link-inspector="true">
+            <p>{titleFor(model?.links.find(link => link.id === selectedLink)?.from ?? '')} → {titleFor(model?.links.find(link => link.id === selectedLink)?.to ?? '')}</p>
+            <label>箭头标签<input data-canvas-selected-link-label="true" value={selectedLinkLabel} maxLength={100} disabled={readOnly}
+              onChange={event => setSelectedLinkLabel(event.target.value)} /></label>
+            <div className="canvas-link-actions">
+              <button data-canvas-update-link="true" disabled={readOnly} onClick={() => model && void persist({ ...model,
+                links: model.links.map(link => link.id === selectedLink ? { ...link, label: selectedLinkLabel } : link) })}><Link2 size={16} /> 保存标签</button>
+              <button data-canvas-delete-link="true" disabled={readOnly} onClick={() => {
+                if (model) void persist({ ...model, links: model.links.filter(link => link.id !== selectedLink) }); setSelectedLink(null);
+              }}><Trash2 size={16} /> 删除箭头</button>
+            </div>
+          </div> : <>
+            {currentCard && currentModelCard ? <div data-canvas-card-inspector="true">
+              <p className="canvas-inspector-path">{currentCard.data.pathLabel}</p>
+              <button onClick={currentCard.data.edit}><FilePenLine size={16} /> 编辑本节</button>
+              <label>正文显示<select data-canvas-body-display="true" value={currentModelCard.bodyDisplay} disabled={readOnly}
+                onChange={event => model && void persist({ ...model, cards: model.cards.map(card => card.id === currentCard.id
+                  ? { ...card, bodyDisplay: event.target.value as CanvasBodyDisplay } : card) })}>
+                <option value="hidden">只显示标题</option><option value="preview">正文摘要</option><option value="full">全部正文</option>
+              </select></label>
+              {currentCard.data.childCount > 0 && <button disabled={readOnly} onClick={currentCard.data.fold}>
+                {currentCard.data.descendantsCollapsed ? '展开子章节' : '收起子章节'}
+              </button>}
+              <details className="canvas-inspector-section" data-canvas-size-tools="true"><summary>卡片尺寸</summary>
+                <label>宽度（px）<input type="number" min={CANVAS_CARD_SIZE_LIMITS.minWidth} max={CANVAS_CARD_SIZE_LIMITS.maxWidth} step={8}
+                  value={currentModelCard.size?.width ?? CANVAS_DEFAULT_CARD_SIZE.width} disabled={readOnly}
+                  onChange={event => updateCardSize('width', event.target.value)} /></label>
+                <label>高度（px）<input type="number" min={CANVAS_CARD_SIZE_LIMITS.minHeight} max={CANVAS_CARD_SIZE_LIMITS.maxHeight} step={8}
+                  value={currentModelCard.size?.height ?? CANVAS_DEFAULT_CARD_SIZE.height} disabled={readOnly}
+                  onChange={event => updateCardSize('height', event.target.value)} /></label>
+              </details>
+            </div> : <p className="canvas-structure-hint">选择卡片或箭头，查看对应操作。</p>}
+            <details className="canvas-inspector-section" data-canvas-structure-tools="true"><summary>调整章节结构</summary>
+              <p className="canvas-structure-hint">先预览章节位置和标题级别，确认后可撤销。</p>
+              <label>移动章节<select data-canvas-structure-source="true" value={structureSource} disabled={readOnly}
+                onChange={event => setStructureSource(event.target.value)}>
+                <option value="">选择章节</option>{tree.sections.map(section => <option key={section.index} value={section.index}>
+                  {titleFor(bindings.find(binding => binding.sectionIndex === section.index)?.id ?? '')} · {section.depth} 级
+                </option>)}
+              </select></label>
+              <label>新父章节<select data-canvas-structure-parent="true" value={structureTarget} disabled={readOnly}
+                onChange={event => setStructureTarget(event.target.value)}>
+                <option value="">选择章节</option>{tree.sections.map(section => <option key={section.index} value={section.index}>
+                  {titleFor(bindings.find(binding => binding.sectionIndex === section.index)?.id ?? '')} · {section.depth} 级
+                </option>)}
+              </select></label>
+              <button data-canvas-preview-structure="true" disabled={readOnly || !structureSource || !structureTarget}
+                onClick={() => void requestStructure({ kind: 'move', sourceIndex: Number(structureSource), targetIndex: Number(structureTarget) })}>预览设为子章节</button>
+              <button data-canvas-preview-promote="true" disabled={readOnly || !structureSource || tree.sections[Number(structureSource)]?.depth <= 1}
+                onClick={() => void requestStructure({ kind: 'promote', sectionIndex: Number(structureSource), targetDepth: tree.sections[Number(structureSource)].depth - 1 })}>预览提升一级</button>
+            </details>
+          </>}
+          <div hidden={Boolean(selectedLink)}><details className="canvas-inspector-section" data-canvas-link-composer="true"><summary>添加箭头</summary>
+            <label>起点<select data-canvas-link-from="true" value={from} disabled={readOnly} onChange={event => setFrom(event.target.value)}>
+              {bindings.map(item => <option value={item.id} key={item.id}>{titleFor(item.id)}</option>)}
+            </select></label>
+            <label>终点<select data-canvas-link-to="true" value={to} disabled={readOnly} onChange={event => setTo(event.target.value)}>
+              {bindings.map(item => <option value={item.id} key={item.id}>{titleFor(item.id)}</option>)}
+            </select></label>
+            <label>连线标签<input data-canvas-link-label="true" value={label} maxLength={100} disabled={readOnly} onChange={event => setLabel(event.target.value)} /></label>
+            <button data-canvas-add-link="true" disabled={!model || !from || !to || readOnly} onClick={() => addLink({ source: from, target: to })}><Plus size={16} /> 添加箭头</button>
+          </details></div>
+          <p className="canvas-inspector-total">{bindings.length} 张卡片{Boolean(model?.links.length) && ' · ' + model?.links.length + ' 条箭头'}</p>
+        </>}
+        {(unresolvedIds.length > 0 || unresolvedLinkIds.length > 0) && <div className="canvas-unresolved" role="status">
           <h3>待修复</h3><p>{unresolvedIds.length} 张卡片、{unresolvedLinkIds.length} 条箭头无法确定原章节，已保留原端点。</p>
-          <ul>{unresolvedIds.map((id) => <li key={id}>{model?.cards.find((card) => card.id === id)?.anchor.kind === 'heading'
-            ? (model.cards.find((card) => card.id === id)!.anchor as { titlePath: readonly string[] }).titlePath.join(' / ') : '原虚拟卡片'}</li>)}</ul>
+          <ul>{unresolvedIds.map(id => <li key={id}>{model?.cards.find(card => card.id === id)?.anchor.kind === 'heading'
+            ? (model.cards.find(card => card.id === id)!.anchor as { titlePath: readonly string[] }).titlePath.join(' / ') : '原虚拟卡片'}</li>)}</ul>
         </div>}
       </section></WorkspaceTaskPanel>
     </div>
