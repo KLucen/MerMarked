@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { openWorkspaceTask } from './workspace-controls.mjs';
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
@@ -403,8 +404,9 @@ try {
   await waitFor(cdp, `!document.querySelector('.note-composer')`, 'cancel reader note composer');
   await cdp.evaluate(`document.querySelector('.markdown-body')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'F10', shiftKey: true }))`);
   await waitFor(cdp, `Boolean(document.querySelector('[data-reader-context-menu]'))`, 'reader context menu reopened after note cancellation');
+  await waitFor(cdp, `document.activeElement?.textContent === '复制正文'`, 'reopened context menu focus');
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
-  await waitFor(cdp, `document.querySelector('[data-reader-context-menu]')?.querySelector('[role="menuitem"]:focus')?.getAttribute('aria-label')?.includes('琥珀')`,
+  await waitFor(cdp, `document.querySelector('[data-reader-context-menu]')?.querySelector('[role="menuitem"]:focus')?.textContent === '剪切正文'`,
     'reader context menu arrow navigation');
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
   await waitFor(cdp, `!document.querySelector('[data-reader-context-menu]')`, 'reader context menu keyboard close');
@@ -463,12 +465,15 @@ try {
   await click(cdp, '[data-mode="reader"]');
   await waitFor(cdp, `Boolean(document.querySelector('[data-dirty-preview]')) &&
     document.querySelector('.markdown-body')?.textContent.includes('REPLACED_TARGET')`, 'dirty reader preview');
+  await openWorkspaceTask(cdp);
   const previewState = await cdp.evaluate(`({
     annotationSidebar: Boolean(document.querySelector('.annotation-sidebar')?.getClientRects().length),
+    referenceOnly: Boolean(document.querySelector('[data-annotation-reference]')),
+    writeDisabled: [...document.querySelectorAll('.highlight-list button, .highlight-list select')].every(e => e.disabled),
     selectionToolbar: Boolean(document.querySelector('.selection-toolbar')),
     highlighted: Boolean(CSS.highlights?.get('mermarkd-amber')),
   })`);
-  assert.deepEqual(previewState, { annotationSidebar: false, selectionToolbar: false, highlighted: false });
+  assert.deepEqual(previewState, { annotationSidebar: true, referenceOnly: true, writeDisabled: true, selectionToolbar: false, highlighted: false });
   const directDirtyMutation = await cdp.evaluate(`window.mermarkd.recolorHighlight({
     id: 'roundtrip-highlight', color: 'blue'
   })`);

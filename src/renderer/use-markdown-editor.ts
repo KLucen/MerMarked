@@ -3,6 +3,7 @@ import { editorToMarkdownText, markdownToEditorText } from '../core/editor-text'
 import {
   applyMarkdownTextEdit,
   createMarkdownEditSession,
+  markMarkdownEditSaved,
   redoMarkdownEdit,
   undoMarkdownEdit,
   type MarkdownEditSelection,
@@ -364,7 +365,11 @@ export function useMarkdownEditor(
       confirmedEditorRef.current = result.editor;
       publish(result.editor);
       if (result.status === 'saved') {
-        publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
+        const savedContent = markdownToEditorText(result.editor.content);
+        const currentSession = editSessionRef.current;
+        publishSession(currentSession?.current.content === savedContent
+          ? markMarkdownEditSaved(currentSession, savedContent)
+          : createMarkdownEditSession(savedContent));
         onDocumentSaved(result.document);
       }
       else setError(result.message);

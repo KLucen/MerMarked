@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { buildSelectionMap } from '../../src/core/selection-map.ts';
+import { decodeMarkdownBytes, encodeMarkdownBytes } from '../../src/core/markdown-source.ts';
 import {
   applyReaderMappedTextEdit,
   applyReaderPlainTextEdit,
@@ -23,6 +24,25 @@ test('edits heading text without touching its Markdown marker', () => {
   const result = applyReaderPlainTextEdit(source, 0, { blockStart: 0, sourceText: '原标题', replacement: '新标题' });
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.content, '# 新标题\n\n正文');
+});
+
+test('decoded BOM metadata supports reading edits without inserting a second BOM', () => {
+  const bytes = Buffer.from('\uFEFF# 标题\r\n\r\n中文 😀 正文\r\n');
+  const { content, format } = decodeMarkdownBytes(bytes);
+  const block = buildSelectionMap(content, format.bomByteLength).blocks.find(item => item.kind === 'paragraph')!;
+  for (const edit of [applyReaderPlainTextEdit, applyReaderMappedTextEdit]) {
+    const result = edit(content, format.bomByteLength, {
+      blockStart: block.blockStart, sourceText: block.visibleText, replacement: '中文 😀 修改',
+    });
+    assert.ok(result.ok);
+    assert.equal(result.content.startsWith('\uFEFF'), false);
+    assert.deepEqual(Buffer.from(encodeMarkdownBytes(result.content, format.bomByteLength)),
+      Buffer.from('\uFEFF# 标题\r\n\r\n中文 😀 修改\r\n'));
+  }
+  const selection = resolveReaderMappedSelection(content, format.bomByteLength,
+    { blockStart: block.blockStart, visibleStart: 0, visibleEnd: 2 });
+  assert.ok(selection.ok);
+  assert.equal(selection.sourceExact, '中文');
 });
 
 test('rejects inline syntax and line breaks until a reversible mapping exists', () => {

@@ -26,13 +26,13 @@ import {
   resolveReaderMappedSelection,
   resolveReaderInlineFormatSelection,
 } from '../core/reader-edit';
+import { resolveReaderAnnotationIntent, type ReaderAnnotationIntent } from '../core/reader-annotation-intent';
 import { applyMarkdownSelectionCommand } from '../core/markdown-selection-commands';
 import type { MarkdownSourceSelectionAction } from '../core/markdown-selection-commands';
 import type { AnnotationColor } from '../core/annotations';
 import type {
   AnnotationDocumentView,
   AnnotationSaveResult,
-  AnnotationSelectionInput,
   NoteTagInput,
   OpenedMarkdownDocument,
   SectionStructurePreview,
@@ -115,8 +115,14 @@ const UNSUPPORTED_EXTENSION_NAMES = {
 } as const;
 
 interface NoteComposer {
-  selection: AnnotationSelectionInput;
-  quote: string;
+  readonly intent: ReaderAnnotationIntent;
+  readonly quote: string;
+}
+interface ReaderEditFeedback {
+  readonly blockStart: number;
+  readonly contentSnapshot: string;
+  readonly reason: string;
+  readonly draftText?: string;
 }
 
 function noteTagInput(choice: string, newName: string): NoteTagInput {
@@ -323,6 +329,12 @@ function App() {
   }, [panels.openRight, panels.close]);
   const [noteFilter, setNoteFilter] = useState('all');
   const [noteComposer, setNoteComposer] = useState<NoteComposer | null>(null);
+  const [noteReselecting, setNoteReselecting] = useState(false);
+  const [noteSaveError, setNoteSaveError] = useState<string | null>(null);
+  const noteComposerState = useRef(noteComposer);
+  noteComposerState.current = noteComposer;
+  const [readerEditFeedback, setReaderEditFeedback] = useState<ReaderEditFeedback | null>(null);
+  const noteDocumentKey = useRef(0);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteTagChoice, setNoteTagChoice] = useState(NO_TAG);
   const [newTagName, setNewTagName] = useState('');
@@ -460,7 +472,6 @@ function App() {
     setAnnotationView(null);
     setSelectedAnnotationId(null);
     setUnpaintableIds([]);
-    setNoteComposer(null);
     setEditingNoteId(null);
     setReattachTargetId(null);
     setAnnotationSaving(false);
@@ -523,8 +534,11 @@ function App() {
     if (!openedDocument || !editorController.editor?.dirty) return openedDocument;
     return { ...openedDocument, content: editorController.editor.content };
   }, [editorController.editor, openedDocument]);
+  const reportReaderEditRestriction = useCallback((blockStart: number, reason: string, draftText?: string) => {
+    if (readerDocument) setReaderEditFeedback({ blockStart, reason, draftText, contentSnapshot: readerDocument.content });
+  }, [readerDocument]);
   const commitReaderTextEdit = useCallback(async (blockStart: number, sourceText: string, replacement: string) => {
-    if (activeMode !== 'reader' || !readerCanEdit || !openedDocument || !readerDocument) return;
+    if (activeMode !== 'reader' || !readerCanEdit || !openedDocument || !readerDocument) return false;
     const epoch = documentEpoch.current;
     const sourcePath = openedDocument.path;
     const sourceSha256 = openedDocument.sourceSha256;
@@ -535,20 +549,22 @@ function App() {
       replacement,
     });
     if (!result.ok) {
-      setMessage(result.reason, 'alert');
-      return;
+      reportReaderEditRestriction(blockStart, result.reason, replacement);
+      return false;
     }
     const editor = editorController.editor ?? await editorController.open();
-    if (!editor) return;
+    if (!editor) return false;
     if (activeMode !== 'reader' || documentEpoch.current !== epoch ||
       openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
       editor.content !== sourceContent) {
-      setMessage('文档在阅读编辑期间发生变化，请重新载入后再试。', 'alert');
-      return;
+      reportReaderEditRestriction(blockStart, '正文已变化，未应用的输入已保留，请在源码中继续。', replacement);
+      return false;
     }
     editorController.changeEditorText(markdownToEditorText(result.content));
+    setReaderEditFeedback(null);
     setMessage('正文已修改，按 Ctrl+S 保存。');
-  }, [activeMode, editorController.editor, editorController.open, editorController.changeEditorText, openedDocument, readerCanEdit, readerDocument, setMessage]);
+    return true;
+  }, [activeMode, editorController.editor, editorController.open, editorController.changeEditorText, openedDocument, readerCanEdit, readerDocument, reportReaderEditRestriction, setMessage]);
   const [canvasStructurePreview, setCanvasStructurePreview] = useState<SectionStructurePreview | null>(null);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const [recoveryItems, setRecoveryItems] = useState<readonly DocumentRecoveryItem[]>([]);
@@ -617,6 +633,10 @@ function App() {
   }, [activeMode, editorSections]);
 
   const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
+    noteDocumentKey.current += 1;
+    setReaderEditFeedback(null);
+    setNoteReselecting(false);
+    setNoteSaveError(null);
     setCanvasStatus(null);
     setCanvasStructurePreview(null);
     editorController.reset();
@@ -672,7 +692,7 @@ function App() {
     setHighlightSupported(Boolean(registry));
     const groups = new Map<string, Range[]>();
     const failures: string[] = [];
-    if (activeMode === 'reader' && article && selectionMap && annotationView && !dirtyPreview) {
+    if (activeMode === 'reader' && article && selectionMap && annotationView && !dirtyPreview && !readerDraftDirty) {
       const blockElements = new Map<number, HTMLElement>();
       article.querySelectorAll<HTMLElement>('[data-source-block-start]').forEach((element) => {
         blockElements.set(Number(element.dataset.sourceBlockStart), element);
@@ -724,7 +744,7 @@ function App() {
       ANNOTATION_MARK_NAMES.forEach((name) => registry?.delete(name));
       paintedRanges.current.clear();
     };
-  }, [activeMode, annotationView, dirtyPreview, openedDocument?.path,
+  }, [activeMode, annotationView, dirtyPreview, readerDraftDirty, openedDocument?.path,
     openedDocument?.sourceSha256, selectedAnnotationId, selectionMap]);
 
   const openMarkdown = useCallback(async () => {
@@ -1228,7 +1248,7 @@ function App() {
     const selection = readerSourceSelection(menu);
     if (!selection) return false;
     if (action === 'paste' && (pasted === undefined || !isReaderPlainTextPaste(pasted))) {
-      setMessage('阅读模式粘贴暂只支持无缩进的单行纯文本，请切到源码视图粘贴多行或结构化内容。', 'alert');
+      reportReaderEditRestriction(menu.probe.blockStart, '这段内容请在源码中粘贴，当前正文未改变。', pasted);
       return false;
     }
     const epoch = documentEpoch.current;
@@ -1258,7 +1278,7 @@ function App() {
       setMessage(error instanceof Error ? error.message : '阅读编辑失败。', 'alert');
       return false;
     }
-  }, [activeMode, editorController, openedDocument, readerDocument, readerSourceSelection, setMessage]);
+  }, [activeMode, editorController, openedDocument, readerDocument, readerSourceSelection, reportReaderEditRestriction, setMessage]);
 
   const cutReaderContextSelection = useCallback(async () => {
     const menu = readerContextMenu;
@@ -1588,44 +1608,71 @@ function App() {
     }
   }, [setAnnotationPanelOpen]);
 
-  const openNoteComposer = useCallback((frozenProbe?: SuccessfulSelectionProbe) => {
-    const probe = frozenProbe ?? readSelection();
+  const saveForAnnotation = useCallback(async (intent: ReaderAnnotationIntent) => {
+    if (readerDraftDirty || editorController.busy) return;
+    const key = String(noteDocumentKey.current);
+    setNoteSaveError(null);
+    const result = await editorController.save();
+    if (String(noteDocumentKey.current) !== key || noteComposerState.current?.intent !== intent) return;
+    if (result?.status !== 'saved') {
+      setNoteSaveError('正文尚未保存，批注草稿已保留。请处理保存提示后重试。');
+      return;
+    }
+    const mapped = resolveReaderAnnotationIntent(intent, key, result.document.content, result.document.bomByteLength);
+    setNoteSaveError(mapped.ok ? null : mapped.reason);
+    window.requestAnimationFrame(() => noteComposerRef.current?.focus({ preventScroll: true }));
+  }, [editorController.busy, editorController.save, readerDraftDirty]);
+
+  const openNoteComposer = useCallback((frozenMenu?: ReaderContextMenuState, saveFirst = false) => {
+    const probe = frozenMenu?.probe ?? readSelection();
+    const target = frozenMenu ?? selectionTarget.current;
     setSelectionProbe(probe);
-    if (!probe.ok) return;
-    setNoteComposer({
-      selection: {
-        startByte: probe.startByte,
-        endByte: probe.endByte,
-        sourceExact: probe.sourceExact,
-        displayQuote: probe.displayQuote,
-      },
-      quote: probe.displayQuote,
-    });
-    setNoteDraft('');
-    setNoteTagChoice(NO_TAG);
-    setNewTagName('');
+    if (!probe.ok || !readerDocument || !openedDocument || !target ||
+        target.epoch !== documentEpoch.current || target.sourceSha256 !== openedDocument.sourceSha256 ||
+        target.contentSnapshot !== readerDocument.content) return;
+    const intent: ReaderAnnotationIntent = { documentKey: String(noteDocumentKey.current),
+      contentSnapshot: readerDocument.content, bomByteLength: readerDocument.bomByteLength,
+      blockStart: probe.blockStart, visibleStart: probe.visibleStart, visibleEnd: probe.visibleEnd,
+      sourceExact: probe.sourceExact, displayQuote: probe.displayQuote };
+    const mapped = resolveReaderAnnotationIntent(intent, intent.documentKey, readerDocument.content, readerDocument.bomByteLength);
+    if (!mapped.ok) { setNoteSaveError(mapped.reason); return; }
+    const composer = { intent, quote: probe.displayQuote };
+    noteComposerState.current = composer;
+    setNoteComposer(composer);
+    if (!noteComposer) {
+      setNoteDraft('');
+      setNoteTagChoice(NO_TAG);
+      setNewTagName('');
+    }
+    setNoteReselecting(false);
+    setNoteSaveError(null);
     setEditingNoteId(null);
     setAnnotationPanelOpen(true);
-  }, [readSelection, setAnnotationPanelOpen]);
+    if (saveFirst) void saveForAnnotation(intent);
+  }, [noteComposer, openedDocument, readSelection, readerDocument, saveForAnnotation, setAnnotationPanelOpen]);
 
   const createNote = useCallback((event: FormEvent) => {
     event.preventDefault();
-    if (!noteComposer || !noteDraft.trim() ||
+    if (!noteComposer || !readerDocument || !noteDraft.trim() || dirtyPreview || readerDraftDirty ||
         (noteTagChoice === NEW_TAG && !newTagName.trim())) return;
+    const mapped = resolveReaderAnnotationIntent(noteComposer.intent, String(noteDocumentKey.current),
+      readerDocument.content, readerDocument.bomByteLength);
+    if (!mapped.ok) { setNoteSaveError(mapped.reason); return; }
     void runAnnotationMutation(
-      () => window.mermarkd.createNote({
-        selection: noteComposer.selection,
-        note: noteDraft,
-        tag: noteTagInput(noteTagChoice, newTagName),
-      }),
+      () => window.mermarkd.createNote({ selection: {
+        startByte: mapped.startByte, endByte: mapped.endByte,
+        sourceExact: mapped.sourceExact, displayQuote: mapped.displayQuote,
+      }, note: noteDraft, tag: noteTagInput(noteTagChoice, newTagName) }),
       '批注已保存，Markdown 原文未修改。',
       (result) => {
         setNoteComposer(null);
+        setNoteReselecting(false);
+        setNoteSaveError(null);
         clearReaderSelection({ clearNative: true });
         setSelectedAnnotationId(result.id ?? null);
       },
     );
-  }, [clearReaderSelection, newTagName, noteComposer, noteDraft, noteTagChoice, runAnnotationMutation]);
+  }, [clearReaderSelection, dirtyPreview, readerDraftDirty, readerDocument, newTagName, noteComposer, noteDraft, noteTagChoice, runAnnotationMutation]);
 
   const beginEditNote = useCallback((id: string) => {
     const item = annotationView?.items.find((candidate) => candidate.id === id && candidate.kind === 'note');
@@ -1737,14 +1784,14 @@ function App() {
     const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
     if (readerCanEdit && activeMode === 'reader' && blockStart !== undefined && block && isReaderMappedTextBlock(selectionMap!, block)) {
       return <ReaderEditableBlock as={tag} blockStart={blockStart} sourceText={block.visibleText} enabled
-        onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
+        onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} onRestricted={reportReaderEditRestriction} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
         {children}
       </ReaderEditableBlock>;
     }
     const Tag = tag;
     return <Tag {...rest} id={id} tabIndex={id ? -1 : undefined}
       data-source-block-start={node?.position?.start.offset}>{children}</Tag>;
-  }, [activeMode, commitReaderTextEdit, headingByOffset, readerCanEdit, sectionIds, selectionMap]);
+  }, [activeMode, commitReaderTextEdit, headingByOffset, readerCanEdit, reportReaderEditRestriction, sectionIds, selectionMap]);
 
   const components = useMemo<Components>(() => ({
     h1: (props) => heading('h1', props),
@@ -1758,7 +1805,7 @@ function App() {
       const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
       if (readerCanEdit && activeMode === 'reader' && block && blockStart !== undefined && isReaderMappedTextBlock(selectionMap!, block)) {
         return <ReaderEditableBlock as="p" blockStart={blockStart} sourceText={block.visibleText} enabled
-          onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} className={props.className}>{children}</ReaderEditableBlock>;
+          onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} onRestricted={reportReaderEditRestriction} className={props.className}>{children}</ReaderEditableBlock>;
       }
       return <p {...props} data-source-block-start={blockStart}>{children}</p>;
     },
@@ -1773,8 +1820,8 @@ function App() {
     th: ({ node, children, ...props }) => (
       <th {...props} data-source-block-start={node?.position?.start.offset}>{children}</th>
     ),
-    pre: ({ node: _node, children, ...props }) => (
-      <pre {...props} tabIndex={0} aria-label="代码块，可水平滚动">{children}</pre>
+    pre: ({ node, children, ...props }) => (
+      <pre {...props} data-source-block-start={node?.position?.start.offset} tabIndex={0} aria-label="代码块，可水平滚动">{children}</pre>
     ),
     a: ({ node: _node, href, children, ...props }) => (
       <a {...props} href={href} onClick={(event) => openLink(event, href)}>{children}</a>
@@ -1783,7 +1830,7 @@ function App() {
       <LocalImage src={src} alt={alt} documentPath={openedDocument?.path ?? ''} />
     ),
     input: ({ node: _node, ...props }) => <input {...props} disabled readOnly />,
-  }), [activeMode, commitReaderTextEdit, heading, openedDocument?.path, openLink, readerCanEdit, selectionMap]);
+  }), [activeMode, commitReaderTextEdit, heading, openedDocument?.path, openLink, readerCanEdit, reportReaderEditRestriction, selectionMap]);
 
   const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
   const noteItems = annotationView?.items.filter((item) => item.kind === 'note') ?? [];
@@ -1797,6 +1844,12 @@ function App() {
   const canReviewRelocation = activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && !readerDraftDirty &&
     (annotationView?.status === 'ready' || annotationView?.status === 'needs-relocation') &&
     annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading;
+  const annotationReferenceOnly = dirtyPreview || readerDraftDirty || editorController.busy;
+  const canComposeNote = activeMode === 'reader' && !openedDocument?.recoveryPending && !readerDraftDirty &&
+    !editorController.busy && !annotationSaving && !reattachTargetId && (canChangeAnnotations || dirtyPreview);
+  const noteTarget = useMemo(() => noteComposer && readerDocument
+    ? resolveReaderAnnotationIntent(noteComposer.intent, String(noteDocumentKey.current), readerDocument.content, readerDocument.bomByteLength)
+    : null, [noteComposer, readerDocument]);
   const canStartRelocationAction = canReviewRelocation && !reattachTargetId;
   const reattachTarget = reattachTargetId
     ? annotationView?.items.find((item) => item.id === reattachTargetId)
@@ -1823,7 +1876,6 @@ function App() {
     }
     clearReaderSelection({ clearNative: true });
     closeReaderSearch();
-    setNoteComposer(null);
     setEditingNoteId(null);
     setReattachTargetId(null);
     if (mode === 'reader') {
@@ -1868,6 +1920,17 @@ function App() {
     clearReaderSelection({ clearNative: true });
     await changeMode('editor');
   }, [activeSection, changeMode, clearReaderSelection, openedDocument, readerDocument, sectionTree, setMessage]);
+
+  const continueRestrictedEdit = useCallback(async () => {
+    if (!readerEditFeedback || !readerDocument) return;
+    const offset = readerEditFeedback.contentSnapshot === readerDocument.content ? readerEditFeedback.blockStart : null;
+    if (offset !== null) {
+      const bomOffset = readerDocument.content.startsWith('\uFEFF') ? 1 : 0;
+      setEditorFocusOffset(markdownToEditorText(readerDocument.content.slice(0, bomOffset + offset)).length);
+      setEditorFocusRequest((request) => request + 1);
+    }
+    await changeMode('editor');
+  }, [changeMode, readerDocument, readerEditFeedback]);
 
   const editCanvasSection = useCallback((index: number | null) => {
     setActiveSection(index);
@@ -1928,7 +1991,7 @@ function App() {
       opening={opening || editorController.opening} dropActive={dropActive} notice={notice}
       recentDocuments={recentDocuments}
       panels={panels} taskLabel={activeMode === 'cards' ? '属性' : '批注'}
-      taskAvailable={activeMode === 'cards' || (activeMode === 'reader' && !dirtyPreview)}
+      taskAvailable={activeMode === 'cards' || activeMode === 'reader'}
       outline={<DocumentOutline sections={editorSections} activeSection={activeSection}
         sourceMode={activeMode === 'editor'} onJumpToSection={(index) => {
           if (panels.narrow) panels.close('left');
@@ -1992,6 +2055,20 @@ function App() {
         onConfirm={() => void confirmDocumentRecovery()} onClose={closeDocumentRecovery} />}
       {openedDocument?.recoveryPending && <p className="canvas-warning" role="alert" data-document-recovery-pending="true">
         文档存在未完成保存，编辑、批注与画布写入已暂停。请打开“检查保存恢复”核验。</p>}
+      {readerEditFeedback && activeMode !== 'cards' && <section className="reader-edit-feedback" aria-label="阅读编辑提示">
+        <p role="status">{readerEditFeedback.reason}</p>
+        {readerEditFeedback.draftText !== undefined && <details><summary>查看未应用的输入</summary>
+          <textarea aria-label="未应用的输入" readOnly rows={3} value={readerEditFeedback.draftText} />
+        </details>}
+        <div className="reader-feedback-actions">
+          {readerEditFeedback.draftText !== undefined && <button type="button" onClick={() => {
+            void navigator.clipboard.writeText(readerEditFeedback.draftText!).then(() => setMessage('已复制未应用的输入。'))
+              .catch(() => setMessage('复制失败，可展开输入内容后手动复制。', 'alert'));
+          }}>复制未应用的输入</button>}
+          {activeMode === 'reader' && <button type="button" data-reader-continue-source="true" onClick={() => void continueRestrictedEdit()}>在源码中继续</button>}
+          <button type="button" onClick={() => setReaderEditFeedback(null)} aria-label="关闭阅读编辑提示">关闭</button>
+        </div>
+      </section>}
       {openedDocument && editorController.editor && <div className="workspace-editor-content" hidden={activeMode !== 'editor'}>
         <EditorView documentKey={editorController.editor.epoch} documentName={openedDocument.name}
           active={activeMode === 'editor' && !recoveryOpen}
@@ -2045,8 +2122,12 @@ function App() {
             </div>
             {dirtyPreview ? <div className="annotation-summary dirty-preview" role="status" data-dirty-preview="true">
               <strong>未保存</strong>
-              <span>保存正文后可继续批注。</span>
+              <span>已有批注可在侧栏参考；选择正文后可保存并继续批注。</span>
             </div> : null}
+            {noteReselecting && <div className="annotation-summary" role="status" data-note-reselect-prompt="true">
+              <span>批注草稿已保留，请在正文中选择新位置，再选择“使用所选位置”。</span>
+              <button type="button" onClick={() => { setNoteReselecting(false); setAnnotationPanelOpen(true); }}>返回草稿</button>
+            </div>}
             {unsupportedExtensions.length > 0 && <div className="reading-dialect-notice" role="status">
               <strong>部分扩展按普通文字显示</strong>
               <span>检测到：{unsupportedExtensions.map((kind) => UNSUPPORTED_EXTENSION_NAMES[kind]).join('、')}。</span>
@@ -2086,8 +2167,8 @@ function App() {
                   </button>)}
                 </div>
                 <button type="button" className="add-note-button" onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => openNoteComposer()} disabled={!canChangeAnnotations}
-                  aria-controls="annotation-sidebar">添加批注</button>
+                  onClick={() => openNoteComposer(undefined, dirtyPreview && !noteReselecting)} disabled={!canComposeNote}
+                  aria-controls="annotation-sidebar">{noteReselecting ? '使用所选位置' : dirtyPreview ? '保存正文并继续批注' : '添加批注'}</button>
                 <button type="button" className="selection-source-action" onMouseDown={(event) => event.preventDefault()}
                   onClick={() => void enterEditorAtSelection(selectionProbe)} title="切到源码并定位当前选区">在源码中编辑</button>
               </div>}
@@ -2108,7 +2189,15 @@ function App() {
               </div>}
             <span className="sr-only" aria-live="polite">{selectionAnnouncement}</span>
             {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0}
-              onContextMenu={openReaderContextMenu} onKeyDown={handleReaderContextShortcut}>
+              onContextMenu={openReaderContextMenu} onKeyDown={handleReaderContextShortcut}
+              onDoubleClick={(event) => {
+                if (!readerCanEdit || (event.target instanceof Element && event.target.closest('a, button'))) return;
+                const block = sourceBlockFor(event.target as Node);
+                const offset = Number(block?.dataset.sourceBlockStart);
+                if (block && !block.hasAttribute('data-reader-editable') && Number.isSafeInteger(offset)) {
+                  reportReaderEditRestriction(offset, '这段内容暂不能直接编辑，请在源码中继续。');
+                }
+              }}>
               <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter, remarkReadingDangerousHtmlPolicy]}
                 rehypePlugins={[rehypeRaw, rehypeReadingHtmlPolicy, [rehypeSanitize, readingSanitizeSchema]]}
                 components={components}>
@@ -2157,19 +2246,35 @@ function App() {
                   disabled={!canChangeAnnotations || !highlightSupported}><span className="highlight-swatch" aria-hidden="true" />{name}</button>)}
               </div>
               <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
-                onClick={() => { const probe = readerContextMenu.probe; closeReaderContextMenu(); openNoteComposer(probe); }} disabled={!canChangeAnnotations}>添加批注</button>
+                onClick={() => { const menu = readerContextMenu; closeReaderContextMenu(); openNoteComposer(menu, dirtyPreview && !noteReselecting); }} disabled={!canComposeNote}>
+                {noteReselecting ? '使用所选位置' : dirtyPreview ? '保存正文并继续批注' : '添加批注'}</button>
+              <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
+                onClick={() => { const probe = readerContextMenu.probe; closeReaderContextMenu(); void enterEditorAtSelection(probe); }}>在源码中继续</button>
               <span className="reader-context-note">复杂选区请切到源码视图编辑</span>
             </div>}
           </main>
           <WorkspaceTaskPanel>
-            <div id="annotation-sidebar" className="annotation-sidebar" hidden={dirtyPreview} aria-label="批注边栏">
+            <div id="annotation-sidebar" className="annotation-sidebar" aria-label="批注边栏">
               <div className="annotation-sidebar-inner">
+                {annotationReferenceOnly && <p className="annotation-reference-notice" role="status" data-annotation-reference="true">
+                  正文未保存。已有批注仅供参考，保存后重新核验位置。
+                </p>}
                 {noteComposer && <form className="note-composer" onSubmit={createNote}>
                   <div className="note-form-heading">为选文添加批注</div>
                   <blockquote>{noteComposer.quote}</blockquote>
+                  {(noteSaveError || (noteTarget && !noteTarget.ok)) && <p className="note-continuation-error" role="alert">
+                    {noteSaveError ?? (noteTarget && !noteTarget.ok ? noteTarget.reason : null)}
+                  </p>}
+                  {noteTarget && !noteTarget.ok && <button type="button" data-note-reselect="true"
+                    disabled={editorController.busy || annotationSaving} onClick={() => {
+                      setNoteReselecting(true);
+                      clearReaderSelection({ clearNative: true });
+                      if (panels.narrow) panels.close('right');
+                      window.requestAnimationFrame(() => document.querySelector<HTMLElement>('.markdown-body')?.focus({ preventScroll: true }));
+                    }}>重新选择批注位置</button>}
                   <label htmlFor="new-note-body">批注内容</label>
                   <textarea id="new-note-body" ref={noteComposerRef} data-panel-autofocus rows={5} value={noteDraft}
-                    disabled={!canChangeAnnotations}
+                    disabled={editorController.busy || annotationSaving}
                     onChange={(event) => setNoteDraft(event.target.value)}
                     onKeyDown={(event) => {
                       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -2178,7 +2283,7 @@ function App() {
                       }
                     }} placeholder="写下这段文字带来的想法…" />
                   <label htmlFor="new-note-tag">标签</label>
-                  <select id="new-note-tag" value={noteTagChoice} disabled={!canChangeAnnotations}
+                  <select id="new-note-tag" value={noteTagChoice} disabled={editorController.busy || annotationSaving}
                     onChange={(event) => setNoteTagChoice(event.target.value)}>
                     <option value={NO_TAG}>无标签</option>
                     {tags.map((tag) => <option key={tag.id} value={`${TAG_VALUE_PREFIX}${tag.id}`}>{tag.name}</option>)}
@@ -2186,12 +2291,16 @@ function App() {
                   </select>
                   {noteTagChoice === NEW_TAG && <>
                     <label htmlFor="new-note-tag-name">新标签名称</label>
-                    <input id="new-note-tag-name" value={newTagName} disabled={!canChangeAnnotations}
+                    <input id="new-note-tag-name" value={newTagName} disabled={editorController.busy || annotationSaving}
                       onChange={(event) => setNewTagName(event.target.value)} />
                   </>}
                   <div className="note-form-actions">
-                    <button type="button" onClick={() => setNoteComposer(null)}>取消</button>
-                    <button type="submit" className="primary" disabled={!canChangeAnnotations || !noteDraft.trim() ||
+                    <button type="button" disabled={editorController.busy || annotationSaving} onClick={() => { setNoteComposer(null); setNoteReselecting(false); setNoteSaveError(null); }}>取消</button>
+                    {dirtyPreview && noteTarget?.ok && <button type="button" className="primary" data-note-save-source="true"
+                      disabled={editorController.busy || readerDraftDirty} onClick={() => void saveForAnnotation(noteComposer.intent)}>
+                      {editorController.busy ? '正在保存正文…' : '保存正文并继续'}
+                    </button>}
+                    <button type="submit" className="primary" disabled={!canChangeAnnotations || !noteTarget?.ok || !noteDraft.trim() ||
                       (noteTagChoice === NEW_TAG && !newTagName.trim())}>
                       {annotationSaving ? '正在保存…' : '保存批注'}
                     </button>
@@ -2216,9 +2325,9 @@ function App() {
                     </div>
                   </div>
                   {filteredNotes.length ? <ol className="note-list">{filteredNotes.map((item) => {
-                    const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
+                    const available = !annotationReferenceOnly && item.status === 'resolved' && !unpaintableSet.has(item.id) &&
                       paintedRanges.current.has(item.id);
-                    const locationLabel = item.status !== 'resolved' ? relocationLabel(item.relocation)
+                    const locationLabel = annotationReferenceOnly ? '保存后核验位置' : item.status !== 'resolved' ? relocationLabel(item.relocation)
                       : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
                     const selected = selectedAnnotationId === item.id;
                     const editing = editingNoteId === item.id;
@@ -2278,9 +2387,9 @@ function App() {
                 <details className="highlight-records">
                   <summary>高亮记录 <span>{highlightItems.length}</span></summary>
                   {highlightItems.length ? <ol className="highlight-list">{highlightItems.map((item) => {
-                    const available = item.status === 'resolved' && !unpaintableSet.has(item.id) &&
+                    const available = !annotationReferenceOnly && item.status === 'resolved' && !unpaintableSet.has(item.id) &&
                       paintedRanges.current.has(item.id);
-                    const locationLabel = item.status !== 'resolved' ? relocationLabel(item.relocation)
+                    const locationLabel = annotationReferenceOnly ? '保存后核验位置' : item.status !== 'resolved' ? relocationLabel(item.relocation)
                       : unpaintableSet.has(item.id) ? '无法安全显示' : '正在定位';
                     return <li key={item.id} className={selectedAnnotationId === item.id ? 'selected' : undefined}>
                       <span className="highlight-record-swatch" data-color={item.color} aria-hidden="true" />

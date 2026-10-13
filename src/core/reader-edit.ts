@@ -105,7 +105,7 @@ export function resolveReaderMappedSelection(
   if (typeof content !== 'string' || (bomByteLength !== 0 && bomByteLength !== 3)) {
     return { ok: false, reason: '阅读编辑的源文档或 BOM 信息无效。' };
   }
-  if (content.startsWith('\uFEFF') !== (bomByteLength === 3)) {
+  if (content.startsWith('\uFEFF') && bomByteLength !== 3) {
     return { ok: false, reason: '正文和 BOM 元数据不一致。' };
   }
   if (!selection || !Number.isSafeInteger(selection.blockStart) || selection.blockStart < 0 ||
@@ -208,7 +208,7 @@ export function applyReaderPlainTextEdit(
   if (typeof content !== 'string' || (bomByteLength !== 0 && bomByteLength !== 3)) {
     return { ok: false, reason: '阅读编辑的源文档或 BOM 信息无效。' };
   }
-  if (content.startsWith('\uFEFF') !== (bomByteLength === 3)) {
+  if (content.startsWith('\uFEFF') && bomByteLength !== 3) {
     return { ok: false, reason: '正文和 BOM 元数据不一致。' };
   }
   if (!Number.isSafeInteger(edit.blockStart) || edit.blockStart < 0 ||
@@ -242,7 +242,8 @@ export function applyReaderPlainTextEdit(
     return { ok: false, reason: '无法确定正文在源码中的安全边界。' };
   }
   const nextSource = map.source.slice(0, sourceStart) + edit.replacement + map.source.slice(sourceEnd);
-  const nextContent = bomByteLength === 3 ? `\uFEFF${nextSource}` : nextSource;
+  // File decoding stores BOM separately; preserve the caller's text representation.
+  const nextContent = content.startsWith('\uFEFF') ? `\uFEFF${nextSource}` : nextSource;
   return {
     ok: true,
     content: nextContent,
@@ -265,7 +266,7 @@ export function applyReaderMappedTextEdit(
   if (typeof content !== 'string' || (bomByteLength !== 0 && bomByteLength !== 3)) {
     return { ok: false, reason: '阅读编辑的源文档或 BOM 信息无效。' };
   }
-  if (content.startsWith('\uFEFF') !== (bomByteLength === 3)) {
+  if (content.startsWith('\uFEFF') && bomByteLength !== 3) {
     return { ok: false, reason: '正文和 BOM 元数据不一致。' };
   }
   if (!Number.isSafeInteger(edit.blockStart) || edit.blockStart < 0 ||
@@ -328,7 +329,8 @@ export function applyReaderMappedTextEdit(
     sourceEnd = boundary.sourceEnd;
   }
   const nextSource = map.source.slice(0, sourceStart) + edit.replacement.slice(visibleStart, replacementEnd) + map.source.slice(sourceEnd);
-  const nextContent = bomByteLength === 3 ? `\uFEFF${nextSource}` : nextSource;
+  // File decoding stores BOM separately; preserve the caller's text representation.
+  const nextContent = content.startsWith('\uFEFF') ? `\uFEFF${nextSource}` : nextSource;
   return {
     ok: true,
     content: nextContent,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { applyMarkdownTextEdit, createMarkdownEditSession, isMarkdownEditDirty, redoMarkdownEdit, undoMarkdownEdit } from '../../src/core/markdown-edit-transaction.ts';
+import { applyMarkdownTextEdit, createMarkdownEditSession, isMarkdownEditDirty, markMarkdownEditSaved, redoMarkdownEdit, undoMarkdownEdit } from '../../src/core/markdown-edit-transaction.ts';
 
 test('local Markdown edits preserve surrounding BOM/CRLF content and share undo/redo state', () => {
   const session = createMarkdownEditSession('# 中文😀\r\n\r\n正文\r\n');
@@ -30,4 +30,22 @@ test('a new edit after undo clears the redo branch', () => {
   const second = applyMarkdownTextEdit(undone, { expectedRevision: undone.revision, selection: { start: 1, end: 2 }, replacement: 'y' });
   assert.equal(second.current.content, 'ayc');
   assert.equal(redoMarkdownEdit(second), second);
+});
+
+test('saving preserves undo/redo while advancing the persisted baseline', () => {
+  const initial = createMarkdownEditSession('原文😀');
+  const edited = applyMarkdownTextEdit(initial, { expectedRevision: 0, selection: { start: 0, end: 2 }, replacement: '修改' });
+  const saved = markMarkdownEditSaved(edited, edited.current.content);
+  assert.equal(isMarkdownEditDirty(saved), false);
+  assert.equal(saved.past, edited.past);
+  const undone = undoMarkdownEdit(saved);
+  assert.equal(undone.current.content, initial.current.content);
+  assert.equal(isMarkdownEditDirty(undone), true);
+  const redone = redoMarkdownEdit(undone);
+  assert.equal(redone.current.content, saved.current.content);
+  assert.equal(isMarkdownEditDirty(redone), false);
+  const savedUndo = markMarkdownEditSaved(undone, undone.current.content);
+  assert.equal(savedUndo.future, undone.future);
+  assert.equal(isMarkdownEditDirty(redoMarkdownEdit(savedUndo)), true);
+  assert.throws(() => markMarkdownEditSaved(edited, '另一个版本'));
 });

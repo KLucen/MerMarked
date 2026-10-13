@@ -6,8 +6,9 @@ interface ReaderEditableBlockProps {
   readonly blockStart: number;
   readonly sourceText: string;
   readonly enabled: boolean;
-  readonly onCommit: (blockStart: number, sourceText: string, text: string) => void;
+  readonly onCommit: (blockStart: number, sourceText: string, text: string) => Promise<boolean>;
   readonly onDraftChange: (dirty: boolean) => void;
+  readonly onRestricted: (blockStart: number, reason: string, draftText?: string) => void;
   readonly children: ReactNode;
   readonly className?: string;
   readonly id?: string;
@@ -39,6 +40,7 @@ export function ReaderEditableBlock({
   enabled,
   onCommit,
   onDraftChange,
+  onRestricted,
   children,
   className,
   id,
@@ -70,6 +72,7 @@ export function ReaderEditableBlock({
   const handleInput = (event: FormEvent<HTMLElement>) => {
     const text = event.currentTarget.textContent ?? '';
     if (/\r|\n/u.test(text)) {
+      onRestricted(blockStart, '换行请在源码中继续，已保留未应用的输入。', text);
       restore();
       return;
     }
@@ -80,7 +83,10 @@ export function ReaderEditableBlock({
   const handlePaste = (event: ClipboardEvent<HTMLElement>) => {
     event.preventDefault();
     const text = event.clipboardData.getData('text/plain');
-    if (/\r|\n/u.test(text)) return;
+    if (/\r|\n/u.test(text)) {
+      onRestricted(blockStart, '多行内容请在源码中粘贴，当前正文未改变。', text);
+      return;
+    }
     insertPlainText(text);
     draftRef.current = event.currentTarget.textContent ?? '';
     onDraftChange(draftRef.current !== originalRef.current);
@@ -90,7 +96,9 @@ export function ReaderEditableBlock({
     editingRef.current = false;
     const next = draftRef.current;
     onDraftChange(false);
-    if (next !== originalRef.current) onCommit(blockStart, originalRef.current, next);
+    if (next !== originalRef.current) void onCommit(blockStart, originalRef.current, next).then((accepted) => {
+      if (!accepted && elementRef.current?.isConnected) restore();
+    });
   };
 
   const handleBlur = () => {
@@ -110,6 +118,7 @@ export function ReaderEditableBlock({
     }
     if (event.key === 'Enter') {
       event.preventDefault();
+      onRestricted(blockStart, '阅读中暂不拆分段落，请在源码中换行。');
       return;
     }
     if (event.key === 'Escape') {
@@ -130,7 +139,7 @@ export function ReaderEditableBlock({
     suppressContentEditableWarning: true,
     'data-reader-editable': enabled ? 'true' : undefined,
     'data-source-block-start': blockStart,
-    title: enabled ? '点击正文直接编辑；Enter 保持在当前段落' : undefined,
+    title: enabled ? '点击正文直接编辑；换行或复杂编辑可在源码中继续' : undefined,
     onFocus: () => { editingRef.current = true; },
     onCompositionStart: () => { composingRef.current = true; pendingBlurRef.current = false; },
     onCompositionEnd: () => {
@@ -144,6 +153,9 @@ export function ReaderEditableBlock({
       const inputType = (event.nativeEvent as InputEvent).inputType;
       if (!composingRef.current && (inputType === 'insertParagraph' || inputType === 'insertLineBreak' || inputType.startsWith('format'))) {
         event.preventDefault();
+        onRestricted(blockStart, inputType.startsWith('format')
+          ? '这项格式操作请使用选文菜单，或在源码中继续。'
+          : '阅读中暂不拆分段落，请在源码中换行。');
       }
     },
     onInput: handleInput,
