@@ -1215,3 +1215,5 @@ npm.cmd test：262/262 通过。npm.cmd run typecheck、改动文件 git diff --
 安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：154,914,816 字节；SHA-256 6462F765793D1497EF856CC42ADA4D8471AEF9284D6706027948811D83A2F064。产物本地生成，不公开发行。保留且不提交已有个人 fixture 与 hash 命名副本。
 
 下一批 UX5 继续统一字体、间距、状态色和焦点反馈；真实中文 IME、多显示器物理 DPI、安装/卸载残留与大文档 Worker/虚拟化仍属 P0 未闭合门槛。本批不扩展实际导出引擎上限或发布产品版本。
+
+GitHub：实现提交 `0728e9e` 已推送至 `origin/codex/ux4-canvas-clarity`，连接器成功创建 [PR #4](https://github.com/KLucen/MerMarked/pull/4)，目标 main，尚未合并。本轮推送与 PR 创建均成功。

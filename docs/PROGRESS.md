@@ -15,6 +15,8 @@
 
 截图和日志位于 out/qa/ux4-*。安装包 154,914,816 字节，SHA-256 6462F765793D1497EF856CC42ADA4D8471AEF9284D6706027948811D83A2F064。未新增依赖、IPC、schema 或持久化合同；个人试读 fixture 与 hash 命名副本不提交。
 
+GitHub：实现提交 `0728e9e` 已推送至 `origin/codex/ux4-canvas-clarity`，已创建 [PR #4](https://github.com/KLucen/MerMarked/pull/4)，目标 main，尚未合并。
+
 下一批 UX5 统一字体、间距、状态与焦点反馈。真实中文 IME、多显示器物理 DPI、安装卸载完整流程和大文档 Worker/虚拟化仍未验收，P0 未完成。
 
 ## 2026-10-13 · UX3 阅读编辑与批注连续操作（当前切片已完成）
