@@ -1167,3 +1167,5 @@ Git 基线核对：收尾 fetch 发现远端 PR #1 的合并历史更新为 `71b
 Windows Squirrel 安装包为 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe，154,911,744 字节，SHA-256 为 EDBED17ACF55D61D79E0B1FD1646635A6A0B2916F0AAED55CBEAD10908525088。安装包、截图与临时测试文件留在本地，未公开发行；个人试读 fixture 和 hash 命名副本不纳入提交。
 
 未开放多行/跨块富文本编辑；未提交的新批注表单仅在当前文档会话保留，新开文档或重启不保证恢复。未重做安装/卸载全流程、真实中文 IME、多显示器 DPI 或大文档性能验收，P0 仍进行中。下一批为 UX4：精简卡片层级、按选中项显示操作、结构预览和完整导出说明。
+
+GitHub：实现提交 `a9e9114` 已推送至 `origin/codex/ux3-reader-continuity`，连接器成功创建 [PR #3](https://github.com/KLucen/MerMarked/pull/3)，目标 main，尚未合并。 本轮 GitHub 同步成功，无权限错误。

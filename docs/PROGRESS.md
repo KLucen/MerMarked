@@ -14,6 +14,8 @@
 
 产物为 out/qa/ux3-*.png 和 out/qa/ux3-*.log；安装包生成结果、哈希和 GitHub 同步见开发日志。数据决定见 ADR-038，没有新增依赖、schema 或 IPC。个人试读 fixture 与 hash 命名副本不提交。
 
+GitHub：实现提交 `a9e9114` 已推送至 `origin/codex/ux3-reader-continuity`，连接器成功创建 [PR #3](https://github.com/KLucen/MerMarked/pull/3)，目标 main，尚未合并。
+
 本批未开放多行/跨块富文本编辑，程序化组合事件不等于真实中文 IME 验收。安装/卸载、真实多显示器 DPI、大文档 Worker/虚拟化与性能仍待验收，P0 未完成。下一批 UX4 精简画布的卡片层级、按选中项显示的操作、结构预览与导出说明。
 
 ## 2026-10-12 · UX2 共享面板、专注模式与可用视口（已完成）
