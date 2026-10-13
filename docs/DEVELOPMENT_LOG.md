@@ -1123,3 +1123,49 @@ GitHub 同步结果：实现提交 `51d9fa7` 已推送至 `origin/codex/ux1-work
 本批不公开发布安装包，未重新做安装/卸载全流程、真实中文 IME、多显示器 DPI 或大文档性能验收；P0 仍进行中。隐藏面板/专注期间的草稿保留已经验收，跨模式批注草稿、dirty 批注参考与保存后继续操作仍遵守既有边界，进入 UX3。完成此批 GitHub 提交/PR 后继续按 UX3–UX5 推进。
 
 Git 基线核对：收尾 fetch 发现远端 PR #1 的合并历史更新为 `71b96a7`，其 tree 与原基线完全相同（`d4e6804ccf6439c4d616a0e9b83c30cc478d2a3a`）。在工作区和索引保持不变的前提下，将尚无 UX2 提交的本地分支基线对齐远端，避免 PR 携带旧的合并历史。相关 diff 检查通过。实现提交 `f33326d` 已推送至 `origin/codex/ux2-shared-panels`，GitHub 连接器成功创建 [PR #2](https://github.com/KLucen/MerMarked/pull/2)，目标 `main`，当前未合并；此次没有再出现权限不足错误。
+
+
+## 2026-10-13 · UX3 阅读编辑与批注连续操作
+
+### 目标与实现
+
+用户要求继续下一批开发并延续 GitHub 同步。核对 PR #2 已合并，以 origin/main 的 16db676 为基线创建 codex/ux3-reader-continuity，按设计评审 UX3 处理正文编辑后批注中断和受限输入无反馈的问题。修改前核对产品架构、模式边界、开发流程、可行性审查、进度和 ADR，验收清单见 UX3_ACCEPTANCE.md。
+
+沿用 emil-design-eng 的任务层级与反馈检查，按 vercel:react-best-practices 复核多份 TSX 的依赖、选区生命周期与可访问性；没有新增动画或依赖。当前打包截图复核如下：
+
+| Before | After | Why |
+| --- | --- | --- |
+| 正文一旦未保存，批注区域不可用 | 保留批注参考，冻结旧位置及写操作 | 修改正文时仍能查看已有想法，不把旧锚点画到新文字上 |
+| 编辑后需要重新保存、寻找选文、打开批注 | 提供“保存正文并继续批注”，保存后重新核验选文 | 连续操作有明确下一步，失败仍能看到自己的输入 |
+| 模式切换或保存清除新批注表单 | 同文档会话保留草稿，正文变化后要求重选 | 输入不因工作流切换丢失，重复引文不会被偷偷重接 |
+| 保存重建编辑历史 | 保存只推进基线 | 保存后仍可撤销，重做回磁盘版本恢复 clean |
+| Enter、多行粘贴被忽略；跨格式输入失败只报错 | 提供原因、可复制的未应用输入和源码定位 | 用户可以继续完成编辑，正文不被不安全地改写 |
+
+新增 src/core/reader-annotation-intent.ts，调整 reader-edit.ts、markdown-edit-transaction.ts、renderer main/use-markdown-editor/reader-editable-block/style。新增核心测试及 tests/e2e/ux3-reader-continuity-packaged.mjs，更新 A7.3b 与 npm 脚本。数据和会话边界记录在 ADR-038；没有修改主进程事务、IPC、YAML/JSON 格式或 lockfile。
+
+### 检查与结果
+
+实际执行 npm.cmd test（257/257）、npm.cmd run typecheck、改动文件 git diff --check、npm.cmd run package、npm.cmd run make，全部通过。构建使用 MERMARKD_ELECTRON_ZIP_DIR 指向本机 Electron 44.4.1 ZIP 缓存。
+
+14 组打包窗口回归全部通过，依次运行 npm.cmd run test:e2e:ux3、test:e2e:a7-3b、test:e2e:a7-4、test:e2e:a7-5、test:e2e:a8-2、test:e2e:a8-3、test:e2e:a8-4、test:e2e:a8-5、test:e2e:a7-1、test:e2e:a7-2、test:e2e:ux1、test:e2e:ux2、test:e2e:b1、test:e2e:a6（各项均为 npm run 命令）。避免并行窗口争抢焦点和剪贴板。
+
+专项使用带 BOM/CRLF、中文/emoji、重复引文、强调/链接及代码块的临时文件，通过打包 Electron 的实际指针/键盘输入完成：已有批注参考、修改后保存并创建新批注、保存后源码撤销/重做、草稿跨模式保留、正文变化后明确重选第二处重复引文并核对字节坐标、Enter/真实剪贴板多行粘贴/跨格式拒绝后恢复输入、代码块跳源码、外部磁盘冲突。检查 1200×800、800×700、420×800 CSS px 下控件和反馈不越界。程序化组合事件验证 compositionstart→blur 不提前提交、compositionend 后提交并可撤销；不代表真实操作系统输入法验收。
+
+测试在相关操作前后比较 Markdown、批注 YAML、画布 JSON 的 bytes 与 mtime：模式切换、重选、受限操作、撤销/重做不写文件；新增批注只写 YAML；失败保存不覆盖外部正文或侧栏文件。A7.3b 仍直接调用主进程验证 dirty 时拒绝批注修改，没有仅依靠按钮禁用。
+
+### 失败、排查与修复
+
+- 首次 BOM 窗口编辑被旧 reader-edit 拒绝：文件解码将 BOM 与正文分开，旧核心要求两者同时存在。改为兼容分离元数据并保持调用者文本表示，新增从真实文件字节解码、编辑、重新编码的往返测试，确认没有重复 BOM。
+- A7.3b 发现右键冻结选区与后续 selectionchange 的对象引用不同，严格引用比较错误阻止打开批注。改用冻结菜单自己的 epoch/source hash/完整正文快照，并在提交前重建映射。右键创建批注、取消重开和键盘导航回归通过。
+- BOM 修复使原先错误禁用的剪切/粘贴等菜单可用；旧脚本期待 ArrowDown 跳过它们直达颜色，现改为等待菜单焦点后验证下一项“剪切正文”。dirty 边栏断言更新为可见只读和禁用修改，保留直接 IPC 拒绝与三文件未变断言。
+- 新专项初版存在等待布局/光标帧不足、选择器拼写和误留旧脚本入口的问题，逐项修复；最终脚本完整退出成功。没有放宽数据字节、坐标或冲突断言。
+
+### 产物与剩余边界
+
+截图：out/qa/ux3-reference-only.png、ux3-restricted-{1200,800,420}.png、ux3-conflict-{1200,800,420}.png。人工查看宽屏只读批注、420 px 受限输入和 420/800 px 冲突草稿；抽屉可滚动，输入和操作可见。日志：out/qa/ux3-{unit,package,make}.log 与 ux3-regression-*.log。
+
+Windows Squirrel 安装包为 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe，154,911,744 字节，SHA-256 为 EDBED17ACF55D61D79E0B1FD1646635A6A0B2916F0AAED55CBEAD10908525088。安装包、截图与临时测试文件留在本地，未公开发行；个人试读 fixture 和 hash 命名副本不纳入提交。
+
+未开放多行/跨块富文本编辑；未提交的新批注表单仅在当前文档会话保留，新开文档或重启不保证恢复。未重做安装/卸载全流程、真实中文 IME、多显示器 DPI 或大文档性能验收，P0 仍进行中。下一批为 UX4：精简卡片层级、按选中项显示操作、结构预览和完整导出说明。
+
+GitHub：实现提交 `a9e9114` 已推送至 `origin/codex/ux3-reader-continuity`，连接器成功创建 [PR #3](https://github.com/KLucen/MerMarked/pull/3)，目标 main，尚未合并。 本轮 GitHub 同步成功，无权限错误。

@@ -44,6 +44,12 @@ export function isMarkdownEditDirty(session: MarkdownEditSession): boolean {
   return session.current.content !== session.baseline;
 }
 
+/** A successful save advances the disk baseline without discarding editing history. */
+export function markMarkdownEditSaved(session: MarkdownEditSession, content: string): MarkdownEditSession {
+  if (content !== session.current.content) throw new Error('保存结果与当前编辑内容不一致。');
+  return { ...session, baseline: content };
+}
+
 export function applyMarkdownTextEdit(session: MarkdownEditSession, edit: MarkdownTextEdit): MarkdownEditSession {
   if (edit.expectedRevision !== session.revision) throw new Error('Markdown 编辑版本已过期，请重新选择。');
   const selection = validateSelection(session.current.content, edit.selection);
