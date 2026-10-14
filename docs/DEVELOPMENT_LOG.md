@@ -1314,3 +1314,5 @@ ReaderMarkdown 将插件配置移出 render，按 content/components 复用；�
 日志与 JSON 为 out/qa/perf1-{unit,package,e2e,dev-e2e,make-final,baseline,baseline-5m,stable-1m,stable-5m}.* 及 perf1-regression-*.log；保留中间 after/final/repeat/reuse 测量。人工查看 perf1-outline-error.png 和 perf1-outline-ready.png；失败提示可读、重试符合共享控件样式、计数用 — 区分未知与零章节。
 
 最终 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：154,973,184 字节；SHA-256 388452CD8CFB964E7DCF34E56F771B9D75C5F510E2D9003ED569996D339FFB11。安装包本地生成，不公开发行。原有个人试读 Markdown/画布 fixture 和 hash 命名 HTML 保留且不提交。
+
+GitHub：实现提交 `b8520e2` 已推送至 `origin/codex/perf1-background-outline`，成功创建 [PR #6](https://github.com/KLucen/MerMarked/pull/6)，目标 main，尚未合并。推送和连接器 PR 创建均成功。

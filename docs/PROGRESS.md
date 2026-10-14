@@ -29,6 +29,8 @@
 
 正文首屏为命令到标题 DOM 与后续绘制帧，不含所有后台核验完成。5 MiB 首屏最长帧间隔仍为 4721 ms，查找为 442 ms，源码输入为 113 ms；模式切换壁钟耗时也没有改善。首次阅读解析、可见 DOM 查找和渲染尚未全面后台化/虚拟化，因此大文档性能和 P0 仍未通过。
 
+GitHub：实现提交 `b8520e2` 已推送至 `origin/codex/perf1-background-outline`，成功创建 [PR #6](https://github.com/KLucen/MerMarked/pull/6)，目标 main，尚未合并。推送和连接器 PR 创建均成功。
+
 日志与截图在 out/qa/perf1-*，最终样本为 perf1-stable-{1m,5m}.json。安装包 154,973,184 字节，SHA-256 388452CD8CFB964E7DCF34E56F771B9D75C5F510E2D9003ED569996D339FFB11。下一批 PERF2 优先迁移首次阅读章节/选区/扩展分析，并验证加载期间的模式切换和过期结果隔离；继续测量 DOM 渲染与搜索阻塞。真实 IME、物理多显示器 DPI、干净机器安装/卸载仍待验收。个人试读 fixture 与 hash 命名 HTML 保持原样，不纳入提交。
 
 
