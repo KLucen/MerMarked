@@ -1264,3 +1264,5 @@ UX5 专项使用临时 BOM/CRLF、中英混排、emoji、GFM 表格/任务列表
 最终 Squirrel 安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：154,915,328 字节；SHA-256 111AF1089050CE6D0F416789CF72ACEBEE43DFADD1589E600623C381BAB9C2AA。安装包和截图留在本地，没有公开发行。原有个人试读 Markdown、画布 fixture 和 hash 命名 HTML 副本均不纳入提交。
 
 真实中文 IME、跨显示器物理 DPI、干净机器安装/卸载残留仍未验证；模拟 DPR 不能代替这些门槛。下一批先测量长文档 renderer 打开/查找/编辑响应性，再推进可取消的后台解析、过期结果保护与必要的虚拟化。UX5 的视觉和菜单切片完成不代表发布质量或 P0 整体完成。
+
+GitHub：实现提交 `6c8c4f6` 已推送至 `origin/codex/ux5-visual-consistency`，成功创建 [PR #5](https://github.com/KLucen/MerMarked/pull/5)，目标 main，尚未合并。本轮推送和连接器 PR 创建均成功。

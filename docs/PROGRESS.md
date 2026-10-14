@@ -15,6 +15,8 @@
 
 产物：out/qa/ux5-*.png、ux5-*.log、ux5-dpi/；安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe，154,915,328 字节，SHA-256 111AF1089050CE6D0F416789CF72ACEBEE43DFADD1589E600623C381BAB9C2AA。个人试读 fixture 和 hash 命名副本保持原样，不纳入提交。
 
+GitHub：实现提交 `6c8c4f6` 已推送至 `origin/codex/ux5-visual-consistency`，成功创建 [PR #5](https://github.com/KLucen/MerMarked/pull/5)，目标 main，尚未合并。本轮推送和连接器 PR 创建均成功。
+
 下一批优先推进长文档响应性：量化 renderer 的打开/查找/编辑耗时，再拆出可取消的后台解析与过期结果保护。真实中文 IME、跨显示器物理 DPI、干净机器安装/卸载和 Worker/虚拟化仍未验收，P0 未完成。
 
 ## 2026-10-13 · UX4 画布精简、原地结构预览与导出预检（当前切片已完成）
