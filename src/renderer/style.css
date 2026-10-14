@@ -805,6 +805,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 }
 
 /* UX5: consistent interaction feedback and viewport-bounded canvas menus. */
+.outline-status { color: var(--text-muted); }
+.outline-status button { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); cursor: pointer; font-size: var(--text-control); min-height: var(--control-height); padding: 5px 10px; }
 :root { font-size: var(--text-ui); }
 input, select, textarea { font-family: var(--font-ui); }
 button, summary { -webkit-tap-highlight-color: transparent; }

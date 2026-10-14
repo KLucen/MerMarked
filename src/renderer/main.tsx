@@ -1,22 +1,15 @@
-import { StrictMode, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, DragEvent as ReactDragEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from 'react';
 import { createRoot } from 'react-dom/client';
-import Markdown from 'react-markdown';
+import { ReaderMarkdown } from './reader-markdown';
+import { useSourceOutline } from './use-source-outline';
 import type { Components, ExtraProps } from 'react-markdown';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
-import remarkFrontmatter from 'remark-frontmatter';
-import remarkGfm from 'remark-gfm';
 import { Clock3, FilePlus2, FolderOpen, X } from 'lucide-react';
-import {
-  detectUnsupportedMarkdownExtensions,
-  readingSanitizeSchema,
-  rehypeReadingHtmlPolicy,
-  remarkReadingDangerousHtmlPolicy,
-} from '../core/markdown-reading';
+import { detectUnsupportedMarkdownExtensions } from '../core/markdown-reading';
 import { markdownToEditorText } from '../core/editor-text';
 import { activeSectionAtMarker, countGraphemes } from '../core/reader-navigation';
 import { extractSections, sectionFragmentIds } from '../core/sections';
+import { normalizeOutlineOffsets, projectSourceOutline } from '../core/source-outline';
 import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
 import {
   applyReaderMappedTextEdit,
@@ -530,10 +523,12 @@ function App() {
       : canvasStatus && canvasStatus.path === openedDocument?.path && canvasStatus.sha256 === openedDocument?.sourceSha256
         ? canvasStatus.status : { text: '尚未载入', tone: 'neutral' },
   };
+  const currentEditorController = useRef(editorController);
+  currentEditorController.current = editorController;
   const readerDocument = useMemo(() => {
     if (!openedDocument || !editorController.editor?.dirty) return openedDocument;
     return { ...openedDocument, content: editorController.editor.content };
-  }, [editorController.editor, openedDocument]);
+  }, [editorController.editor?.content, editorController.editor?.dirty, openedDocument]);
   const reportReaderEditRestriction = useCallback((blockStart: number, reason: string, draftText?: string) => {
     if (readerDocument) setReaderEditFeedback({ blockStart, reason, draftText, contentSnapshot: readerDocument.content });
   }, [readerDocument]);
@@ -552,7 +547,7 @@ function App() {
       reportReaderEditRestriction(blockStart, result.reason, replacement);
       return false;
     }
-    const editor = editorController.editor ?? await editorController.open();
+    const editor = currentEditorController.current.editor ?? await currentEditorController.current.open();
     if (!editor) return false;
     if (activeMode !== 'reader' || documentEpoch.current !== epoch ||
       openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
@@ -560,11 +555,11 @@ function App() {
       reportReaderEditRestriction(blockStart, '正文已变化，未应用的输入已保留，请在源码中继续。', replacement);
       return false;
     }
-    editorController.changeEditorText(markdownToEditorText(result.content));
+    currentEditorController.current.changeEditorText(markdownToEditorText(result.content));
     setReaderEditFeedback(null);
     setMessage('正文已修改，按 Ctrl+S 保存。');
     return true;
-  }, [activeMode, editorController.editor, editorController.open, editorController.changeEditorText, openedDocument, readerCanEdit, readerDocument, reportReaderEditRestriction, setMessage]);
+  }, [activeMode, openedDocument, readerCanEdit, readerDocument, reportReaderEditRestriction, setMessage]);
   const [canvasStructurePreview, setCanvasStructurePreview] = useState<SectionStructurePreview | null>(null);
   const canvasStructureRequest = useRef(0);
   const canvasStructureContext = useRef({ document: openedDocument, content: readerDocument?.content,
@@ -611,32 +606,29 @@ function App() {
     () => editorController.editor ? markdownToEditorText(editorController.editor.content) : '',
     [editorController.editor],
   );
-  const deferredEditorText = useDeferredValue(editorText);
-  const editorSections = useMemo(() => {
-    if (!deferredEditorText) return [];
-    const tree = extractSections(deferredEditorText);
-    return tree.sections.map((section) => {
-      let depth = 1;
-      let parent = section.parentIndex;
-      while (parent !== null) {
-        depth += 1;
-        parent = tree.sections[parent].parentIndex;
-      }
-      return {
-        key: String(section.index),
-        title: section.title,
-        depth,
-        headingDepth: section.depth,
-        sourceOffset: section.headingRange.start,
-      };
-    });
-  }, [deferredEditorText]);
+  const parsedOutline = useMemo(() => {
+    if (!documentForReaderAnalysis || !sectionTree ||
+        editorController.editor?.content !== documentForReaderAnalysis.content) return undefined;
+    return normalizeOutlineOffsets(documentForReaderAnalysis.content, projectSourceOutline(sectionTree));
+  }, [documentForReaderAnalysis, editorController.editor?.content, sectionTree]);
+  const outline = useSourceOutline(editorController.editor?.epoch ?? null, editorText, parsedOutline);
+  const editorSections = outline.sections;
+  const editorCursor = useRef<{ key: string | null; cursor: SourceEditorCursor } | null>(null);
 
   const reportEditorCursor = useCallback((cursor: SourceEditorCursor) => {
+    editorCursor.current = { key: editorController.editor?.epoch ?? null, cursor };
     if (activeMode !== 'editor') return;
     setActiveSection(editorSections.reduce<number | null>((current, section) =>
       section.sourceOffset <= cursor.offset ? Number(section.key) : current, null));
-  }, [activeMode, editorSections]);
+  }, [activeMode, editorController.editor?.epoch, editorSections]);
+
+  useEffect(() => {
+    const current = editorCursor.current;
+    if (!current || activeMode !== 'editor' || outline.status !== 'ready' ||
+        current.key !== editorController.editor?.epoch) return;
+    setActiveSection(editorSections.reduce<number | null>((section, item) =>
+      item.sourceOffset <= current.cursor.offset ? Number(item.key) : section, null));
+  }, [activeMode, editorController.editor?.epoch, editorSections, outline.status]);
 
   const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
     canvasStructureRequest.current += 1;
@@ -2019,7 +2011,7 @@ function App() {
       recentDocuments={recentDocuments}
       panels={panels} taskLabel={activeMode === 'cards' ? '属性' : '批注'}
       taskAvailable={activeMode === 'cards' || activeMode === 'reader'}
-      outline={<DocumentOutline sections={editorSections} activeSection={activeSection}
+      outline={<DocumentOutline sections={editorSections} status={outline.status} onRetry={outline.retry} activeSection={activeSection}
         sourceMode={activeMode === 'editor'} onJumpToSection={(index) => {
           if (panels.narrow) panels.close('left');
           if (activeMode === 'reader') jumpToSection(index);
@@ -2104,7 +2096,7 @@ function App() {
           readOnly={!editorController.editor.editable}
           readOnlyReason={editorController.editor.readOnlyReason}
           saveMessage={editorController.error}
-          sections={editorSections} outlineInShell
+          sections={editorSections} sectionsReady={outline.status === 'ready'} outlineInShell
           onCursorChange={reportEditorCursor}
           activeSectionKey={activeSection === null ? null : String(activeSection)}
           focusOffset={editorFocusOffset ?? (editorFocusRequest > 0 && activeSection !== null
@@ -2235,13 +2227,7 @@ function App() {
                   reportReaderEditRestriction(offset, '这段内容暂不能直接编辑，请在源码中继续。');
                 }
               }}>
-              <Markdown remarkPlugins={[remarkGfm, remarkFrontmatter, remarkReadingDangerousHtmlPolicy]}
-                rehypePlugins={[rehypeRaw, rehypeReadingHtmlPolicy, [rehypeSanitize, readingSanitizeSchema]]}
-                components={components}>
-                {readerDocument!.content.startsWith('\uFEFF')
-                  ? readerDocument!.content.slice(1)
-                  : readerDocument!.content}
-              </Markdown>
+              <ReaderMarkdown content={readerDocument!.content} components={components} />
             </article> : <div className="empty-document"><h2>这份文档目前没有内容</h2><p>可以打开另一份 Markdown 文件继续阅读。</p></div>}
             {readerContextMenu && <div ref={readerContextMenuRef} className="editor-context-menu reader-context-menu" role="menu" aria-label="正文选区操作" data-reader-context-menu="true" tabIndex={-1}
               style={{ left: readerContextMenu.left, top: readerContextMenu.top }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={handleReaderContextMenuKeyDown}>

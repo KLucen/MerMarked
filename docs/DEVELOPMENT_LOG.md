@@ -1266,3 +1266,51 @@ UX5 专项使用临时 BOM/CRLF、中英混排、emoji、GFM 表格/任务列表
 真实中文 IME、跨显示器物理 DPI、干净机器安装/卸载残留仍未验证；模拟 DPR 不能代替这些门槛。下一批先测量长文档 renderer 打开/查找/编辑响应性，再推进可取消的后台解析、过期结果保护与必要的虚拟化。UX5 的视觉和菜单切片完成不代表发布质量或 P0 整体完成。
 
 GitHub：实现提交 `6c8c4f6` 已推送至 `origin/codex/ux5-visual-consistency`，成功创建 [PR #5](https://github.com/KLucen/MerMarked/pull/5)，目标 main，尚未合并。本轮推送和连接器 PR 创建均成功。
+
+
+## 2026-10-14 · PERF1 后台目录与阅读解析复用
+
+### 目标与实现
+
+用户继续下一批开发并延续 GitHub 同步。以 UX5 802a00f 建立 codex/perf1-background-outline；收尾 fetch 后确认 PR #5 已合并为 348037b，代码树相同，用 git merge --ff-only origin/main 快进基线。先阅读产品架构、模式边界、开发流程、可行性审查、进度和 ADR，再记录 PERF1_ACCEPTANCE.md。
+
+本批针对源码输入后的全文目录解析和查找/状态刷新引起的正文重复解析。core/source-outline.ts 提供只读目录投影及线性 CRLF 偏移映射；renderer 的 SourceOutlineTask/Worker/useSourceOutline 负责 120 ms 合并输入、终止旧解析、15 s 超时与精确快照发布。当前阅读树和编辑源全文相同时直接复用。目录 pending/error 不提供旧索引，失败提供重试且完整源码仍可编辑、撤销、保存。
+
+ReaderMarkdown 将插件配置移出 render，按 content/components 复用；阅读快照依赖内容和 dirty，提交回调通过当前控制器 ref 读取操作方法，避免 opening 或同内容草稿确认重建回调。内容/文档/权限变更继续更新正文及映射。章节预览在目录更新期间保留，生成和确认被 sectionsReady 双层禁用；重新就绪后仍按精确源快照核验。
+
+| Before | After | Why |
+| --- | --- | --- |
+| 源码目录以 useDeferredValue 在界面线程重新全文解析 | 当前精确阅读树复用，其余源码解析可终止 Worker | 输入期间不积压同步解析，也不使用过期偏移 |
+| 查找、状态和同内容确认重解析阅读 Markdown | 稳定插件、正文快照和语义回调，复用 DOM | 保留选区对象并减少重复工作 |
+| 更新目录时空 sections 清掉已有结构预览 | 保留预览但禁用依赖新目录的命令和确认 | 用户仍可检查/取消，旧候选不能套到新源 |
+| Worker 返回后章节高亮未随现有光标恢复 | 按同 epoch 的最新光标重新定位 | 后台更新保持源码导航连续 |
+
+主要修改包括 renderer main/editor-view/reader-view/style、独立目录 Worker、核心投影、新 E2E 与性能脚本、npm 脚本和 Vite 条件解析。没有新增依赖、IPC、schema 或持久化字段；架构决定见 ADR-039。按 React best-practices 复核 effect 清理、语义依赖和 memo，并请独立代理只读审查。其额外验证 486 组 BOM/Unicode/实体/混合换行映射、2125 个命名实体及 serve/build resolver，没有修改文件或启动窗口。
+
+### 命令与验证
+
+- npm.cmd run typecheck：通过；npm.cmd test：269/269（原 262 项 + 7 项目录/取消专项）。专项涵盖完整 Markdown 语义、源偏移、替换任务、取消、重复/晚到回复、构造和 postMessage 失败、异常/解码失败、超时。
+- npm.cmd run package：通过，MERMARKD_ELECTRON_ZIP_DIR 使用本机 Electron 44.4.1 缓存。npm.cmd run make -- --skip-package 从当前 package 输出生成最终 Squirrel 安装包；最后视觉调整后重新 package，并复跑 PERF1/UX5。
+- npm.cmd run test:e2e:perf1 与既有 ux5、ux4、ux3、ux2、ux1、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2、a8-3、a8-4、a8-5（同一 test:e2e: 前缀），17 组最终通过。实际鼠标/键盘与真实 Worker 结合，延迟已排队的真实解析回复，验证取消、最新索引/光标、错误重试及文档切换；真实草稿 checkpoint 完成后核对同内容正文 DOM 身份。
+- 开发入口验证：node_modules/.bin/vite.cmd --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort；通过 MERMARKD_QA_RENDERER_URL 指向该地址，在 Electron preload 环境运行同一 PERF1 专项。成功后关闭本次服务；serve/build resolver 的最终条件也经独立审查核对。
+- npm.cmd run test:qa:responsiveness：分别设置 MERMARKD_PERF_MIB=1/5 和可区分的 MERMARKD_PERF_LABEL，保留 baseline 与最终 stable 日志/JSON；最终性能样本测量时没有并行打包或窗口测试。完整前后五项数字见 PROGRESS.md。
+- 改动文件 git diff --check、新 E2E 的 node --check：通过。模式/查找/目录失败与重试/未保存编辑和撤销比较 Markdown/YAML/JSON bytes 和 mtime，均未写三份内容文件。无 sidecar 的新文档不创建伴随文件。
+
+### 失败与修复
+
+- 首次打包 Worker 使用实体解码依赖的 browser 导出，报 document is not defined，进入可重试失败界面。Vite worker.plugins 的 config 条件被 resolved 配置覆盖，最终在 renderer resolve.conditions 中优先 worker，使开发服务与打包目录都使用 DOM-free 实现。普通浏览器语义与命名实体结果核对通过。
+- 初版测试在 CDP 上重复声明全局 const 和序列化 DOM 返回值，分别出现重复声明与 object reference chain 错误。改为 IIFE 和 void 返回，不改变实际键盘、文件或过期结果断言。
+- 首版异步目录恢复后未重新计算 activeSection，独立审查发现后绑定 editor epoch 与最新光标重算；另发现同内容 editor 元数据仍使 memo 失效，改为语义内容依赖和当前控制器 ref，并增加真实 checkpoint DOM 复用测试。一次 typecheck 提示 current 可能为空，补显式 null guard 后通过。
+- A7.5 发现 pending 空目录使旧结构预览被清掉，原 stale-preview-disabled 等待失败。保留预览状态并显式 sectionsReady 禁用生成/确认，重新就绪后继续源文本比较；原预览取消、stale 拒绝和 BOM/CRLF 保存回归通过。
+- 最初 5 MiB 测量有并行 Squirrel 负载，随后在独立测量中仍见首屏退步。消除初始重复目录解析，再稳定 opening 状态变化引起的提交回调，最终首屏 6595→4898 ms。全部中间日志保留，未将早期退步样本当作最终结果。
+- A8.2 两次父卡拖动未改变坐标。等待 draggable 后增加两帧绘制，再读取实际标题位置；检查命中元素后移除诊断截图/日志，独立复跑通过。真实拖动持久化、子卡相对坐标、撤销/重做和原文/YAML 不变断言全部保留。
+
+### 性能证据、产物与下一批
+
+1,058,744 字节 / 205 标题样本：正文首屏 1762→1394 ms、打开查找 249→126 ms、唯一正文词查找 702→200 ms、切换源码 154→344 ms、源码输入到下一帧 235→102 ms。5,288,903 字节 / 1024 标题：6595→4898、1167→83、3272→504、437→597、1208→282 ms。首屏指标截止标题 DOM 与绘制帧，不包含所有后台核验。测量是同机单次前后点值，不是跨机器预算保证；源码切换壁钟耗时未改善。
+
+最终 5 MiB 的首屏最长帧间隔 4721 ms、查找 442 ms、源码输入 113 ms，仍有明显阻塞。全部阅读章节/选区/扩展分析、DOM 查找和渲染未后台化，也未实现虚拟化，P0 性能门槛仍进行中。下一批 PERF2 优先首次阅读分析与加载期间的模式/文档/缓冲区隔离，再依据测量处理搜索和 DOM 渲染。真实 IME、跨显示器物理 DPI、干净机器安装/卸载仍待验收。
+
+日志与 JSON 为 out/qa/perf1-{unit,package,e2e,dev-e2e,make-final,baseline,baseline-5m,stable-1m,stable-5m}.* 及 perf1-regression-*.log；保留中间 after/final/repeat/reuse 测量。人工查看 perf1-outline-error.png 和 perf1-outline-ready.png；失败提示可读、重试符合共享控件样式、计数用 — 区分未知与零章节。
+
+最终 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：154,973,184 字节；SHA-256 388452CD8CFB964E7DCF34E56F771B9D75C5F510E2D9003ED569996D339FFB11。安装包本地生成，不公开发行。原有个人试读 Markdown/画布 fixture 和 hash 命名 HTML 保留且不提交。
