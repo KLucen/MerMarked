@@ -41,15 +41,8 @@ interface EditorContextMenuState {
   readonly revision: number;
 }
 
-export interface SourceEditorSection {
-  readonly key: string;
-  readonly title: string;
-  readonly depth: number;
-  /** Raw Markdown heading depth, which may differ from the tree indentation depth. */
-  readonly headingDepth?: number;
-  /** UTF-16 offset in the LF-normalized editor text. */
-  readonly sourceOffset: number;
-}
+export type { SourceOutlineSection as SourceEditorSection } from '../core/source-outline';
+import type { SourceOutlineSection as SourceEditorSection } from '../core/source-outline';
 
 export interface SourceEditorCursor {
   readonly offset: number;
@@ -77,6 +70,7 @@ export interface MarkdownEditorViewProps {
   readonly readOnlyReason?: string | null;
   readonly saveMessage?: string | null;
   readonly sections?: readonly SourceEditorSection[];
+  readonly sectionsReady?: boolean;
   readonly activeSectionKey?: string | null;
   readonly focusOffset?: number | null;
   readonly focusRequestKey?: string | number | null;
@@ -198,6 +192,7 @@ export function MarkdownEditorView({
   readOnlyReason = null,
   saveMessage = null,
   sections,
+  sectionsReady = true,
   activeSectionKey,
   focusOffset = null,
   focusRequestKey = null,
@@ -360,6 +355,7 @@ export function MarkdownEditorView({
   }, [clearHistory, documentKey]);
 
   useEffect(() => {
+    if (!sectionsReady) return;
     if (!sections?.length) {
       setMoveSourceIndex(null);
       setMoveTargetIndex(null);
@@ -379,7 +375,7 @@ export function MarkdownEditorView({
     if (selected && levelTargetDepth >= (selected.headingDepth ?? selected.depth)) {
       setLevelTargetDepth(Math.max(1, (selected.headingDepth ?? selected.depth) - 1));
     }
-  }, [levelSectionIndex, levelTargetDepth, moveSourceIndex, moveTargetIndex, sections]);
+  }, [levelSectionIndex, levelTargetDepth, moveSourceIndex, moveTargetIndex, sections, sectionsReady]);
 
   useEffect(() => {
     if (pendingValue.current === value) {
@@ -678,22 +674,24 @@ export function MarkdownEditorView({
   }, [recordAndEmit, saving, selectionFromContext, sourceIsReadOnly]);
 
   const previewMove = useCallback(() => {
+    if (!sectionsReady) return;
     if (moveSourceIndex === null || moveTargetIndex === null) return;
     setStructurePreview(previewSectionTransform(currentValue.current, {
       kind: 'move', sourceIndex: moveSourceIndex, targetIndex: moveTargetIndex,
     }));
-  }, [moveSourceIndex, moveTargetIndex]);
+  }, [moveSourceIndex, moveTargetIndex, sectionsReady]);
 
   const previewLevelChange = useCallback(() => {
+    if (!sectionsReady) return;
     if (levelSectionIndex === null) return;
     setStructurePreview(previewSectionTransform(currentValue.current, {
       kind: 'promote', sectionIndex: levelSectionIndex, targetDepth: levelTargetDepth,
     }));
-  }, [levelSectionIndex, levelTargetDepth]);
+  }, [levelSectionIndex, levelTargetDepth, sectionsReady]);
 
   const applyStructurePreview = useCallback(() => {
     const preview = structurePreview;
-    if (!preview || readOnly || saving || !annotationImpact) return;
+    if (!sectionsReady || !preview || readOnly || saving || !annotationImpact) return;
     if (preview.status !== 'ready') {
       setActionMessage(preview.rejection.message);
       return;
@@ -706,7 +704,7 @@ export function MarkdownEditorView({
     recordAndEmit(preview.candidate, { start: 0, end: 0, direction: 'none' });
     setStructurePreview(null);
     setActionMessage(`${preview.summary} 已加入源码编辑历史，可用“撤销”恢复。`);
-  }, [annotationImpact, readOnly, recordAndEmit, saving, structurePreview]);
+  }, [annotationImpact, readOnly, recordAndEmit, saving, structurePreview, sectionsReady]);
 
   const applyCanvasStructure = async () => {
     if (!canvasStructurePreview?.token || !onConfirmCanvasStructure || saving || readOnly ||
@@ -813,7 +811,7 @@ export function MarkdownEditorView({
         busy={saving} confirmDisabled={sourceIsReadOnly} stale={markdownToEditorText(canvasStructurePreview.source) !== value}
         onConfirm={() => void applyCanvasStructure()} onCancel={() => onCancelCanvasStructure?.()} />}
 
-      {!canvasStructurePreview && sections && sections.length > 0 && <section id="source-structure-tools" hidden={!structureToolsOpen} className="source-structure" aria-label="章节源码变换" data-editor-structure="true">
+      {!canvasStructurePreview && sections && (sections.length > 0 || structurePreview) && <section id="source-structure-tools" hidden={!structureToolsOpen} className="source-structure" aria-label="章节源码变换" data-editor-structure="true">
         <div className="source-structure-heading">
           <div><strong>章节源码变换</strong><span>所有操作先生成候选，确认后作为一次编辑进入撤销栈。</span></div>
         </div>
@@ -821,19 +819,19 @@ export function MarkdownEditorView({
           <label>源章节
             <select data-structure-source="true" value={moveSourceIndex ?? ''} onChange={(event) => {
               setMoveSourceIndex(Number(event.target.value)); setStructurePreview(null);
-            }} disabled={sourceIsReadOnly || saving}>
+            }} disabled={!sectionsReady || sourceIsReadOnly || saving}>
               {sections.map((section) => <option key={section.key} value={section.key}>{sectionOptionLabel(section)}</option>)}
             </select>
           </label>
           <label>目标章节
             <select data-structure-target="true" value={moveTargetIndex ?? ''} onChange={(event) => {
               setMoveTargetIndex(Number(event.target.value)); setStructurePreview(null);
-            }} disabled={sourceIsReadOnly || saving}>
+            }} disabled={!sectionsReady || sourceIsReadOnly || saving}>
               {sections.map((section) => <option key={section.key} value={section.key}>{sectionOptionLabel(section)}</option>)}
             </select>
           </label>
           <button type="button" data-editor-preview-move="true" onClick={previewMove}
-            disabled={sourceIsReadOnly || saving || moveSourceIndex === null || moveTargetIndex === null}>预览移动为子章节</button>
+            disabled={!sectionsReady || sourceIsReadOnly || saving || moveSourceIndex === null || moveTargetIndex === null}>预览移动为子章节</button>
         </div>
         <div className="source-structure-controls">
           <label>提升章节
@@ -843,20 +841,20 @@ export function MarkdownEditorView({
               const section = sections.find((item) => Number(item.key) === next);
               setLevelTargetDepth(Math.max(1, (section?.headingDepth ?? section?.depth ?? 1) - 1));
               setStructurePreview(null);
-            }} disabled={sourceIsReadOnly || saving}>
+            }} disabled={!sectionsReady || sourceIsReadOnly || saving}>
               {sections.map((section) => <option key={section.key} value={section.key}>{sectionOptionLabel(section)}</option>)}
             </select>
           </label>
           <label>新标题级别
             <select data-structure-level-depth="true" value={levelTargetDepth} onChange={(event) => {
               setLevelTargetDepth(Number(event.target.value)); setStructurePreview(null);
-            }} disabled={sourceIsReadOnly || saving}>
+            }} disabled={!sectionsReady || sourceIsReadOnly || saving}>
               {Array.from({ length: Math.max(1, selectedHeadingDepth - 1) }, (_, index) => index + 1)
                 .map((depth) => <option key={depth} value={depth}>第 {depth} 级</option>)}
             </select>
           </label>
           <button type="button" data-editor-preview-level="true" onClick={previewLevelChange}
-            disabled={sourceIsReadOnly || saving || levelSectionIndex === null || selectedHeadingDepth <= 1}>预览提升章节</button>
+            disabled={!sectionsReady || sourceIsReadOnly || saving || levelSectionIndex === null || selectedHeadingDepth <= 1}>预览提升章节</button>
           <span className="source-structure-hint">当前第 {selectedHeadingDepth} 级</span>
         </div>
         {structurePreview && <div className="source-structure-preview" role="status" data-editor-structure-preview="true">
@@ -873,7 +871,7 @@ export function MarkdownEditorView({
               <div><span>变更后</span><pre data-editor-structure-after="true">{structurePreview.candidate}</pre></div>
             </div>
             <button type="button" className="primary" data-editor-apply-structure="true"
-              onClick={applyStructurePreview} disabled={sourceIsReadOnly || saving || !annotationImpact || structurePreview.source !== value}>确认并加入撤销栈</button>
+              onClick={applyStructurePreview} disabled={!sectionsReady || sourceIsReadOnly || saving || !annotationImpact || structurePreview.source !== value}>确认并加入撤销栈</button>
           </>}
           <button type="button" data-editor-cancel-structure="true" onClick={() => setStructurePreview(null)}>取消预览</button>
         </div>}

@@ -54,6 +54,7 @@ try {
   const rootId = beforeDrag.cards[0].id;
   await cdp.send('Page.bringToFront');
   await waitFor(cdp, `document.querySelector('[data-id="${rootId}"]')?.classList.contains('draggable')===true`, 'draggable root');
+  await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   const drag = await cdp.evaluate(`(() => { const element = document.querySelector('[data-id="${rootId}"] .canvas-card-header strong'); const box = element.getBoundingClientRect(); return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; })()`);
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: drag.x, y: drag.y, button: 'left', clickCount: 1, buttons: 1 });
   for (let index = 1; index <= 12; index++) await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: drag.x + index * 8, y: drag.y + index * 4, buttons: 1 });
