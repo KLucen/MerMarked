@@ -1,5 +1,22 @@
 # MerMarkd 开发进度
 
+## 2026-10-14 · UX5 视觉一致性与菜单键盘操作（当前切片已完成）
+
+在 codex/ux5-visual-consistency 完成本批。开始时基于 UX4 的 83e749b；收尾确认 [PR #4](https://github.com/KLucen/MerMarked/pull/4) 已合并，已快进至 main 的 ce031bd，代码树相同。验收清单见 [UX5_ACCEPTANCE.md](UX5_ACCEPTANCE.md)。
+
+- 外壳、阅读、源码、批注与画布共用字体、颜色、圆角和常用间距。阅读正文 16 px、源码 13 px、辅助文字至少 12 px；提高辅助字色和焦点环对比，批注颜色保留语义。
+- 画布“更多 / 导出”互斥打开，支持 Space/Enter、方向键/Home/End、Escape、Tab 离开和外部点击；动作结束回到触发器。菜单随触发器定位，在窄屏、短窗口和缩放下限制于视口，触发器滚出视口时关闭。
+- 修复 React Flow 空格平移快捷键拦截菜单打开，以及初始布局完成后仍显示“正在整理”的问题。状态详情使用统一警告/错误颜色，同时保留文字；减少动态效果模式停用相关过渡和按压位移。
+- 纯呈现操作、模式切换、编辑缓冲撤销没有改写 Markdown、批注 YAML 或画布 JSON；没有增加依赖、IPC、schema 或保存合同。
+
+验证：类型检查、262/262 单测、改动文件 diff 检查、生产打包和 Squirrel 安装包生成通过。16 组打包 E2E（UX5/UX4/UX3/UX2/UX1/B1/A6/A7.1/A7.2/A7.3b/A7.4/A7.5/A8.2/A8.3/A8.4/A8.5）通过，最终包复跑 UX5/UX4。专项覆盖实际键鼠、三文件 bytes/mtime、1200/800/420 CSS px、420×360、200% 页面缩放、强制高对比和减少动态效果。
+
+额外使用 qa-installed 脚本检查本次 **out/MerMarkd-win32-x64/MerMarkd.exe 打包目录程序**，DPR 1/1.25/1.5/2 下控件均可达，DPR 1 导出 PNG 844×564；并非本次重新安装或跨物理显示器验证。核心 5 MiB/1000 标题/200 卡片样本：解析 892.10 ms、场景 1.93 ms、布局 161.75 ms，采样 RSS 最大 274.72 MiB；不等同于 renderer 性能预算通过。
+
+产物：out/qa/ux5-*.png、ux5-*.log、ux5-dpi/；安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe，154,915,328 字节，SHA-256 111AF1089050CE6D0F416789CF72ACEBEE43DFADD1589E600623C381BAB9C2AA。个人试读 fixture 和 hash 命名副本保持原样，不纳入提交。
+
+下一批优先推进长文档响应性：量化 renderer 的打开/查找/编辑耗时，再拆出可取消的后台解析与过期结果保护。真实中文 IME、跨显示器物理 DPI、干净机器安装/卸载和 Worker/虚拟化仍未验收，P0 未完成。
+
 ## 2026-10-13 · UX4 画布精简、原地结构预览与导出预检（当前切片已完成）
 
 基于已合并的 UX3 / [PR #3](https://github.com/KLucen/MerMarked/pull/3)（39f72eb），在 codex/ux4-canvas-clarity 完成本批。验收清单见 [UX4_ACCEPTANCE.md](UX4_ACCEPTANCE.md)。
@@ -78,7 +95,7 @@ GitHub：实现提交 `f33326d` 已推送至 `codex/ux2-shared-panels`，已创�
 
 验证：源码搜索与定向读取、历史截图人工检查、官方交互指南核对、`git diff --check -- docs/DESIGN_REVIEW_2026-10-11.md docs/PROGRESS.md docs/DEVELOPMENT_LOG.md`。本轮为文档评审，未运行类型检查、单测、打包或新的 Electron 窗口；历史验证结果不作为本轮实测。P0 与最新实现的真实窗口回归仍按原记录待验收。
 
-> 2026-10-13。当前阶段：P0 可行性原型，仍进行中。UX1、UX2、UX3 已合并；UX4 当前切片已完成并通过 15 组窗口回归，下一批 UX5。P0 剩余性能、真实 IME、安装/卸载与多显示器 DPI 门槛未闭合。历史切片验证见下文，开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-14。当前阶段：P0 可行性原型，仍进行中。UX1–UX4 已合并；UX5 当前视觉与菜单切片已完成，16 组窗口回归及四档模拟 DPR 通过。下一批先量化长文档 renderer 响应性并推进后台解析；真实 IME、安装/卸载、多显示器 DPI 和性能门槛未闭合。历史切片验证见下文，开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## B1.3 窄窗口抽屉与画布工具栏收敛（当前切片已完成）
 

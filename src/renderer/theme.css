@@ -1,0 +1,59 @@
+/* Shared presentation values. Annotation colors retain their content meaning. */
+:root {
+  --font-ui: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  --font-mono: 'Cascadia Code', Consolas, 'Microsoft YaHei Mono', 'Noto Sans Mono CJK SC', monospace;
+  --text: #243247;
+  --text-muted: #59677a;
+  --text-subtle: #5f6c80;
+  --surface: #fff;
+  --surface-muted: #f7f9fc;
+  --surface-hover: #eef2f7;
+  --surface-canvas: #f3f6fa;
+  --border: #cbd5e1;
+  --divider: #e1e7ef;
+  --accent: #315eb7;
+  --accent-hover: #244e98;
+  --accent-soft: #edf3ff;
+  --on-accent: #fff;
+  --warning: #825817;
+  --warning-soft: #fff7e8;
+  --error: #a33636;
+  --error-soft: #fff0f0;
+  --focus: #315eb7;
+  --radius-small: 4px;
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --text-caption: 12px;
+  --text-control: 13px;
+  --text-ui: 14px;
+  --text-reading: 16px;
+  --control-height: 32px;
+}
+
+@media (forced-colors: active) {
+  :root {
+    --text: CanvasText;
+    --text-muted: CanvasText;
+    --text-subtle: CanvasText;
+    --surface: Canvas;
+    --surface-muted: Canvas;
+    --surface-hover: Canvas;
+    --surface-canvas: Canvas;
+    --border: ButtonText;
+    --divider: CanvasText;
+    --accent: Highlight;
+    --accent-hover: Highlight;
+    --accent-soft: Canvas;
+    --on-accent: HighlightText;
+    --warning: CanvasText;
+    --warning-soft: Canvas;
+    --error: CanvasText;
+    --error-soft: Canvas;
+    --focus: Highlight;
+  }
+}

@@ -1,6 +1,7 @@
 import { preflightCanvasExport } from '../core/canvas-export-preflight';
 import { CanvasStructurePreview } from './canvas-structure-preview';
 import { WorkspaceTaskPanel } from './workspace-panels';
+import { useCanvasToolbarMenus } from './use-canvas-toolbar-menus';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
@@ -130,6 +131,8 @@ export interface CanvasViewProps {
 
 function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onStructurePreview, onStatusChange, structurePreview, structureBusy, onConfirmStructure, onCancelStructure, onOpenProperties, canUndoSource, canRedoSource, onUndoSource, onRedoSource }: CanvasViewProps) {
   const flow = useReactFlow<ChapterNode>();
+  const toolbar = useRef<HTMLDivElement>(null);
+  useCanvasToolbarMenus(toolbar);
   const [model, setModel] = useState<CanvasStateV2 | null>(null);
   const [bindings, setBindings] = useState<readonly CanvasBinding[]>([]);
   const [unresolvedIds, setUnresolvedIds] = useState<readonly string[]>([]);
@@ -245,9 +248,10 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
           const viewport = flow.getViewport();
           setModel((previous) => previous ? { ...previous, viewport } : previous);
           setLayoutPending(false);
+          setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : '布局已就绪 · 尚未保存');
         }); }, 50);
     }).catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('初始布局失败，请重新载入画布。'); } });
-  }, [bindings, minimumHeights, model, tree]);
+  }, [bindings, dirty, minimumHeights, model, tree]);
 
   const persist = useCallback(async (next: CanvasStateV2, remember = true) => {
     if (!model || readOnly || saveInFlight.current) return false;
@@ -448,7 +452,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   }, [busy, document.sourceSha256, exporting, exportPreflight, readError, readOnly, scene]);
 
   return <main className="canvas-mode" data-canvas-view="true">
-    <div className="canvas-toolbar" role="toolbar" aria-label="画布工具">
+    <div ref={toolbar} className="canvas-toolbar" role="toolbar" aria-label="画布工具">
       <div className="canvas-toolbar-group canvas-toolbar-primary" role="group" aria-label="视图导航">
         <button className="canvas-toolbar-labeled" title="适应全图" aria-label="适应全图" onClick={() => void flow.fitView({ padding: 0.15 })}><Focus size={17} /><span>适应</span></button>
         <button className="canvas-toolbar-labeled" title="定位当前卡片" aria-label="定位当前卡片" disabled={!currentCard} onClick={() => currentCard && void flow.fitView({ nodes: [{ id: currentCard.id }], padding: 0.4 })}><Crosshair size={17} /><span>定位</span></button>

@@ -322,9 +322,9 @@ export function AppShell({
         <WorkspacePopover key={`status-${document.path}`} label="文档状态" className={`workspace-document-status ${summary?.tone ?? 'neutral'}`}
           trigger={<span data-workspace-summary="true">{documentStatus}</span>}>
           {workspaceStatuses && <div className="workspace-status-details" aria-label="文档各部分状态">
-            <span data-workspace-status="source">正文：{workspaceStatuses.source.text}</span>
-            <span data-workspace-status="annotations">批注：{workspaceStatuses.annotations.text}</span>
-            <span data-workspace-status="canvas">画布：{workspaceStatuses.canvas.text}</span>
+            <span data-workspace-status="source" data-tone={workspaceStatuses.source.tone}>正文：{workspaceStatuses.source.text}</span>
+            <span data-workspace-status="annotations" data-tone={workspaceStatuses.annotations.tone}>批注：{workspaceStatuses.annotations.text}</span>
+            <span data-workspace-status="canvas" data-tone={workspaceStatuses.canvas.tone}>画布：{workspaceStatuses.canvas.text}</span>
           </div>}
           {annotationDetails}
         </WorkspacePopover>

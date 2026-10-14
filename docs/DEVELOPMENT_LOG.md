@@ -1217,3 +1217,50 @@ npm.cmd test：262/262 通过。npm.cmd run typecheck、改动文件 git diff --
 下一批 UX5 继续统一字体、间距、状态色和焦点反馈；真实中文 IME、多显示器物理 DPI、安装/卸载残留与大文档 Worker/虚拟化仍属 P0 未闭合门槛。本批不扩展实际导出引擎上限或发布产品版本。
 
 GitHub：实现提交 `0728e9e` 已推送至 `origin/codex/ux4-canvas-clarity`，连接器成功创建 [PR #4](https://github.com/KLucen/MerMarked/pull/4)，目标 main，尚未合并。本轮推送与 PR 创建均成功。
+
+
+## 2026-10-14 · UX5 视觉一致性、可读性与菜单焦点
+
+### 目标与实现
+
+继续用户授权的逐批开发和 GitHub 同步。在 UX4 83e749b 上建立 codex/ux5-visual-consistency；开发期间确认 PR #4 已合并为 ce031bd，git fetch origin 后核对两者代码树相同，再用 git merge --ff-only origin/main 快进基线，没有更改既有工作区内容。UX5 PR 直接面向 main。
+
+修改前核对产品架构、模式边界、开发流程、可行性审查、进度和 ADR。沿用 emil-design-eng 做层级/可读性/反馈检查，并按 vercel:react-best-practices 复核组件、effect 清理、依赖和键盘语义。验收先记录在 UX5_ACCEPTANCE.md。
+
+| Before | After | Why |
+| --- | --- | --- |
+| 各区域零散的字体、近似颜色和 10/11 px 辅助字 | theme.css 提供共享字号、字色、主色、圆角及常用间距；阅读 16 px、源码 13 px、辅助文字至少 12 px | 保持三种视图的可读性和视觉层级 |
+| 焦点环偏浅、状态颜色各自定义 | 统一 2 px 焦点样式及警告/错误色，状态详情保留明确文字 | 键盘位置和失败状态更容易辨认 |
+| 画布菜单可同时打开，空格受平移快捷键拦截 | 原生 details 语义配合互斥、Space/Enter、方向键/Home/End、Escape 和焦点归还 | 高频键盘操作即时、可预测 |
+| 导出弹层在窄屏使用固定偏移 | 跟随触发器测量定位、限制可用高度并允许滚动，触发器离开视口时关闭 | 短窗口和缩放下操作仍可达 |
+| 布局已经完成仍显示正在整理 | 布局完成后显示“布局已就绪 · 尚未保存” | 状态对应实际工作进度与磁盘边界 |
+
+主要文件为 renderer 的 theme.css、style.css、use-canvas-toolbar-menus.ts、canvas-view.tsx 和 app-shell.tsx。菜单 hook 只管理呈现事件，在卸载时清理监听和 ResizeObserver；布局状态更新沿用 generation 校验。没有改变依赖、schema、IPC、领域模型或三文件保存，因此未新增架构 ADR。qa-installed.mjs 的临时目录清理增加绝对路径和前缀核验。
+
+### 命令与结果
+
+- npm.cmd run typecheck：通过；npm.cmd test：262/262。
+- npm.cmd run package、npm.cmd run make：通过，使用 MERMARKD_ELECTRON_ZIP_DIR 指向本机 Electron 44.4.1 ZIP 缓存。最终修改后重新 package，复跑 UX5/UX4 和 DPR，然后用 npm.cmd run make -- --skip-package 从同一最终打包目录生成安装包。该参数由本机 Forge --help 核实；没有复用旧源码构建。
+- 串行运行 npm.cmd run test:e2e:ux5，以及 ux4、ux3、ux2、ux1、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2、a8-3、a8-4、a8-5（同一 test:e2e: 前缀），16 组通过。覆盖既有选文、批注、冲突保存、章节拖放/撤销、恢复和完整导出流程；避免并行窗口争抢焦点与剪贴板。
+- npm.cmd run test:e2e:qa-installed：通过。明确使用 out/MerMarkd-win32-x64/MerMarkd.exe，未设置安装版路径；DPR 1、1.25、1.5、2 下控件未越界。每档从进程启动累计到 renderer 就绪为 480/480/490/478 ms，阅读打开为 654/643/610/646 ms，卡片就绪为 901/753/721/756 ms；不是各阶段独立耗时。DPR 1 导出 PNG 为 844×564。
+- npm.cmd run test:qa:performance：5,242,880 字节、1000 标题、200 卡片，extractSections 892.10 ms、buildCanvasScene 1.93 ms、arrangeCanvas 161.75 ms；各阶段采样 RSS 为 274.57/274.72/243.94 MiB，最大采样值 274.72 MiB。这是一次 Node 核心样本测量，没有 renderer 卡顿和端到端性能结论。
+- 改动文件 git diff --check 与新 E2E 的 node --check：通过。
+
+UX5 专项使用临时 BOM/CRLF、中英混排、emoji、GFM 表格/任务列表和代码样本，实际鼠标与 CDP 键盘输入覆盖原生菜单、跳过禁用项、循环方向键、动作关闭、Tab 离开、点击外部、焦点恢复。检查 1200×800、800×700、420×800、420×360 CSS px、200% 页面缩放、强制高对比与减少动态效果。比较正文、批注、画布的 bytes 和 mtime，确认模式、编辑缓冲撤销、菜单、窗口/缩放与媒体偏好变化均零写入。
+
+### 排查与修复记录
+
+- 空格打开 details 的测试失败，定位到 React Flow 在 document 上监听空格并 preventDefault。菜单 summary 的空格事件现在停止冒泡，同时保留浏览器原生展开默认行为；实际键盘回归通过。
+- 状态按钮 Enter 测试未产生 click；事件记录显示键盘未被应用阻止，CDP helper 缺少 Enter 的回车文本负载。补齐原生按键文本并等待布局/焦点帧，没有用直接调用 onClick 替代键盘验收。
+- Windows 分数缩放下声明 2 px 焦点环的计算值为 1.6 px（物理像素取整），断言改为可见宽度至少 1.5 px，同时保留样式声明和焦点对象核验。
+- 截图显示初始布局完成后仍保留“正在整理”；修正完成分支消息，并断言可保存时状态已经就绪。
+- 辅助字色在目录计数浅底上的对比不足，调整共享辅助色至 #5f6c80，并增加目录计数对比断言；正文、链接和警告文字对比也通过。
+- 最后补充滚动边界：触发器离开视口时关闭弹层，避免固定菜单停留在负坐标。最终包专项通过。
+
+### 产物与后续
+
+人工查看 out/qa/ux5-reader-{1200,420}.png、ux5-source-420.png、ux5-source-dirty.png、ux5-export-420-360.png、ux5-zoom-200.png、ux5-forced-colors.png。确认语义排版、源码字符、短窗口导出和焦点可见。日志为 out/qa/ux5-{unit,package,make,make-final,e2e,dpi,performance}.log 与 ux5-regression-*.log；四档 DPR 截图在 out/qa/ux5-dpi/。
+
+最终 Squirrel 安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：154,915,328 字节；SHA-256 111AF1089050CE6D0F416789CF72ACEBEE43DFADD1589E600623C381BAB9C2AA。安装包和截图留在本地，没有公开发行。原有个人试读 Markdown、画布 fixture 和 hash 命名 HTML 副本均不纳入提交。
+
+真实中文 IME、跨显示器物理 DPI、干净机器安装/卸载残留仍未验证；模拟 DPR 不能代替这些门槛。下一批先测量长文档 renderer 打开/查找/编辑响应性，再推进可取消的后台解析、过期结果保护与必要的虚拟化。UX5 的视觉和菜单切片完成不代表发布质量或 P0 整体完成。

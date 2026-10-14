@@ -203,5 +203,8 @@ try {
   }
   console.log(JSON.stringify({ status: 'passed', executable, scales, results }, null, 2));
 } finally {
-  await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  const resolvedWorkspace = path.resolve(workspace);
+  assert.equal(path.dirname(resolvedWorkspace), path.resolve(os.tmpdir()), 'cleanup stays in the temporary directory');
+  assert.ok(path.basename(resolvedWorkspace).startsWith('mermarkd-installed-qa-'), 'cleanup targets only this generated QA workspace');
+  await rm(resolvedWorkspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }
