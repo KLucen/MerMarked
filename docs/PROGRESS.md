@@ -16,7 +16,7 @@
 
 下一批 **PERF3**：按长任务证据继续拆分正文渲染/绘制、可见正文查找和源码输入；补齐 200 可见卡片与大量批注窗口样本。随后 UX6B → UX7 → UX8 → QA1。真实中文 IME、物理跨屏 DPI、干净 Windows 安装/升级/卸载仍待验收。三项用户原有 fixture / hash 命名 HTML 修改保持原样，不纳入本批。
 
-GitHub：本批待提交和创建 PR；交付后补记实际链接。
+GitHub：实现提交 `1157b8e` 已推送至 `origin/codex/perf2-background-reading`，成功创建 [PR #8](https://github.com/KLucen/MerMarked/pull/8)，目标 main，尚未合并。推送和连接器 PR 创建均成功；PR 已附加到当前任务。
 
 ## 2026-10-15 · UX6A 未提交输入与离开保护（当前切片已完成）
 

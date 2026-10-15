@@ -1452,4 +1452,4 @@ npm.cmd run test:e2e:perf2
 
 安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`：155,022,336 字节，SHA-256 `D5A403C7741B4B2F79C87F7FBF7A82C99EB2273E98C96C74785AA3B8480A0E1E`，本地生成未公开发行。下一批 PERF3 聚焦正文渲染/绘制、可见正文索引与查询取消、源码输入及剩余调度瓶颈；不得按字符或换行随意切 Markdown，必须保留选区/锚点/查找和完整导出语义。
 
-GitHub：本批待提交和创建 PR；交付后补记实际链接。
+GitHub：实现提交 `1157b8e` 已推送至 `origin/codex/perf2-background-reading`，成功创建 [PR #8](https://github.com/KLucen/MerMarked/pull/8)，目标 main，尚未合并。推送和连接器 PR 创建均成功；PR 已附加到当前任务。
