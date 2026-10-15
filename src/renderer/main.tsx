@@ -3,15 +3,15 @@ import type { ComponentProps, DragEvent as ReactDragEvent, FormEvent, KeyboardEv
 import { createRoot } from 'react-dom/client';
 import { ReaderMarkdown } from './reader-markdown';
 import { useSourceOutline } from './use-source-outline';
+import { useReadingAnalysis } from './use-reading-analysis';
 import { useInputLeaveGuard } from './use-input-leave-guard';
 import type { Components, ExtraProps } from 'react-markdown';
 import { Clock3, FilePlus2, FolderOpen, X } from 'lucide-react';
-import { detectUnsupportedMarkdownExtensions } from '../core/markdown-reading';
 import { markdownToEditorText } from '../core/editor-text';
 import { activeSectionAtMarker, countGraphemes } from '../core/reader-navigation';
-import { extractSections, sectionFragmentIds } from '../core/sections';
+import { sectionFragmentIds } from '../core/sections';
 import { normalizeOutlineOffsets, projectSourceOutline } from '../core/source-outline';
-import { buildSelectionMap, resolveSelection, resolveStoredHighlight } from '../core/selection-map';
+import { resolveSelection, resolveStoredHighlight } from '../core/selection-map';
 import {
   applyReaderMappedTextEdit,
   escapeReaderPlainText,
@@ -521,8 +521,6 @@ function App() {
   useEffect(() => {
     if (openedDocument && !editorController.editor && !editorController.opening && !editorController.error) void editorController.open();
   }, [openedDocument, editorController.editor, editorController.opening, editorController.error, editorController.open]);
-  const readerCanEdit = Boolean(editorController.editor?.editable) && !editorController.busy &&
-    !openedDocument?.recoveryPending && !annotationView?.canReloadSource && readerEditFeedback?.draftText === undefined;
   const newNoteChanged = Boolean(noteComposer && (noteDraft.length || noteTagChoice !== NO_TAG || newTagName.length));
   const editNoteChanged = Boolean(editingNoteId && (editNoteDraft !== editNoteBaseline.current.text ||
     editTagChoice !== editNoteBaseline.current.tag || editNewTagName.length));
@@ -573,6 +571,14 @@ function App() {
     if (!openedDocument || !editorController.editor?.dirty) return openedDocument;
     return { ...openedDocument, content: editorController.editor.content };
   }, [editorController.editor?.content, editorController.editor?.dirty, openedDocument]);
+  const readingAnalysis = useReadingAnalysis(openedDocument ? String(noteDocumentKey.current) : null,
+    readerDocument?.content ?? '', readerDocument?.bomByteLength ?? 0, activeMode === 'reader');
+  const readingReady = readingAnalysis.status === 'ready';
+  const readerCanEdit = readingReady && Boolean(editorController.editor?.editable) && !editorController.busy &&
+    !openedDocument?.recoveryPending && !annotationView?.canReloadSource && readerEditFeedback?.draftText === undefined;
+  useEffect(() => {
+    if (!readingReady) clearReaderSelection({ clearNative: true });
+  }, [readingReady, clearReaderSelection]);
   const reportReaderEditRestriction = useCallback((blockStart: number, reason: string, draftText?: string) => {
     if (readerDocument) setReaderEditFeedback((current) => current?.draftText !== undefined && draftText === undefined
       ? { ...current, reason } : { blockStart, reason, draftText, contentSnapshot: readerDocument.content });
@@ -617,22 +623,9 @@ function App() {
   const [recoveryPreview, setRecoveryPreview] = useState<DocumentRecoveryPreview | null>(null);
   const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
-  const documentForReaderAnalysis = activeMode === 'reader' ? readerDocument : openedDocument;
-  const sectionTree = useMemo(
-    () => documentForReaderAnalysis ? extractSections(documentForReaderAnalysis.content) : null,
-    [documentForReaderAnalysis],
-  );
-  const selectionMap = useMemo(
-    () => {
-      if (!documentForReaderAnalysis || activeMode !== 'reader') return null;
-      try {
-        return buildSelectionMap(documentForReaderAnalysis.content, documentForReaderAnalysis.bomByteLength);
-      } catch {
-        return null;
-      }
-    },
-    [activeMode, documentForReaderAnalysis],
-  );
+  const documentForReaderAnalysis = readerDocument;
+  const sectionTree = readingAnalysis.data?.sections ?? null;
+  const selectionMap = readingReady ? readingAnalysis.data!.selection : null;
   const sectionIds = useMemo(() => {
     if (!sectionTree) return [];
     return sectionFragmentIds(sectionTree);
@@ -643,10 +636,7 @@ function App() {
     sectionTree?.sections.forEach((section) => result.set(section.headingRange.start - bomOffset, section.index));
     return result;
   }, [documentForReaderAnalysis, sectionTree]);
-  const unsupportedExtensions = useMemo(
-    () => documentForReaderAnalysis ? detectUnsupportedMarkdownExtensions(documentForReaderAnalysis.content) : [],
-    [documentForReaderAnalysis],
-  );
+  const unsupportedExtensions = readingAnalysis.data?.extensions ?? [];
   const editorText = useMemo(
     () => editorController.editor ? markdownToEditorText(editorController.editor.content) : '',
     [editorController.editor],
@@ -656,7 +646,8 @@ function App() {
         editorController.editor?.content !== documentForReaderAnalysis.content) return undefined;
     return normalizeOutlineOffsets(documentForReaderAnalysis.content, projectSourceOutline(sectionTree));
   }, [documentForReaderAnalysis, editorController.editor?.content, sectionTree]);
-  const outline = useSourceOutline(editorController.editor?.epoch ?? null, editorText, parsedOutline);
+  const outline = useSourceOutline(activeMode === 'reader' ? null : editorController.editor?.epoch ?? null, editorText, parsedOutline);
+  const visibleOutlineStatus = activeMode === 'reader' ? readingAnalysis.status : outline.status;
   const editorSections = outline.sections;
   const editorCursor = useRef<{ key: string | null; cursor: SourceEditorCursor } | null>(null);
 
@@ -1543,7 +1534,7 @@ function App() {
     setReaderSearchTruncated(result.truncated);
     if (result.matches.length) paintReaderSearch(0, true);
     return () => clearReaderSearchPaint();
-  }, [activeMode, clearReaderSearchPaint, paintReaderSearch, readerDocument,
+  }, [activeMode, clearReaderSearchPaint, paintReaderSearch, readerDocument, readingReady,
     readerSearchOpen, readerSearchQuery]);
 
   const moveReaderSearch = useCallback((direction: 1 | -1) => {
@@ -1573,7 +1564,7 @@ function App() {
   ) => {
     const allowedStatus = annotationView?.status === 'ready' ||
       (allowRelocation && annotationView?.status === 'needs-relocation');
-    if (dirtyPreview || readerDraftDirty || activeMode !== 'reader' || !allowedStatus || annotationView.pendingDraftCount > 0 ||
+    if (!readingReady || dirtyPreview || readerDraftDirty || activeMode !== 'reader' || !allowedStatus || annotationView.pendingDraftCount > 0 ||
         annotationLoading || mutationInFlight.current) return;
     const epoch = documentEpoch.current;
     mutationInFlight.current = true;
@@ -1606,7 +1597,7 @@ function App() {
       mutationInFlight.current = false;
       if (documentEpoch.current === epoch) setAnnotationSaving(false);
     }
-  }, [activeMode, annotationLoading, annotationView, clearReaderSelection, dirtyPreview, readerDraftDirty,
+  }, [activeMode, annotationLoading, annotationView, clearReaderSelection, dirtyPreview, readerDraftDirty, readingReady,
     refreshAnnotations, setMessage]);
 
   const createHighlight = useCallback((color: AnnotationColor, frozenProbe?: SuccessfulSelectionProbe) => {
@@ -1899,17 +1890,17 @@ function App() {
   const filteredNotes = noteItems.filter((item) => noteFilter === 'all' ||
     (noteFilter === 'untagged' ? !item.tagId : `${TAG_VALUE_PREFIX}${item.tagId ?? ''}` === noteFilter));
   const unpaintableSet = new Set(unpaintableIds);
-  const canChangeAnnotations = activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && !readerDraftDirty && annotationView?.status === 'ready' &&
+  const canChangeAnnotations = readingReady && activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && !readerDraftDirty && annotationView?.status === 'ready' &&
     annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading && !reattachTargetId;
-  const canReviewRelocation = activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && !readerDraftDirty &&
+  const canReviewRelocation = readingReady && activeMode === 'reader' && !openedDocument?.recoveryPending && !dirtyPreview && !readerDraftDirty &&
     (annotationView?.status === 'ready' || annotationView?.status === 'needs-relocation') &&
     annotationView.pendingDraftCount === 0 && !annotationSaving && !annotationLoading;
   const annotationReferenceOnly = dirtyPreview || readerDraftDirty || editorController.busy;
-  const canComposeNote = activeMode === 'reader' && !openedDocument?.recoveryPending && !readerDraftDirty &&
+  const canComposeNote = readingReady && activeMode === 'reader' && !openedDocument?.recoveryPending && !readerDraftDirty &&
     !editorController.busy && !annotationSaving && !reattachTargetId && (canChangeAnnotations || dirtyPreview);
-  const noteTarget = useMemo(() => noteComposer && readerDocument
+  const noteTarget = useMemo(() => readingReady && noteComposer && readerDocument
     ? resolveReaderAnnotationIntent(noteComposer.intent, String(noteDocumentKey.current), readerDocument.content, readerDocument.bomByteLength)
-    : null, [noteComposer, readerDocument]);
+    : null, [noteComposer, readerDocument, readingReady]);
   const canStartRelocationAction = canReviewRelocation && !reattachTargetId;
   const reattachTarget = reattachTargetId
     ? annotationView?.items.find((item) => item.id === reattachTargetId)
@@ -2089,7 +2080,8 @@ function App() {
       recentDocuments={recentDocuments}
       panels={panels} taskLabel={activeMode === 'cards' ? '属性' : '批注'}
       taskAvailable={activeMode === 'cards' || activeMode === 'reader'}
-      outline={<DocumentOutline sections={editorSections} status={outline.status} onRetry={outline.retry} activeSection={activeSection}
+      outline={<DocumentOutline sections={editorSections} status={visibleOutlineStatus}
+        onRetry={activeMode === 'reader' ? readingAnalysis.retry : outline.retry} activeSection={activeSection}
         sourceMode={activeMode === 'editor'} onJumpToSection={(index) => {
           if (panels.narrow) panels.close('left');
           if (activeMode === 'reader') jumpToSection(index);
@@ -2224,7 +2216,7 @@ function App() {
         <main className="source-editor-loading" role="status">正在准备源码编辑器…</main>
       ) : (
         <ReaderView>
-          <main className="reading-main">
+          <main className="reading-main" data-reading-analysis={readingAnalysis.status} aria-busy={readingAnalysis.status === 'pending'}>
             <div className="reader-tools">
               {editorController.editor?.editable === false && <span className="read-only-badge" title={editorController.editor.readOnlyReason}>只读</span>}
             </div>
@@ -2296,7 +2288,11 @@ function App() {
                   aria-label="关闭选区提示">×</button>
               </div>}
             <span className="sr-only" aria-live="polite">{selectionAnnouncement}</span>
-            {readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0}
+            {!readingReady ? <section className="reading-analysis-status" role={readingAnalysis.status === 'error' ? 'alert' : 'status'}>
+              <p>{readingAnalysis.status === 'error' ? '暂时无法准备阅读内容。可以重试，或在源码中继续。' : '正在准备阅读内容…'}</p>
+              <div>{readingAnalysis.status === 'error' && <button type="button" onClick={readingAnalysis.retry}>重试</button>}
+                <button type="button" onClick={() => void changeMode('editor')}>查看源码</button></div>
+            </section> : readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0}
               onContextMenu={openReaderContextMenu} onKeyDown={handleReaderContextShortcut}
               onDoubleClick={(event) => {
                 if (!readerCanEdit || (event.target instanceof Element && event.target.closest('a, button'))) return;

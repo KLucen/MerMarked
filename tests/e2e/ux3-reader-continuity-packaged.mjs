@@ -95,7 +95,7 @@ async function editParagraph(selector, text) {
   await page.send('Input.insertText', {text});
   await page.evaluate('document.activeElement.blur()');
   await dirty(true);
-  await wait(`document.querySelector(${JSON.stringify(selector)}).textContent===${JSON.stringify(text)}`, 'reader buffer');
+  await wait(`document.querySelector(${JSON.stringify(selector)})?.textContent===${JSON.stringify(text)}`, 'reader buffer');
 }
 async function compose(selector, text) {
   await select(selector); await click('.add-note-button');

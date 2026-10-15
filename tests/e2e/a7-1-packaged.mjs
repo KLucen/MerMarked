@@ -315,6 +315,9 @@ let cdp;
 try {
   const page = await waitForEndpoint(port);
   cdp = await connect(page);
+  await cdp.send('Page.bringToFront');
+  // Occluded Windows test windows otherwise suspend the frame waits below.
+  await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer startup');
   await dropFile(cdp, documentPath);
   await openWorkspaceStatus(cdp, "a7-1-reading.md");

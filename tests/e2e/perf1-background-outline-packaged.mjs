@@ -104,9 +104,9 @@ try {
   await page.evaluate(`window.__workers=[];window.__replies=[];window.__holdOutline=false;window.__failOutline=false;
     const NativeWorker=window.Worker;
     window.Worker=class extends NativeWorker {
-      constructor(...args){if(window.__failOutline)throw Error('QA worker startup failure');super(...args);window.__workers.push(this);
+      constructor(...args){const outline=String(args[0]).includes('source-outline.worker');if(outline&&window.__failOutline)throw Error('QA worker startup failure');super(...args);if(outline)window.__workers.push(this);
         this.addEventListener('error',event=>window.__workerError={message:event.message,filename:event.filename,lineno:event.lineno});
-        this.addEventListener('message',event=>{if(window.__holdOutline){event.stopImmediatePropagation();window.__replies.push(()=>this.onmessage?.(event));}});}
+        this.addEventListener('message',event=>{if(outline&&window.__holdOutline){event.stopImmediatePropagation();window.__replies.push(()=>this.onmessage?.(event));}});}
       terminate(){this.wasTerminated=true;super.terminate();}
     };`);
   const before=await snapshot();

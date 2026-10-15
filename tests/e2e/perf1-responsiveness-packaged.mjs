@@ -23,7 +23,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=spawn(process.env.MERMARKD_QA_EXE ?? path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -100,16 +100,39 @@ async function measure(name, action, condition) {
   await frame();
   const elapsedMs=Math.round(performance.now()-started);
   measurements.push({name,elapsedMs,maxFrameGapMs:await page.evaluate('Math.round(Math.max(0,...window.__frameGaps))')});
+  const heap=await page.send('Runtime.getHeapUsage');
+  measurements.at(-1).usedHeapMiB=Math.round(heap.usedSize/1024/1024);
 }
 try {
   page=await connect(port,'page'); main=await connect(port+200,'node');
+  await page.send('Emulation.setFocusEmulationEnabled',{enabled:true});
   await wait('Boolean(document.querySelector("[data-start-open]"))','start');
   await page.send('Page.bringToFront'); await metrics(1200,800);
   await page.evaluate(`window.__frameGaps=[]; window.__lastFrame=performance.now();
     function tick(time){window.__frameGaps.push(time-window.__lastFrame);window.__lastFrame=time;requestAnimationFrame(tick)}requestAnimationFrame(tick)`);
+  await page.evaluate(`window.__readingTrace={};window.__longTasks=[];
+    new PerformanceObserver(list=>window.__longTasks.push(...list.getEntries().map(e=>({start:e.startTime,duration:e.duration})))).observe({type:'longtask',buffered:true});
+    const NativeWorker=window.Worker;
+    window.Worker=class extends NativeWorker {
+      constructor(...args){super(...args);if(String(args[0]).includes('reading-analysis.worker')){
+        this.addEventListener('message',event=>{if(event.data.result){window.__readingTrace.reply=performance.now();window.__readingTrace.analysisMs=event.data.analysisMs;}});}}
+    };
+    const observer=new MutationObserver(()=>{const state=document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis;
+      if(state==='pending'&&!window.__readingTrace.loading)window.__readingTrace.loading=performance.now();
+      if((state==='ready'||document.querySelector('.markdown-body h1'))&&!window.__readingTrace.ready){window.__readingTrace.ready=performance.now();requestAnimationFrame(()=>requestAnimationFrame(()=>{window.__readingTrace.painted=performance.now();}));observer.disconnect();}});
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['data-reading-analysis']});`);
   const before=await snapshot();
   await main.evaluate('process.mainModule.require("electron").dialog.showOpenDialog=async()=>({canceled:false,filePaths:['+JSON.stringify(fixture)+']})');
+  await page.evaluate('window.__readingTrace.started=performance.now()');
   await measure('open-reader',()=>click('[data-start-open]'),'document.querySelectorAll(".markdown-body h1").length==='+headingCount);
+  const readingTrace=await page.evaluate(`(()=>{const t=window.__readingTrace;return {
+    loadingFeedbackMs:t.loading?Math.round(t.loading-t.started):null,
+    firstDOMMs:t.ready?Math.round(t.ready-t.started):null,
+    firstPaintMs:t.painted?Math.round(t.painted-t.started):null,
+    analysisMs:t.analysisMs===undefined?null:Math.round(t.analysisMs),
+    responseToDOMMs:t.ready&&t.reply?Math.round(t.ready-t.reply):null,
+    responseToPaintMs:t.painted&&t.reply?Math.round(t.painted-t.reply):null,
+    longTasks:window.__longTasks.filter(e=>e.start>=t.started).map(e=>Math.round(e.duration))};})()`);
   await wait('document.querySelectorAll(".toc-link").length==='+headingCount,'outline');
   await measure('open-find',()=>click('[aria-label="查找正文"]'),'Boolean(document.querySelector("#reader-search-input"))');
   await page.evaluate('document.querySelector("#reader-search-input").focus()');
@@ -124,7 +147,7 @@ try {
   await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','undo clean');
   assert.deepEqual(await snapshot(),before,'profiling and buffer undo do not write content files');
-  const result={label:process.env.MERMARKD_PERF_LABEL??'current',sourceBytes:bytes.length,headings:headingCount,measurements};
+  const result={label:process.env.MERMARKD_PERF_LABEL??'current',sourceBytes:bytes.length,headings:headingCount,readingTrace,measurements};
   await writeFile(path.join(qa,'perf1-'+result.label+'.json'),JSON.stringify(result,null,2));
   console.log(JSON.stringify(result,null,2));
 } catch(error) {

@@ -103,7 +103,7 @@ async function connect(page) {
     socket.addEventListener('error', reject, { once: true });
   });
   const cdp = new Cdp(socket);
-  await cdp.send('Runtime.enable');
+  await cdp.send('Runtime.enable'); await cdp.send('Emulation.setFocusEmulationEnabled', { enabled: true });
   return cdp;
 }
 
