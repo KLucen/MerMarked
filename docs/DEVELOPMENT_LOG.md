@@ -1385,4 +1385,4 @@ GitHub：实现提交 `b8520e2` 已推送至 `origin/codex/perf1-background-outl
 
 未提交表单仍仅存在当前会话，未实现跨重启恢复。组合事件自动化不等于真实中文 IME；本轮没有重新安装/卸载、跨物理显示器 DPI 或大文档性能测量。首次阅读同步分析和 DOM 阻塞仍待 PERF2/PERF3；正文 dirty 的文件入口及保存语义按 UX6B 继续，不混入本批。P0 仍未完成。
 
-GitHub 同步待本轮提交和 PR 创建完成后补录。下一批 PERF2，验证首次阅读章节/选区/扩展分析后台化、加载期间模式切换和过期结果隔离。
+GitHub：实现提交 `0442091` 已推送至 `origin/codex/ux6a-draft-protection`，连接器成功创建 [PR #7](https://github.com/KLucen/MerMarked/pull/7)，目标 main，尚未合并。PR 已附加到当前任务，推送和创建均无权限错误。下一批 PERF2，验证首次阅读章节/选区/扩展分析后台化、加载期间模式切换和过期结果隔离。

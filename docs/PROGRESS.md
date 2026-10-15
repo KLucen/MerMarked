@@ -13,7 +13,7 @@
 
 产物：`out/qa/ux6a-*`；安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`，154,975,744 字节，SHA-256 `915DEC4A8E5460B2419ABDCE0656FBC9BBC33FD98BFD8C9DF9A2E2D8F369DF9A`。表单只在当前会话中保留，不承诺跨重启恢复。原生对话框的选择由打包测试控制，组合事件测试不替代真实中文 IME；本轮未重新安装/卸载或验证物理多屏 DPI，P0 仍进行中。
 
-GitHub 同步待本轮提交和 PR 创建完成后补录。下一批 **PERF2**：迁移首次阅读章节/选区/扩展分析，覆盖加载期间模式切换和过期结果隔离；后续依次 PERF3 → UX6B → UX7 → UX8 → QA1。个人试读 fixture 与 hash 命名 HTML 三项原有修改保持原样，不纳入本批。
+GitHub：实现提交 `0442091` 已推送至 `origin/codex/ux6a-draft-protection`，成功创建 [PR #7](https://github.com/KLucen/MerMarked/pull/7)，目标 main，尚未合并。推送及连接器创建 PR 均成功。下一批 **PERF2**：迁移首次阅读章节/选区/扩展分析，覆盖加载期间模式切换和过期结果隔离；后续依次 PERF3 → UX6B → UX7 → UX8 → QA1。个人试读 fixture 与 hash 命名 HTML 三项原有修改保持原样，不纳入本批。
 
 ## 2026-10-14 · 当前问题复核与开发批次重排（评估完成，未实施）
 
