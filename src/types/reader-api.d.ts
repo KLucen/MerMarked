@@ -3,9 +3,11 @@ import type { CanvasState } from '../core/canvas-state';
 import type { CanvasStateV2 } from '../core/canvas-state-v2';
 import type { CanvasSceneCard, CanvasSceneLink } from '../core/canvas-scene';
 import type { MarkdownSourceFormat } from '../core/markdown-source';
+import type { LocalInputKind, LeaveInputsChoice } from '../core/input-leave';
 import type { SectionTransformOperation, SectionTransformRejection } from '../core/section-transform';
 
 export type { AnnotationColor } from '../core/annotations';
+export type { LocalInputKind, LeaveInputsChoice } from '../core/input-leave';
 
 export interface OpenedMarkdownDocument {
   path: string;
@@ -311,6 +313,10 @@ export interface ReadingSummaryCopyResult {
 
 export interface MerMarkdApi {
   readonly appName: 'MerMarkd';
+  confirmLeaveInputs(kinds: readonly LocalInputKind[]): Promise<LeaveInputsChoice>;
+  onCloseRequest(listener: (id: string) => void): () => void;
+  replyToCloseRequest(id: string, allowed: boolean): void;
+  onCloseRequestFinished(listener: (id: string) => void): () => void;
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
   newMarkdown(): Promise<OpenedMarkdownDocument | null>;
   openRecentMarkdown(path: string): Promise<OpenedMarkdownDocument>;

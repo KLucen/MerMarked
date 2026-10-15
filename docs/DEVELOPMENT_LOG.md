@@ -1316,3 +1316,73 @@ ReaderMarkdown 将插件配置移出 render，按 content/components 复用；�
 最终 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：154,973,184 字节；SHA-256 388452CD8CFB964E7DCF34E56F771B9D75C5F510E2D9003ED569996D339FFB11。安装包本地生成，不公开发行。原有个人试读 Markdown/画布 fixture 和 hash 命名 HTML 保留且不提交。
 
 GitHub：实现提交 `b8520e2` 已推送至 `origin/codex/perf1-background-outline`，成功创建 [PR #6](https://github.com/KLucen/MerMarked/pull/6)，目标 main，尚未合并。推送和连接器 PR 创建均成功。
+
+
+## 2026-10-14 · 当前设计复核与后续批次重排（规划）
+
+### 目标与实际发现
+
+用户要求先重新确认问题和设计缺陷，再制定开发计划。本轮没有继续实现 PERF2。新增 docs/DESIGN_REVIEW_2026-10-14.md 并更新 PROGRESS.md；GitHub 只读确认 PR #6 已合并，未修改产品代码、依赖、数据模型或持久化规则。
+
+复跑当前打包程序并检查入口代码，确认未提交批注草稿缺少离开保护：输入后状态仍为“已保存”，换文档没有提示，返回并再次添加批注时原文字已丢失。临时文档三个内容文件不变。该问题优先于原计划 PERF2，下一批改为 UX6A。阅读首次打开和正文查找仍同步阻塞；文件操作、两个保存入口、阅读编辑能力说明、卡片文本边界和搜索也有明确缺口。完整 Before/After 表、代码证据、七批范围及退出条件已写入评审。
+
+### 本轮验证
+
+- npm.cmd run test:e2e:ux5：通过；重新生成并检查开始页、阅读、源码、画布及窄/短窗口截图，菜单键盘、200% 缩放、高对比、减少动态效果和三文件零写入断言通过。
+- MERMARKD_PERF_MIB=5，MERMARKD_PERF_LABEL=review-2026-10-14-5m 后运行 npm.cmd run test:qa:responsiveness：完成；输出 out/qa/perf1-review-2026-10-14-5m.json。5,288,903 字节 / 1024 标题首次阅读 5058 ms（最长帧间隔 4883 ms），打开查找 174 ms，正文查找 535 ms，切换源码 846 ms，源码输入到下一帧 344 ms。无并行构建负载，同机单次点值，不据此断言新回归。
+- node out/qa/review-2026-10-14-draft-switch.mjs：复现未提交新批注丢失。输出 statusBefore=已保存、draftAfter=null、recreatedDraft=空字符串，三个内容文件 bytes/mtime 保持一致。脚本借用现有 UX3 的 CDP 辅助函数，在独立临时目录和用户数据目录运行；本地诊断脚本与 JSON 留在 out/qa，未作为正式修复回归提交。
+- 直接调用 canvasCardContent：两条列表得到“第一项第二项”，表格得到“项目数值单价12”，确认摘要和全文共用扁平文本导致边界消失。
+- 官方 Microsoft Command bar / Progress controls 用于命令层级和加载反馈参照；性能目标是项目提议，不是官方数值要求。采用 emil-design-eng 的 Before/After 检查格式。
+
+没有重新运行全部单测、全部 17 组窗口回归、package/make、安装/卸载或物理 IME/DPI 验收。Node 提示 MODULE_TYPELESS_PACKAGE_JSON，但上述脚本均完成，不为评审临时更改 package 类型。所有测试子进程按 finally 退出。原有 hash 命名 HTML 与个人试读 Markdown/JSON 三项修改保持不变。
+
+### 下一步与交付状态
+
+新顺序为 UX6A → PERF2 → PERF3 → UX6B → UX7 → UX8 → QA1。先保护未提交表单和离开操作，再处理首次阅读分析、查找与渲染；之后完善文件入口、编辑能力和卡片内容。另存为、分页导出、更多方言单独列为后续候选，不混入首批。
+
+本轮仅交付可审查的计划，尚未实施上述批次；文档保留在本地工作区，尚未提交或推送。没有新增 ADR，因为本轮没有执行新的架构或数据模型决定。P0 仍未完成。
+
+## 2026-10-15 · UX6A 未提交输入与离开保护
+
+### 目标与实现
+
+用户授权执行下一批开发。按上一轮重新排序，先解决未提交批注被换文档或窗口关闭静默丢弃的问题。确认 PR #6 已合并，拉取并快进到 main `7736cd0`，建立 `codex/ux6a-draft-protection`。上一轮设计复核和计划一同纳入交付；个人试读 fixture 与 hash 命名 HTML 三项原有修改不纳入。
+
+| Before | After |
+| --- | --- |
+| 批注表单已有文字，顶栏仍可能只显示已保存 | 新批注文字/标签、已有批注修改显示“有未提交批注”；保留的阅读失败输入显示尚未应用 |
+| 换文档直接清空未提交表单 | 打开、新建、最近文件、拖入、重载和恢复确认共享离开保护 |
+| 窗口只检查 Markdown dirty，无法发现 renderer 表单 | 先核验本地输入，再执行原正文保存/放弃/取消流程 |
+| 放弃确认后取消文件选择可能丢表单 | 放弃只授权当前快照，成功切换才清空；失败或取消保留输入 |
+| 已有批注编辑切换视图会消失 | 同一文档跨三视图保留，返回处理恢复焦点；其他批注操作不能覆盖未提交表单 |
+| 未应用输入可能被后续失败覆盖 | 明确保留、计入离开保护，处理前暂停新的阅读块编辑 |
+
+核心 `input-leave.ts` 把确认与实际离开分离；renderer hook 串行执行入口并恢复焦点，锁定期间禁止背景快捷键。窗口主进程通过唯一 ID 与所属主 frame 校验答复，超时或 renderer 不再就绪时拒绝许可；确认通过后重新检查当前 session。组合事件在捕获阶段覆盖三类输入，异步正文提交/批注写入计入忙状态。具体合同记入 ADR-040。
+
+修改范围为主进程关闭协调、preload 窄 IPC、API 类型、工作区状态/入口、阅读块提交与共享外壳交互锁；新增纯核心测试、UX6A 打包专项和 npm 脚本。复核 React effect 清理、稳定回调、焦点、过期回复和文件清空时机。没有新增依赖、持久化字段或自动保存策略，锁文件未变化。
+
+### 实际验证
+
+- `npm.cmd run typecheck`：通过；最后整理 type-only import 位置后再次通过。
+- `npm.cmd test`：273/273 通过。新增 4 项覆盖空输入、忙状态、取消/返回，以及文档/版本/文字/标签/锚点快照改变或等待中开始写入使旧许可失效。
+- 设置 `MERMARKD_ELECTRON_ZIP_DIR` 指向本机已缓存 Electron ZIP 后执行 `npm.cmd run package`：通过。使用最终产品代码生成 `out/MerMarkd-win32-x64/MerMarkd.exe`。
+- `npm.cmd run test:e2e:ux6a`：通过；使用独立临时 Markdown、sidecar 和 user-data，实际 Electron 窗口、IPC、原生文件拖入与关闭。对话框选择由主进程测试替身控制，不绕过离开协调。覆盖未提交状态、返回焦点、取消、明确放弃、文件选择取消、打开失败、跨模式编辑表单、保存挂起/失败、过期回复、未应用输入、组合事件、最近文件、外部修改后重载与最终实际退出，比较三个内容文件 bytes/mtime。
+- 串行运行 `npm.cmd run test:e2e:<suite>`，suite 为 ux1、ux2、ux3、ux4、ux5、perf1、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2、a8-3、a8-4、a8-5：17 组全部通过。合计 18 组打包专项/回归。
+- `npm.cmd run make -- --skip-package`：从已验证的打包目录生成 Squirrel 安装包；完成后复跑 UX6A 通过。类型声明的导入位置变化不影响运行时代码。
+- 检查 `out/qa/ux6a-pending-note.png`：批注未提交状态可见，正文、表单及标签可读。未增加动画或更改全局视觉布局。
+
+### 失败与修正
+
+- 首次生成编辑脚本的模板字符串意外解释了源码中的插值，在写入前失败；改用不解释源码插值的生成方式，没有留下半写入文件。
+- 专项粘贴脚本把换行直接放进 CDP JavaScript 字符串导致语法错误，改为 JSON 字符串传参后通过。
+- 外部正文重载后旧批注需要定位，直接新建批注被原有保护拒绝。最终关闭测试先切换到干净第二文档再创建表单，保留原锚点安全规则。
+- Node 调试器连接会阻止 Electron 进程退出，窗口销毁后继续请求 renderer 又会遇到上下文消失。改为主进程窗口 closed 事件写测试哨兵，断开调试连接后核验实际进程退出；未删减文件不变断言。
+- 既有 Node MODULE_TYPELESS_PACKAGE_JSON 警告未阻止测试，不为该警告扩大本批 package 类型变更。
+
+### 产物、限制与后续
+
+日志和截图：`out/qa/ux6a-{typecheck,unit,package,e2e,make}.log`、`ux6a-regression-*.log`、`ux6a-pending-note.png`。安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`：154,975,744 字节，SHA-256 `915DEC4A8E5460B2419ABDCE0656FBC9BBC33FD98BFD8C9DF9A2E2D8F369DF9A`。本地生成，未公开发行。
+
+未提交表单仍仅存在当前会话，未实现跨重启恢复。组合事件自动化不等于真实中文 IME；本轮没有重新安装/卸载、跨物理显示器 DPI 或大文档性能测量。首次阅读同步分析和 DOM 阻塞仍待 PERF2/PERF3；正文 dirty 的文件入口及保存语义按 UX6B 继续，不混入本批。P0 仍未完成。
+
+GitHub 同步待本轮提交和 PR 创建完成后补录。下一批 PERF2，验证首次阅读章节/选区/扩展分析后台化、加载期间模式切换和过期结果隔离。
