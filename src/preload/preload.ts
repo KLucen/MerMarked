@@ -1,13 +1,27 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
+import type { IpcRendererEvent } from 'electron';
 import type {
   CanvasExportInput, CanvasSaveInput, CanvasSaveV2Input, CreateHighlightInput, CreateNoteInput, MerMarkdApi, ReadingSummaryFilterInput,
   MarkdownAnnotationImpactInput, MarkdownEditorUpdateInput, MarkdownRecoveryInput, ReattachAnnotationInput,
-  RecolorHighlightInput, UpdateNoteInput,
+  RecolorHighlightInput, UpdateNoteInput, LocalInputKind,
 } from '../types/reader-api';
 import type { SectionTransformOperation } from '../core/section-transform';
 
 const api: MerMarkdApi = Object.freeze({
   appName: 'MerMarkd',
+  confirmLeaveInputs: (kinds: readonly LocalInputKind[]) => ipcRenderer.invoke('workspace:confirm-leave-inputs', kinds),
+  onCloseRequest: (listener: (id: string) => void) => {
+    const receive = (_event: IpcRendererEvent, id: unknown) => { if (typeof id === 'string') listener(id); };
+    ipcRenderer.on('workspace:close-request', receive);
+    ipcRenderer.send('workspace:close-ready', true);
+    return () => { ipcRenderer.removeListener('workspace:close-request', receive); ipcRenderer.send('workspace:close-ready', false); };
+  },
+  replyToCloseRequest: (id: string, allowed: boolean) => ipcRenderer.send('workspace:close-reply', id, allowed),
+  onCloseRequestFinished: (listener: (id: string) => void) => {
+    const receive = (_event: IpcRendererEvent, id: unknown) => { if (typeof id === 'string') listener(id); };
+    ipcRenderer.on('workspace:close-finished', receive);
+    return () => ipcRenderer.removeListener('workspace:close-finished', receive);
+  },
   openMarkdown: () => ipcRenderer.invoke('document:open'),
   newMarkdown: () => ipcRenderer.invoke('document:new'),
   openRecentMarkdown: (documentPath: string) => ipcRenderer.invoke('document:open-recent', documentPath),

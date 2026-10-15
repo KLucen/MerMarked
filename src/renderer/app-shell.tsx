@@ -33,6 +33,7 @@ export interface AppShellProps {
   readonly document: OpenedMarkdownDocument | null;
   readonly activeMode?: AppMode;
   readonly dirty?: boolean;
+  readonly interactionLocked?: boolean;
   readonly saving?: boolean;
   readonly canSave?: boolean;
   readonly fileStatus?: string;
@@ -104,6 +105,7 @@ export function AppShell({
   document,
   activeMode = 'reader',
   dirty = false,
+  interactionLocked = false,
   saving = false,
   canSave = true,
   fileStatus,
@@ -303,7 +305,7 @@ export function AppShell({
   const summary = workspaceStatuses ? summarizeWorkspaceStatus(workspaceStatuses) : null;
   const documentStatus = fileStatus ?? summary?.text ?? (document?.temporary ? '待首次保存' : dirty ? '未保存' : '已保存');
 
-  return <WorkspaceTaskHost.Provider value={taskHost}><div ref={shell} className="app-shell" data-active-mode={activeMode} data-dirty={dirty ? 'true' : 'false'}
+  return <WorkspaceTaskHost.Provider value={taskHost}><div ref={shell} className="app-shell" inert={interactionLocked} data-leave-pending={interactionLocked} data-active-mode={activeMode} data-dirty={dirty ? 'true' : 'false'}
     data-document-open={document ? 'true' : 'false'} data-focus-mode={focusMode ? 'true' : 'false'}>
     <div ref={chrome} className="workspace-chrome" inert={Boolean(modalSide)}><header className="topbar">
       {!document ? <div className="brand" aria-label="MerMarkd">

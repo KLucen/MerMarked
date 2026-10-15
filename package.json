@@ -32,7 +32,8 @@
     "test:e2e:ux4": "node tests/e2e/ux4-canvas-clarity-packaged.mjs",
     "test:e2e:ux5": "node tests/e2e/ux5-visual-consistency-packaged.mjs",
     "test:e2e:perf1": "node tests/e2e/perf1-background-outline-packaged.mjs",
-    "test:qa:responsiveness": "node tests/e2e/perf1-responsiveness-packaged.mjs"
+    "test:qa:responsiveness": "node tests/e2e/perf1-responsiveness-packaged.mjs",
+    "test:e2e:ux6a": "node tests/e2e/ux6a-draft-protection-packaged.mjs"
   },
   "dependencies": {
     "@xyflow/react": "12.12.0",

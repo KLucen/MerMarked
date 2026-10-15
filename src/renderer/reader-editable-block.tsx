@@ -8,6 +8,7 @@ interface ReaderEditableBlockProps {
   readonly enabled: boolean;
   readonly onCommit: (blockStart: number, sourceText: string, text: string) => Promise<boolean>;
   readonly onDraftChange: (dirty: boolean) => void;
+  readonly onActivityChange: (kind: 'composing' | 'committing', active: boolean) => void;
   readonly onRestricted: (blockStart: number, reason: string, draftText?: string) => void;
   readonly children: ReactNode;
   readonly className?: string;
@@ -40,6 +41,7 @@ export function ReaderEditableBlock({
   enabled,
   onCommit,
   onDraftChange,
+  onActivityChange,
   onRestricted,
   children,
   className,
@@ -96,9 +98,15 @@ export function ReaderEditableBlock({
     editingRef.current = false;
     const next = draftRef.current;
     onDraftChange(false);
-    if (next !== originalRef.current) void onCommit(blockStart, originalRef.current, next).then((accepted) => {
-      if (!accepted && elementRef.current?.isConnected) restore();
-    });
+    if (next !== originalRef.current) {
+      onActivityChange('committing', true);
+      void onCommit(blockStart, originalRef.current, next).then((accepted) => {
+        if (!accepted && elementRef.current?.isConnected) restore();
+      }).catch(() => {
+        onRestricted(blockStart, '正文输入尚未应用，请保留输入并重试。', next);
+        if (elementRef.current?.isConnected) restore();
+      }).finally(() => onActivityChange('committing', false));
+    }
   };
 
   const handleBlur = () => {

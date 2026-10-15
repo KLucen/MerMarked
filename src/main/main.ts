@@ -4,6 +4,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import squirrelStartup from 'electron-squirrel-startup';
+import { createWindowCloseGuard } from './window-close-guard';
 import type {
   AnnotationDocumentView, AnnotationSaveResult, AnnotationSelectionInput,
   CanvasExportFormat, CanvasExportInput, CanvasExportResult, CanvasLoadResult, CanvasSaveResult,
@@ -1224,6 +1225,22 @@ async function recoveryPreviewFor(event: IpcMainInvokeEvent, documentPath: strin
 }
 
 function registerReaderIpc(): void {
+  ipcMain.handle('workspace:confirm-leave-inputs', async (event, kinds: unknown) => {
+    if (!isMainFrame(event)) return 'cancel';
+    const names: Record<string, string> = { 'new-note': '新批注', 'edit-note': '批注修改',
+      'reader-block': '正文输入', 'unapplied-input': '尚未应用的输入' };
+    if (!Array.isArray(kinds) || kinds.length < 1 || kinds.length > 4 ||
+        kinds.some((kind) => typeof kind !== 'string' || !Object.hasOwn(names, kind))) return 'cancel';
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    if (!owner) return 'cancel';
+    const result = await dialog.showMessageBox(owner, {
+      type: 'warning', title: '还有未提交的输入',
+      message: '处理未提交的输入后再离开？',
+      detail: [...new Set(kinds)].map((kind) => names[kind]).join('、') + '尚未提交。返回可继续处理；只有成功离开后才放弃这些输入。',
+      buttons: ['返回处理', '放弃并继续', '取消'], defaultId: 0, cancelId: 2, noLink: true,
+    });
+    return result.response === 1 ? 'discard' : result.response === 0 ? 'return' : 'cancel';
+  });
   ipcMain.handle('document:recovery-list', async (event): Promise<readonly DocumentRecoveryItem[]> => {
     const session = sessionFor(event);
     if (!session) return [];
@@ -1846,24 +1863,18 @@ function createWindow(): void {
 
   let allowClose = false;
   let resolvingClose = false;
+  const closeGuard = createWindowCloseGuard(window);
   window.on('close', (event) => {
     if (allowClose) return;
-    const session = documentSessions.get(window.webContents.id);
-    if (!session) return;
-    const editor = session.editor;
-    const busy = Boolean(
-      session.canvasWriteInProgress ||
-      session.canvasExportInProgress ||
-      session.annotationWriteInProgress ||
-      session.markdownOperationInProgress ||
-      editor?.writeInProgress,
-    );
-    if (!busy && !editor?.dirty) return;
-
     event.preventDefault();
     if (resolvingClose) return;
     resolvingClose = true;
     void (async () => {
+      if (!await closeGuard.authorize() || window.isDestroyed()) return;
+      const session = documentSessions.get(window.webContents.id);
+      const editor = session?.editor;
+      const busy = Boolean(session?.canvasWriteInProgress || session?.canvasExportInProgress ||
+        session?.annotationWriteInProgress || session?.markdownOperationInProgress || editor?.writeInProgress);
       if (busy) {
         await dialog.showMessageBox(window, {
           type: 'info',
@@ -1874,7 +1885,7 @@ function createWindow(): void {
         });
         return;
       }
-      if (!editor?.dirty) return;
+      if (!session || !editor?.dirty) { allowClose = true; window.close(); return; }
 
       if (editor.pendingStructureTransactionId) {
         const choice = await dialog.showMessageBox(window, { type: 'warning', title: '结构保存尚待恢复',
@@ -1931,6 +1942,7 @@ function createWindow(): void {
         });
       }
     }).finally(() => {
+      closeGuard.finish();
       resolvingClose = false;
     });
   });
