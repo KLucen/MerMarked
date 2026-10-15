@@ -1,5 +1,23 @@
 # MerMarkd 开发进度
 
+## 2026-10-15 · PERF2 首次阅读后台分析（当前切片已完成）
+
+基于已合并 UX6A / [PR #7](https://github.com/KLucen/MerMarked/pull/7)（`fd24690`），在 `codex/perf2-background-reading` 完成本批。验收与完整性能口径见 [PERF2_ACCEPTANCE.md](PERF2_ACCEPTANCE.md)，解析快照决定见 ADR-041。
+
+- 章节、选区映射和已知扩展分析共用一次只读 Markdown AST，在可取消 Worker 执行。离开阅读、换文档或正文变化时终止任务；过期/重复回复不能发布。错误与 30 秒超时可重试，不回退到界面线程解析。
+- 仅缓存当前文档、完整正文及 BOM 元数据一致的一份投影；源码目录复用同一章节结果。加载/失败状态不显示旧偏移或旧正文，不开放基于旧锚点的编辑、批注和重定位；可切源码、卡片或换文件，继续遵守 UX6A 输入保护。
+- 保留 BOM/CRLF、重复引文、HTML 清洗、结构候选重解析及三文件持久化约束。只读分析、取消、重试、模式切换和缓冲撤销均验证 Markdown/YAML/JSON 的 bytes/mtime 不变；不新增依赖、IPC 或 schema。
+
+验证：类型检查、280/280 单测、19 组生产打包窗口回归、真实 Vite Worker 专项、生产 package 和 Squirrel make 通过；make 后复跑 PERF2 通过。420×360 错误状态按钮可达。部分旧脚本的 Windows 遮挡/rAF 等待修正为显式 focus emulation，保留原行为断言。
+
+同机前后各五次：5 MiB 首屏帧中位数 **4124 → 2419 ms**，最差 **4185 → 4256 ms**；首次打开最长帧间隔中位数 **4000 → 1300 ms**。1 MiB 首屏帧中位数 **973 → 992 ms**，近似持平。5 MiB Worker 分析中位数 950 ms，收到结果至首屏帧 1328 ms，查找 414 ms、切源码 595 ms、源码输入 245 ms。5 MiB 单段落 pending 压力样本，实际点击到模式 DOM / Worker 取消为 5 / 4 ms（make 后复跑 4 / 4 ms）；含分发前等待的自动化命令仍超过 3 秒，不将它与纯点击响应混淆。完整口径、中位数/最差值和内存限制见验收文档。整体性能目标仍未通过，P0 未完成。
+
+产物：`out/qa/perf2-*`、`out/qa/perf1-perf2-stable-*`；安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`，155,022,336 字节，SHA-256 `D5A403C7741B4B2F79C87F7FBF7A82C99EB2273E98C96C74785AA3B8480A0E1E`。本地生成，未公开发行；没有把 make 成功当作干净环境安装/卸载通过。
+
+下一批 **PERF3**：按长任务证据继续拆分正文渲染/绘制、可见正文查找和源码输入；补齐 200 可见卡片与大量批注窗口样本。随后 UX6B → UX7 → UX8 → QA1。真实中文 IME、物理跨屏 DPI、干净 Windows 安装/升级/卸载仍待验收。三项用户原有 fixture / hash 命名 HTML 修改保持原样，不纳入本批。
+
+GitHub：本批待提交和创建 PR；交付后补记实际链接。
+
 ## 2026-10-15 · UX6A 未提交输入与离开保护（当前切片已完成）
 
 基于已合并的 PERF1 / [PR #6](https://github.com/KLucen/MerMarked/pull/6)（`7736cd0`），在 `codex/ux6a-draft-protection` 完成本批。验收见 [UX6A_ACCEPTANCE.md](UX6A_ACCEPTANCE.md)，关闭协调决定见 ADR-040；同时纳入上一轮已完成的设计复核和后续批次计划。
@@ -157,7 +175,7 @@ GitHub：实现提交 `f33326d` 已推送至 `codex/ux2-shared-panels`，已创�
 
 验证：源码搜索与定向读取、历史截图人工检查、官方交互指南核对、`git diff --check -- docs/DESIGN_REVIEW_2026-10-11.md docs/PROGRESS.md docs/DEVELOPMENT_LOG.md`。本轮为文档评审，未运行类型检查、单测、打包或新的 Electron 窗口；历史验证结果不作为本轮实测。P0 与最新实现的真实窗口回归仍按原记录待验收。
 
-> 2026-10-15。当前阶段：P0 可行性原型，仍进行中。UX1–UX5 与 PERF1 已合并；UX6A 已实现并通过 273 项单测与 18 组打包窗口回归，下一批 PERF2，随后 PERF3 处理查找/渲染/输入。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [UX6A 验收](UX6A_ACCEPTANCE.md)。真实 IME、安装/卸载、多显示器 DPI、长文档渲染和性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-15。当前阶段：P0 可行性原型，仍进行中。UX1–UX5、PERF1 与 UX6A 已合并；PERF2 当前切片已通过 280 项单测与 19 组打包窗口回归，下一批 PERF3 继续处理查找/渲染/输入。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [PERF2 验收](PERF2_ACCEPTANCE.md)。真实 IME、安装/卸载、多显示器 DPI、长文档渲染和整体性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## B1.3 窄窗口抽屉与画布工具栏收敛（当前切片已完成）
 

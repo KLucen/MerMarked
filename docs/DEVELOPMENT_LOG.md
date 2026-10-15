@@ -1386,3 +1386,70 @@ GitHub：实现提交 `b8520e2` 已推送至 `origin/codex/perf1-background-outl
 未提交表单仍仅存在当前会话，未实现跨重启恢复。组合事件自动化不等于真实中文 IME；本轮没有重新安装/卸载、跨物理显示器 DPI 或大文档性能测量。首次阅读同步分析和 DOM 阻塞仍待 PERF2/PERF3；正文 dirty 的文件入口及保存语义按 UX6B 继续，不混入本批。P0 仍未完成。
 
 GitHub：实现提交 `0442091` 已推送至 `origin/codex/ux6a-draft-protection`，连接器成功创建 [PR #7](https://github.com/KLucen/MerMarked/pull/7)，目标 main，尚未合并。PR 已附加到当前任务，推送和创建均无权限错误。下一批 PERF2，验证首次阅读章节/选区/扩展分析后台化、加载期间模式切换和过期结果隔离。
+
+## 2026-10-15 · PERF2 首次阅读后台分析
+
+### 目标与设计决定
+
+用户继续下一批开发，按 10 月 14 日复核路线推进 PERF2。确认 PR #7 已合并为 `fd24690`，快进后建立 `codex/perf2-background-reading`；此前个人试读 Markdown / canvas JSON 与 hash 命名 HTML 三项修改保持原样。
+
+| Before | After |
+| --- | --- |
+| 首次阅读的章节、选区和扩展分析分别在界面线程解析同一正文 | 三个只读投影共用一次 AST，在独立可取消 Worker 执行 |
+| 初次大文档解析期间缺少加载、取消和错误恢复边界 | 显示加载状态，失败可重试或查看源码；离开阅读取消任务，拒绝旧回复 |
+| 新旧正文派生数据可能需要依赖同步完成来保持一致 | 文档打开身份、完整正文、BOM 和重试序号绑定结果；render 时先隐藏过期偏移 |
+| 只记录单次命令耗时，无法区分计算与显示 | 前后 1/5 MiB 各五次，记录加载、Worker、DOM、后续帧、长任务与 renderer 堆采样 |
+
+详见 ADR-041 和 PERF2_ACCEPTANCE。保留已有独立核心入口，新结构候选仍重新解析；不新增依赖、IPC、schema 或三文件写入路径。正文 DOM 与阅读编辑的再次核验并未全面后台化，不能把本批实现当成整个性能阶段完成。
+
+### 修改文件
+
+- `src/core/markdown-snapshot.ts`、`reading-analysis.ts` 及章节/选区/扩展模块：共用只读解析快照，保持 BOM、CRLF、UTF-8 范围与 HTML 处理合同。
+- `src/renderer/reading-analysis-task.ts`、Worker、hook、`main.tsx` 与状态样式：任务取消/超时/错误、精确缓存、加载状态与操作门控；源码目录复用已完成投影。
+- `tests/reading-analysis.test.mjs`、PERF2 窗口脚本、响应性脚本与 package 命令：真实 Worker、安全边界与多轮性能证据。
+- PERF1 测试注入只拦截源码目录 Worker；UX3 编辑后等待允许短暂 loading；A7.1/A7.2/A7.3b/A8.2/A8.4 显式固定窗口焦点仿真，避免遮挡导致 rAF 停止。
+
+### 测试和实际命令
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+$env:MERMARKD_ELECTRON_ZIP_DIR='C:/Users/KLucen/AppData/Local/electron/Cache/d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b'
+npm.cmd run package
+# 分别执行 PERF2 / PERF1 / UX6A / UX1–UX5 / B1 / A6 / A7.1–A8.5 的已有 npm E2E 命令，共 19 组
+npm.cmd run test:e2e:perf2
+node_modules/.bin/vite.cmd --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort
+# 另一个终端执行专项，结束后关闭 Vite
+$env:MERMARKD_QA_RENDERER_URL='http://127.0.0.1:5178'
+npm.cmd run test:e2e:perf2
+# 独立测量进程设置版本、大小、标签；改造前后 × 1/5 MiB × 五次
+$env:MERMARKD_QA_EXE='C:/Users/KLucen/Desktop/MerMarkd/out/qa/perf2-ux6a-baseline/lib/net45/MerMarkd.exe'
+$env:MERMARKD_PERF_MIB='5'
+$env:MERMARKD_PERF_LABEL='perf2-stable-before-5m-1'
+node tests/e2e/perf1-responsiveness-packaged.mjs
+# 当前版不设 MERMARKD_QA_EXE；完整标签与结果见验收文档
+npm.cmd run make -- --skip-package
+npm.cmd run test:e2e:perf2
+```
+
+类型检查、280/280 单测、19 组打包窗口回归及真实开发服务 Worker 通过。生产 package 后运行所有窗口回归；运行时代码此后未变，make 使用该已验证目录生成 Squirrel 安装包，完成后再跑 PERF2 通过。单测覆盖共享树冻结、克隆后锚点、BOM/CRLF/emoji/重复引文、取消/旧回复、失败/重试和超时。窗口测试覆盖 pending/error、精确复用、换文档、dirty 版本、HTML 安全、bytes/mtime 和缺失 sidecar 不创建；旧三文件保存、恢复及导出回归保留。
+
+五次前后对比：5 MiB 首屏帧中位数 4124 → 2419 ms、最差 4185 → 4256 ms；首次打开最长帧间隔中位数 4000 → 1300 ms。1 MiB 首屏帧中位数 973 → 992 ms，不能声称此样本加载更快。5 MiB 当前 Worker 分析 950 ms，结果到 DOM 989 ms、到后续帧 1328 ms，查找 414 ms、源码输入 245 ms。全量中位数/最差值、命令耗时与内存采样边界见 PERF2_ACCEPTANCE；不将 renderer 堆等同于全应用内存。
+
+### 失败、修正与限制
+
+- 初版仅把三个解析移入 Worker，5 MiB 单次命令为 6124 ms，计算重复未消除；改为一次 AST 三个只读投影后重新运行类型检查、单测、package 和窗口回归。
+- UX3 原等待直接读取临时不存在的段落，因新增加载状态抛空值错误；改为允许 pending 后继续检查原内容和文件断言。PERF1 原全局 Worker 注入误拦新增 Worker，改为按入口筛选。
+- A7.1/A7.2 的旧脚本在 Windows 遮挡时等待 rAF 挂起，Page.bringToFront 不足；核对临时测试进程后终止，增加 focus emulation 后重跑通过。一次重跑日志被旧测试进程占用，确认进程命令后停止再跑。没有终止用户日常程序或删减行为断言。
+- 首次 Vite 启动进程提前退出，测试连接失败；用直接 vite.cmd / PTY 保持服务后成功。大段落测试偶尔在检查 pending 前已完成，改为挂起真实 Worker 回复以稳定取消场景。
+- 大单段落切源码的自动化命令约 3 秒，进一步插入实际 click 时间戳发现分发前等待占大部分：最终 5 ms 更新模式、4 ms 取消 Worker；make 后复跑 4/4 ms。命令总计 3186/3244 ms 与点击响应不同，不据此推断全部是产品渲染延迟，也不只引用快样本宣布整体目标通过。
+- 即使固定焦点仿真，5 MiB 首屏最差仍 4256 ms；Worker 内分析相对稳定，结果后的正文 DOM/布局有约 1.3 秒长任务，另有调度等待未完全拆分。查找、源码输入和模式切换预算仍待 PERF3。
+- 既有 Node MODULE_TYPELESS_PACKAGE_JSON 警告不阻止运行，未为此改变全项目模块类型。未做干净环境安装/升级/卸载、真实中文 IME、物理跨屏 DPI、200 可见卡片与大量批注验收；P0 不宣告完成。
+
+### 产物与下一步
+
+日志：`out/qa/perf2-{typecheck,unit,package,make,dev-e2e,final-e2e,postmake-e2e}.log`、`perf2-regression-*.log`。截图：`perf2-reading-{pending,error,error-narrow,ready}.png`，已检查 420×360 状态及按钮可达。最终二十次结果为 `perf1-perf2-stable-*`，汇总 `perf2-stable-measurements.json`；早期结果仅作诊断。
+
+安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`：155,022,336 字节，SHA-256 `D5A403C7741B4B2F79C87F7FBF7A82C99EB2273E98C96C74785AA3B8480A0E1E`，本地生成未公开发行。下一批 PERF3 聚焦正文渲染/绘制、可见正文索引与查询取消、源码输入及剩余调度瓶颈；不得按字符或换行随意切 Markdown，必须保留选区/锚点/查找和完整导出语义。
+
+GitHub：本批待提交和创建 PR；交付后补记实际链接。

@@ -1,9 +1,6 @@
 import type { Element, Root as HastRoot, RootContent } from 'hast';
 import type { Html as MdastHtml, Root as MdastRoot } from 'mdast';
-import remarkFrontmatter from 'remark-frontmatter';
-import remarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
-import { unified } from 'unified';
+import { parseMarkdownSnapshot, type MarkdownSnapshot } from './markdown-snapshot.ts';
 
 export type UnsupportedMarkdownExtension = 'display-math' | 'wiki-link' | 'directive';
 
@@ -34,11 +31,6 @@ const UNSUPPORTED_PLACEHOLDER_TAG = 'mermarkd-unsupported-html';
 const UNSUPPORTED_EXTENSION_ORDER: readonly UnsupportedMarkdownExtension[] = [
   'display-math', 'wiki-link', 'directive',
 ];
-const markdownDetectionProcessor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkFrontmatter, 'yaml');
-
 export const readingSanitizeSchema = {
   tagNames: [...READING_HTML_TAGS],
   clobberPrefix: 'mermarkd-user-content-',
@@ -282,8 +274,7 @@ interface SourceTextSpan {
   readonly raw: string;
 }
 
-function markdownTextSpans(source: string): readonly SourceTextSpan[] {
-  const root = markdownDetectionProcessor.parse(source) as MdastRoot;
+function markdownTextSpans(source: string, root: MdastRoot): readonly SourceTextSpan[] {
   const spans: SourceTextSpan[] = [];
   const visit = (node: { readonly type: string; readonly position?: {
     readonly start: { readonly offset?: number };
@@ -318,9 +309,13 @@ function positionBelongsToText(spans: readonly SourceTextSpan[], position: numbe
 
 /** Conservatively flag only extension spellings that are unlikely to be ordinary prose. */
 export function detectUnsupportedMarkdownExtensions(source: string): readonly UnsupportedMarkdownExtension[] {
+  return extensionsFromSnapshot(parseMarkdownSnapshot(source));
+}
+
+export function extensionsFromSnapshot(snapshot: MarkdownSnapshot): readonly UnsupportedMarkdownExtension[] {
   const found = new Set<UnsupportedMarkdownExtension>();
-  const normalized = source.replace(/^\uFEFF/, '');
-  const spans = markdownTextSpans(normalized);
+  const normalized = snapshot.body;
+  const spans = markdownTextSpans(normalized, snapshot.root);
   let mathDelimiterCount = 0;
 
   const lineExpression = /([^\r\n]*)(\r\n|\r|\n|$)/g;

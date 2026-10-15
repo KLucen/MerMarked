@@ -1,8 +1,5 @@
-import type { Heading, Paragraph, PhrasingContent, Root, TableCell } from 'mdast';
-import remarkFrontmatter from 'remark-frontmatter';
-import remarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
-import { unified } from 'unified';
+import type { Heading, Paragraph, PhrasingContent, TableCell } from 'mdast';
+import { parseMarkdownSnapshot, type MarkdownSnapshot } from './markdown-snapshot.ts';
 
 interface TextLeaf {
   readonly visibleStart: number;
@@ -63,10 +60,6 @@ export type StoredHighlightResolution =
     }
   | { readonly ok: false; readonly reason: string };
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkFrontmatter, 'yaml');
 const encoder = new TextEncoder();
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
@@ -157,14 +150,22 @@ function buildBlock(node: Heading | Paragraph | TableCell, source: string): Sele
 
 /** Build a source map for rendered paragraphs and headings without changing Markdown. */
 export function buildSelectionMap(content: string, bomByteLength: number): SelectionMap {
+  validateBom(content, bomByteLength);
+  return selectionMapFromSnapshot(parseMarkdownSnapshot(content), bomByteLength);
+}
+
+function validateBom(content: string, bomByteLength: number): asserts bomByteLength is 0 | 3 {
   if (bomByteLength !== 0 && bomByteLength !== 3) {
     throw new Error('无效的 UTF-8 BOM 长度。');
   }
   if (content.startsWith('\uFEFF') && bomByteLength !== 3) {
     throw new Error('正文和 BOM 元数据不一致。');
   }
-  const source = content.startsWith('\uFEFF') ? content.slice(1) : content;
-  const root = processor.parse(source) as Root;
+}
+
+export function selectionMapFromSnapshot(snapshot: MarkdownSnapshot, bomByteLength: 0 | 3): SelectionMap {
+  validateBom(snapshot.source, bomByteLength);
+  const { body: source, root } = snapshot;
   const blocks: SelectionBlock[] = [];
   const visit = (node: { type: string; children?: readonly unknown[] }): void => {
     if (node.type === 'heading' || node.type === 'paragraph' || node.type === 'tableCell') {

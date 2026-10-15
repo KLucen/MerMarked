@@ -1,9 +1,6 @@
 import type { Heading, Root } from 'mdast';
 import { toString } from 'mdast-util-to-string';
-import remarkFrontmatter from 'remark-frontmatter';
-import remarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
-import { unified } from 'unified';
+import { parseMarkdownSnapshot, type MarkdownSnapshot } from './markdown-snapshot.ts';
 
 /** Half-open offsets into the original JavaScript source string (UTF-16 code units). */
 export interface SourceRange {
@@ -64,11 +61,6 @@ interface MutableSection {
   subtreeRange: SourceRange;
 }
 
-const processor = unified()
-  .use(remarkParse)
-  .use(remarkGfm)
-  .use(remarkFrontmatter, 'yaml');
-
 /** The reader and structural validator must use the same fragment identities. */
 export function sectionFragmentIds(tree: SectionTree): string[] {
   const used = new Set<string>();
@@ -127,9 +119,11 @@ function hasRenderablePreamble(root: Root, firstHeadingStart: number, offsetShif
  * This function only observes source; it never rewrites or normalizes Markdown.
  */
 export function extractSections(source: string): SectionTree {
-  // A leading BOM belongs to the file, not to the first movable section.
-  const offsetShift = source.startsWith('\uFEFF') ? 1 : 0;
-  const root = processor.parse(source.slice(offsetShift)) as Root;
+  return sectionsFromSnapshot(parseMarkdownSnapshot(source));
+}
+
+/** Read-only projection; callers that transform source still parse their candidate anew. */
+export function sectionsFromSnapshot({ source, root, bomOffset: offsetShift }: MarkdownSnapshot): SectionTree {
   const headings: HeadingEntry[] = root.children
     .filter((node): node is Heading => node.type === 'heading')
     .map((node) => ({ node, range: requiredRange(node, source.length, offsetShift) }));
