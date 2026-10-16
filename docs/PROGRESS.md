@@ -18,6 +18,8 @@
 
 下一批 **PERF3D 启动调度、正文布局与规模样本**：确认启动等待来源，补 200 可见卡片/大量批注的实际窗口预算，再按 UX6B → UX7 → UX8 → QA1 推进。真实中文 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。
 
+GitHub：实现提交 `bf9f102` 已推送至 `origin/codex/perf3c-source-input`，成功创建 [PR #11](https://github.com/KLucen/MerMarked/pull/11)，目标 main，尚未合并。推送及连接器创建均成功，PR 已附加到当前任务。
+
 ## 2026-10-16 · PERF3B 后台准备语义正文（当前切片已完成）
 
 基于已合并 PERF3A / [PR #9](https://github.com/KLucen/MerMarked/pull/9)（`7446e12`），在 `codex/perf3b-reading-render` 完成本批。完整验证与性能口径见 [PERF3B_ACCEPTANCE.md](PERF3B_ACCEPTANCE.md)，决定见 ADR-043。

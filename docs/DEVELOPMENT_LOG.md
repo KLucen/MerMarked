@@ -1624,3 +1624,5 @@ git diff --cached --check
 out/qa/perf3c-* 保存日志、截图、诊断与最终 paired-* 样本，perf3c-measurements.json 为汇总。Setup.exe 为 155,032,576 字节，SHA-256 844FEBFF1CDEDF2D4B22B06A9B6D0406503203B42FBE790B98F06F396D35CA45。本地产物被 Git 忽略，未公开发行；未重新验收干净安装/升级/卸载、真实中文 IME 和物理多屏 DPI。
 
 下一批 PERF3D 确认启动调度与布局瓶颈、补齐 200 可见卡片和大量批注的实际窗口样本；后续 UX6B → UX7 → UX8 → QA1。P0 和整体性能门槛仍未完成，三项用户已有修改保持原样，不纳入提交。
+
+GitHub：实现提交 bf9f102 已推送至 origin/codex/perf3c-source-input；成功创建 [PR #11](https://github.com/KLucen/MerMarked/pull/11)，目标 main，尚未合并。PR 已附加到当前任务，推送和连接器创建成功。
