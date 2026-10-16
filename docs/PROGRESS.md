@@ -16,7 +16,7 @@
 
 下一批 **PERF3B 正文渲染与调度**：拆解分析回复后的 DOM/布局/绘制长任务，在保留 Markdown 语义、选区、查找、批注锚点和完整导出的前提下改进。随后处理源码输入及 200 可见卡片/大量批注的窗口样本，再按 UX6B → UX7 → UX8 → QA1 推进。真实中文 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。三项用户已有 fixture / hash 命名 HTML 修改保持原样，不纳入本批。
 
-GitHub：本批已完成本地验证，提交与 PR 同步记录将在推送后补充。
+GitHub：实现提交 `1e6c8c6` 已推送至 `origin/codex/perf3-reader-search`，成功创建 [PR #9](https://github.com/KLucen/MerMarked/pull/9)，目标 main，尚未合并。推送及连接器创建 PR 均成功；PR 已附加到当前任务。
 
 ## 2026-10-15 · PERF2 首次阅读后台分析（当前切片已完成）
 

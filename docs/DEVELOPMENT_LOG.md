@@ -1513,4 +1513,4 @@ npm.cmd run test:e2e:perf3a
 
 下一批 PERF3B 聚焦分析回复后的正文 DOM、布局和绘制调度，保持语义渲染、选区/批注锚点/查找及完整导出；随后处理源码输入和 200 可见卡片/大量批注窗口样本，再进入 UX6B → UX7 → UX8 → QA1。
 
-GitHub：本批已完成本地验证，提交与 PR 同步记录将在推送后补充。
+GitHub：实现提交 `1e6c8c6` 已推送至 `origin/codex/perf3-reader-search`，成功创建 [PR #9](https://github.com/KLucen/MerMarked/pull/9)，目标 main，尚未合并。推送及连接器创建 PR 均成功；PR 已附加到当前任务。
