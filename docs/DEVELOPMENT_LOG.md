@@ -1453,3 +1453,64 @@ npm.cmd run test:e2e:perf2
 安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`：155,022,336 字节，SHA-256 `D5A403C7741B4B2F79C87F7FBF7A82C99EB2273E98C96C74785AA3B8480A0E1E`，本地生成未公开发行。下一批 PERF3 聚焦正文渲染/绘制、可见正文索引与查询取消、源码输入及剩余调度瓶颈；不得按字符或换行随意切 Markdown，必须保留选区/锚点/查找和完整导出语义。
 
 GitHub：实现提交 `1157b8e` 已推送至 `origin/codex/perf2-background-reading`，成功创建 [PR #8](https://github.com/KLucen/MerMarked/pull/8)，目标 main，尚未合并。推送和连接器 PR 创建均成功；PR 已附加到当前任务。
+
+## 2026-10-16 · PERF3A 可取消的正文查找与索引复用
+
+### 目标与设计决定
+
+用户继续下一批开发。确认 PR #8 已合并为 `071bb59`，快进后建立 `codex/perf3-reader-search`。按小型可运行切片推进 PERF3，本批消除查找时重复的 DOM 遍历和全文字素分段，并支持中途输入/关闭；正文渲染及源码输入另批处理。三项用户已有 fixture / hash 命名 HTML 修改保持原样。
+
+当前正文的连续块与文字节点区间在查找会话内复用，源版本/文档/模式或 DOM 可见性变化立即使其失效。索引和候选扫描约每 6 ms 检查让出/取消，只发布当前任务结果；单个布局或字素调用不能保证低于 6 ms。字面查询仅对候选边界使用 Intl.Segmenter.containing，保持 UTF-16 和完整字素语义。br/嵌套块分为不同索引项，禁止跨边界匹配。详见 ADR-042 与 PERF3A_ACCEPTANCE。
+
+### 修改文件
+
+- `src/core/visible-text-search.ts` 和 `markdown-reading.ts`：独立纯核心候选迭代器及兼容导出，拒绝的部分字素候选也保留可取消检查点。
+- `src/renderer/reader-search.ts`、`use-reader-search.ts`、`main.tsx`、`app-shell.tsx`：可失效索引、异步任务身份、pending/error 呈现和旧着色清除；关闭时释放 DOM/Range 引用。
+- `tests/visible-text-search.test.mjs`、两个 PERF3A 窗口脚本及 npm 命令：Unicode 参考对照、真实打包窗口、无写入边界及前后多轮性能测量。
+- UX4 测试按实际键盘事件逐次等待选中节点投影更新，固定 focus emulation；不修改画布产品行为。
+- 验收、阅读方言、架构决定与进度记录：保留全部性能样本和未通过门槛。
+
+### 测试与实际命令
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+$env:MERMARKD_ELECTRON_ZIP_DIR='C:/Users/KLucen/AppData/Local/electron/Cache/d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b'
+npm.cmd run package
+# 串行执行 perf3a、perf2、perf1、ux6a、ux1–ux5、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2–a8-5，共 20 组
+npm.cmd run test:e2e:perf3a
+node_modules/.bin/vite.cmd --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort
+# 另一个终端执行；完成后停止 Vite
+$env:MERMARKD_QA_RENDERER_URL='http://127.0.0.1:5178'
+npm.cmd run test:e2e:perf3a
+# 独立测量进程，不与构建或其他窗口回归并行
+$env:MERMARKD_QA_EXE='C:/Users/KLucen/Desktop/MerMarkd/out/qa/perf3a-perf2-baseline/lib/net45/MerMarkd.exe'
+$env:MERMARKD_PERF_MIB='5'
+$env:MERMARKD_PERF_LABEL='stable-before-5m-1'
+node tests/e2e/perf3a-responsiveness-packaged.mjs
+# 基线和本批各 1/5 MiB × 五次，本批不设 QA_EXE；最终标签 final-after
+node out/qa/perf3a-summarize.mjs
+npm.cmd run make -- --skip-package
+npm.cmd run test:e2e:perf3a
+```
+
+类型检查、283/283 单测、20 组生产打包回归与实际 Vite 专项通过。单测的 3600 组组合（12×12×25）与完整字素分段参考算法对照，另覆盖部分字素取消、limit、UTF-16 和长文本。窗口专项检查复用计数、DOM 变更、details/隐藏、嵌套块、1000 项、换词/关闭/模式/文档取消、失败恢复、空文件和 75,000 组 emoji 单段落，保留 Markdown/YAML/JSON 的 bytes/mtime 和缺失 sidecar 断言。420×360 成功/失败截图已检查。
+
+### 失败、修正与限制
+
+- 专项首次运行在 CDP 上下文重复声明全局 const、以及引号未正确转义的 selector 表达式失败，修正测试注入后通过。两个不同查询同为零结果时，测试增加后续帧等待，避免在新 input 尚未处理前读取旧文本。
+- UX4 快速合成两次方向键在本批包两次停在前一项；上一批包同脚本通过。固定焦点仍复现，最终逐键等待 React Flow 选中节点投影的后续帧，通过原选择和文件断言；没有用直接设置 select.value 替代键盘路径。
+- 最后复核发现 br 的内部 NUL 分隔符可能被含同样字符的查询命中；增加原始 HTML `<br>` 用例在修正前确认失败，改成独立索引项后重新 typecheck、package，并复跑 PERF3A/A7.2 相关窗口测试。最终性能样本重新采集，早期样本不作为最终结果。
+- 5 MiB 大部分查找耗时和阻塞显著降低，但部分多结果/打开查找路径没有改善；1 MiB 普通查询近似持平。完整中位/最差值、首次 DOM、首屏、源码输入和堆采样见验收表，不仅展示有利结果。
+- 缓存会保留当前查找会话的 DOM/Text/Range，关闭释放引用；堆采样未强制 GC，不代表 main/Worker 或 RSS。首次阅读与源码输入仍有长任务，不宣布 PERF3/P0 完成。
+- Node 的既有 MODULE_TYPELESS_PACKAGE_JSON 警告不阻止测试；未扩大到全项目模块类型变更。未做干净环境安装/升级/卸载、真实中文 IME 或物理跨屏 DPI。
+
+### 产物与下一步
+
+日志及截图位于 `out/qa/perf3a-*`，最终二十次测量是 `stable-before-{1m,5m}-{1..5}` / `final-after-{1m,5m}-{1..5}`，汇总 `perf3a-measurements.json`。`out` 是本地忽略产物，未随源代码上传；安装包路径与最终摘要记录在 PROGRESS/PERF3A_ACCEPTANCE。
+
+最终修正后生产 package 与 Squirrel make 成功，make 后再次运行 PERF3A 通过。安装包 155,022,848 字节，SHA-256 `2F684A9D62A48BD681EDF3990770033AD39B009102706F1E639689AB8DB8E55B`；本地生成未公开发行。
+
+下一批 PERF3B 聚焦分析回复后的正文 DOM、布局和绘制调度，保持语义渲染、选区/批注锚点/查找及完整导出；随后处理源码输入和 200 可见卡片/大量批注窗口样本，再进入 UX6B → UX7 → UX8 → QA1。
+
+GitHub：本批已完成本地验证，提交与 PR 同步记录将在推送后补充。

@@ -98,7 +98,10 @@ async function keyboardSelect(selector, value) {
   const index = await page.evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); e.scrollIntoView({block:'nearest'}); e.focus(); return [...e.options].findIndex(option=>option.value===${JSON.stringify(value)}); })()`);
   assert.ok(index >= 0, `select option ${selector}: ${value}`);
   await key('Home', 'Home', 36);
-  for (let count = 0; count < index; count++) await key('ArrowDown', 'ArrowDown', 40);
+  await frame();
+  // The controlled picker follows React Flow's selected-node projection.
+  // Let that render settle before sending another synthetic key.
+  for (let count = 0; count < index; count++) { await key('ArrowDown', 'ArrowDown', 40); await frame(); }
   await wait(`document.querySelector(${JSON.stringify(selector)}).value===${JSON.stringify(value)}`, 'keyboard selection ' + value);
 }
 async function fill(selector, value) {
@@ -162,6 +165,7 @@ async function dragToOverlap() {
 }
 try {
   page = await connect(port, 'page'); main = await connect(port + 200, 'node');
+  await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await wait('Boolean(document.querySelector("[data-start-open]"))', 'start');
   await metrics(1200, 800);
   const untouched = await snapshot();
