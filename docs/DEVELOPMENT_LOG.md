@@ -1575,4 +1575,6 @@ npm.cmd run test:e2e:perf3b
 
 下一批 PERF3C 继续剩余正文布局/调度和源码输入热路径，再补 200 可见卡片/大量批注样本；后续 UX6B → UX7 → UX8 → QA1。不得为缩短耗时放宽完整 Markdown 语义、锚点核验或导出边界。
 
-GitHub：本批已完成本地验证，提交与 PR 同步记录将在推送后补充。
+暂存 diff 检查发现新增窗口脚本的多余 EOF 空行，去除后通过；这次仅空白修正未改变运行逻辑。
+
+GitHub：实现提交 `e53a4bf` 已推送至 `origin/codex/perf3b-reading-render`，成功创建 [PR #10](https://github.com/KLucen/MerMarked/pull/10)，目标 main，尚未合并。推送及连接器创建 PR 均成功；PR 已附加到当前任务。
