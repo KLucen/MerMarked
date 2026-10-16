@@ -7,7 +7,7 @@ self.onmessage = (event: MessageEvent<ReadingAnalysisRequest>) => {
   try {
     const started = performance.now();
     const result = analyzeReading(source, bomByteLength);
-    response = { id, result, analysisMs: performance.now() - started };
+    response = { id, result, analysisMs: performance.now() - started, analysisStartedAt: performance.timeOrigin + started };
   }
   catch { response = { id, error: true }; }
   self.postMessage(response);

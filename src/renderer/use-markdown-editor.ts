@@ -149,9 +149,13 @@ export function useMarkdownEditor(
       confirmedEditorRef.current = next;
       publish(next);
       const session = editSessionRef.current;
-      const normalized = markdownToEditorText(next.content);
-      if (!session || session.current.content !== normalized) {
-        publishSession(createMarkdownEditSession(normalized));
+      // An acknowledgement of the exact optimistic source needs no second LF
+      // projection. Keep its shared history, including a redo branch after undo.
+      if (!session || next.content !== current?.content) {
+        const normalized = markdownToEditorText(next.content);
+        if (!session || session.current.content !== normalized) {
+          publishSession(createMarkdownEditSession(normalized));
+        }
       }
     }
   }, [publish, publishSession]);
@@ -244,14 +248,14 @@ export function useMarkdownEditor(
     const current = editorRef.current;
     const persisted = documentRef.current;
     if (!current || !persisted || !current.editable || busy) return;
-    const content = editorToMarkdownText(editorText, preferredLineEnding(current));
-    const normalized = markdownToEditorText(content);
-    let session = editSessionRef.current;
-    if (!session || session.current.content !== markdownToEditorText(current.content)) {
-      session = createMarkdownEditSession(markdownToEditorText(current.content));
-    }
+    const normalized = markdownToEditorText(editorText);
+    // Every accepted, recovered and optimistic view is published with its LF
+    // session. Compare against that source of truth instead of converting the
+    // previous and candidate CRLF source back to LF on every keystroke.
+    const session = editSessionRef.current ?? createMarkdownEditSession(markdownToEditorText(current.content));
     const change = changedRange(session.current.content, normalized);
     if (!change) return;
+    const content = editorToMarkdownText(normalized, preferredLineEnding(current));
     const nextSession = boundHistory(applyMarkdownTextEdit(session, {
       expectedRevision: session.revision,
       selection: { start: change.start, end: change.end },
