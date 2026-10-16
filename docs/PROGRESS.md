@@ -1,5 +1,23 @@
 # MerMarkd 开发进度
 
+## 2026-10-16 · PERF3B 后台准备语义正文（当前切片已完成）
+
+基于已合并 PERF3A / [PR #9](https://github.com/KLucen/MerMarked/pull/9)（`7446e12`），在 `codex/perf3b-reading-render` 完成本批。完整验证与性能口径见 [PERF3B_ACCEPTANCE.md](PERF3B_ACCEPTANCE.md)，决定见 ADR-043。
+
+- 章节、选区、扩展和安全正文树共用一次 Markdown 解析，HTML 容器占位、raw 解析及清洗进入同一可取消 Worker；原快照只读，位置与全文引用语义保持。
+- 界面接收准备好的 HAST，沿用 react-markdown 的原组件和 URL 处理，仅让空字符串进入界面 parser。状态变化保持节点身份，模式切换复用当前精确源版本；旧回复、失败/重试及 dirty 边界继续由原任务协调保护。
+- 固定声明已有 `remark-rehype@11.1.2` 为直接依赖，锁文件没有传递包升级；不新增 IPC、schema 或文件写入路径。
+
+验证：类型检查、286/286 单测、21 组生产打包窗口 E2E、真实 Vite 专项、package 和 Squirrel make 通过；make 后复跑 PERF3B 通过。新旧管线在 10 组语料中的 HAST、HTML 与源码位置一致；实际窗口验证 Worker 的已清洗树、跨 80 个标题的末尾引用、查找、节点身份、三文件 bytes/mtime 与缺失 sidecar 零写入。原批注、编辑/撤销、结构变换、恢复与完整导出回归通过。
+
+同机前后 1/5 MiB 各五次：5 MiB 回复至正文 DOM 中位数 **1006 → 69 ms**，首屏 **4352 → 3446 ms**（最差 **4417 → 3480 ms**），首次打开最长帧间隔中位数 **1338 → 379 ms**。1 MiB 首屏 **1034 → 798 ms**。5 MiB 首次打开后的 renderer 堆采样中位数 **64 → 77 MiB**，多结果查找 **135 → 183 ms**，不声称所有路径和内存均改善；源码输入仍约 298 ms。堆采样未强制 GC，不含 main/Worker/RSS；首屏含等待及后续帧，完整口径见验收文档。
+
+产物：`out/qa/perf3b-*`，最终样本为 `before` / `after` 各十次，汇总 `perf3b-measurements.json`。安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe`，155,033,088 字节，SHA-256 `067E382E188E57DB6793655DBF60500A68618523B59364902D4D23EFAC5FA089`，本地生成未公开发行。
+
+下一批 **PERF3C 剩余布局/调度与输入热路径**：继续拆解数百毫秒的正文布局/绘制和启动/消息等待，定位源码输入的复制、分配及显示成本；之后补 200 可见卡片/大量批注样本，再按 UX6B → UX7 → UX8 → QA1 推进。没有虚拟化或按字符/换行拆文档；整体性能、真实中文 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。三项用户原有修改保持原样，不纳入提交。
+
+GitHub：本批已完成本地验证，提交与 PR 同步记录将在推送后补充。
+
 ## 2026-10-16 · PERF3A 可取消的正文查找与索引复用（当前切片已完成）
 
 基于已合并 PERF2 / [PR #8](https://github.com/KLucen/MerMarked/pull/8)（`071bb59`），在 `codex/perf3-reader-search` 完成本批。PERF3 拆为小批次，本批只推进查找；验收、性能完整口径及代价见 [PERF3A_ACCEPTANCE.md](PERF3A_ACCEPTANCE.md)，决定见 ADR-042。
@@ -193,7 +211,7 @@ GitHub：实现提交 `f33326d` 已推送至 `codex/ux2-shared-panels`，已创�
 
 验证：源码搜索与定向读取、历史截图人工检查、官方交互指南核对、`git diff --check -- docs/DESIGN_REVIEW_2026-10-11.md docs/PROGRESS.md docs/DEVELOPMENT_LOG.md`。本轮为文档评审，未运行类型检查、单测、打包或新的 Electron 窗口；历史验证结果不作为本轮实测。P0 与最新实现的真实窗口回归仍按原记录待验收。
 
-> 2026-10-16。当前阶段：P0 可行性原型，仍进行中。UX1–UX5、PERF1、UX6A 与 PERF2 已合并；PERF3A 查找切片通过 283 项单测与 20 组打包窗口回归，下一批 PERF3B 处理正文渲染与调度，再继续源码输入和剩余性能样本。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [PERF3A 验收](PERF3A_ACCEPTANCE.md)。真实 IME、安装/卸载、多显示器 DPI、长文档渲染和整体性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-16。当前阶段：P0 可行性原型，仍进行中。UX1–UX5、PERF1、UX6A、PERF2 与 PERF3A 已合并；PERF3B 后台正文准备通过 286 项单测与 21 组打包窗口回归。下一批 PERF3C 继续剩余正文布局/调度及源码输入，再补画布/批注性能样本。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [PERF3B 验收](PERF3B_ACCEPTANCE.md)。真实 IME、安装/卸载、多显示器 DPI 和整体性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## B1.3 窄窗口抽屉与画布工具栏收敛（当前切片已完成）
 

@@ -36,7 +36,9 @@
     "test:e2e:ux6a": "node tests/e2e/ux6a-draft-protection-packaged.mjs",
     "test:e2e:perf2": "node tests/e2e/perf2-background-reading-packaged.mjs",
     "test:e2e:perf3a": "node tests/e2e/perf3a-reader-search-packaged.mjs",
-    "test:qa:reader-search": "node tests/e2e/perf3a-responsiveness-packaged.mjs"
+    "test:qa:reader-search": "node tests/e2e/perf3a-responsiveness-packaged.mjs",
+    "test:e2e:perf3b": "node tests/e2e/perf3b-reading-render-packaged.mjs",
+    "test:qa:reading-render": "node tests/e2e/perf3b-responsiveness-packaged.mjs"
   },
   "dependencies": {
     "@xyflow/react": "12.12.0",
@@ -53,6 +55,7 @@
     "remark-frontmatter": "5.0.0",
     "remark-gfm": "4.0.1",
     "remark-parse": "11.0.0",
+    "remark-rehype": "11.1.2",
     "unified": "11.0.5",
     "yaml": "2.9.1"
   },

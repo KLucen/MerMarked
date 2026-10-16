@@ -1514,3 +1514,65 @@ npm.cmd run test:e2e:perf3a
 下一批 PERF3B 聚焦分析回复后的正文 DOM、布局和绘制调度，保持语义渲染、选区/批注锚点/查找及完整导出；随后处理源码输入和 200 可见卡片/大量批注窗口样本，再进入 UX6B → UX7 → UX8 → QA1。
 
 GitHub：实现提交 `1e6c8c6` 已推送至 `origin/codex/perf3-reader-search`，成功创建 [PR #9](https://github.com/KLucen/MerMarked/pull/9)，目标 main，尚未合并。推送及连接器创建 PR 均成功；PR 已附加到当前任务。
+
+## 2026-10-16 · PERF3B 后台准备语义正文
+
+### 目标与设计决定
+
+用户继续开发，按 PERF3B 推进。确认 PR #9 合并为 `7446e12`，快进后建立 `codex/perf3b-reading-render`；保留三项原有用户修改。检查发现 Worker 已做章节/选区分析，ReaderMarkdown 却仍在界面线程全文解析并进行 HTML 准备。先从上一批 nupkg 解出独立基线应用，再运行 CPU 诊断和前后多轮测量。
+
+新增纯核心 `readingRenderFromSnapshot`，在同一解析快照的副本上按原序执行 HTML 容器占位、remark-rehype、rehype-raw、HAST 元素策略及 sanitize。完整 HAST 与三个投影共同取消、重试和缓存。界面通过准备树插件沿用 react-markdown 的组件、URL 处理及 node.position，只给 parser 空字符串。没有按字符拆 Markdown、虚拟化、注入 HTML 字符串或改动保存行为。设计表、验收与代价见 PERF3B_ACCEPTANCE / ADR-043。
+
+### 修改文件
+
+- `src/core/reading-render.ts`、`reading-analysis.ts`：共享源解析、复制只读 MDAST、输出安全 HAST；`markdown-reading.ts` 为既有 schema 补严格类型，不改值。
+- `src/renderer/prepared-reading-plugin.ts`、`reader-markdown.tsx`、`main.tsx`：绑定已准备树，memo 与插件身份稳定，保留原正文组件。
+- `package.json` / lockfile：显式固定已有 `remark-rehype@11.1.2`，没有升级传递包；新增两个 npm 验证命令。
+- `tests/reading-render.test.mjs` 与两个 PERF3B 窗口脚本：新旧树/HTML/位置对照、冻结与结构化克隆、实际 Worker/DOM 边界及响应性采样。
+- 架构、阅读方言、决定、进度与验收文档同步本批边界及剩余路线。
+
+### 实际命令与结果
+
+```powershell
+npm.cmd install --save-exact --ignore-scripts --offline --no-audit --no-fund remark-rehype@11.1.2
+# 离线元数据缺失后，执行同一固定版本安装
+npm.cmd install --save-exact --ignore-scripts --no-audit --no-fund remark-rehype@11.1.2
+npm.cmd run typecheck
+npm.cmd test
+$env:MERMARKD_ELECTRON_ZIP_DIR='C:/Users/KLucen/AppData/Local/electron/Cache/d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b'
+npm.cmd run package
+npm.cmd run test:e2e:perf3b
+# 串行执行原 20 组：perf3a、perf2、perf1、ux6a、ux1–ux5、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2–a8-5
+node_modules/.bin/vite.cmd --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort
+# 另一个终端使用真实 preload；完成后停止 Vite
+$env:MERMARKD_QA_RENDERER_URL='http://127.0.0.1:5178'
+npm.cmd run test:e2e:perf3b
+# 独立性能进程，基线/本批 × 1/5 MiB × 五次
+$env:MERMARKD_QA_EXE='C:/Users/KLucen/Desktop/MerMarkd/out/qa/perf3b-perf3a-baseline/lib/net45/MerMarkd.exe'
+$env:MERMARKD_PERF_MIB='5'
+$env:MERMARKD_PERF_LABEL='before-5m-1'
+node tests/e2e/perf3b-responsiveness-packaged.mjs
+# 当前版不设 QA_EXE，使用 after 标签；CPU profile 只用于单独诊断
+node out/qa/perf3b-summarize.mjs
+npm.cmd run package
+npm.cmd run make -- --skip-package
+npm.cmd run test:e2e:perf3b
+```
+
+最终类型检查、286/286 单测、21 组打包 E2E 与 Vite 专项通过。最终 package 补入 npm 命令元数据，运行时代码与回归/性能采样一致；make 后 PERF3B 再次通过。窗口证明读取 → Worker 已清洗 HAST → 精确 DOM 位置 → 可见正文查找与模式缓存的完整流程；原数据写入、取消、dirty、保存、锚点、恢复与导出断言保留。
+
+### 测量、失败与限制
+
+- 同机各五次，5 MiB 首屏中位/最差 4352/4417 → 3446/3480 ms，回复至正文 DOM 1006/1031 → 69/72 ms，首次打开最长帧间隔 1338/1375 → 379/417 ms；1 MiB 首屏 1034/1047 → 798/819 ms。完整操作表和方法见验收文档，不把前后各一次诊断当最终结论。
+- 5 MiB 首次打开后 renderer used heap 中位数 64 → 77 MiB，安全 HAST 增加缓存；多结果查找 135 → 183 ms。该读数未强制 GC、不含 main/Worker/RSS。源码输入仍约 298 ms；剩余数百毫秒布局/绘制与调度等待继续列入下一批。
+- 离线 npm 返回 ENOTCACHED，固定版本联网安装成功，锁文件只有根依赖项变化。初次 typecheck 暴露 schema 推断过宽，补导出 Options 类型后通过，安全策略未变。
+- 新 E2E 把 DOM 引用赋值结果交回 CDP，触发 Object reference chain is too long；改为浏览器内保存引用、返回 void 后通过。读取一个不存在的旧测试路径后改用实际 `tests/core/markdown-reading.test.ts`，未据错误路径跳过安全验证。
+- Node 既有 MODULE_TYPELESS_PACKAGE_JSON 提示不阻止运行。没有为此调整项目模块类型，也未扩大源码编辑支持范围。真实中文 IME、物理多屏 DPI、干净 Windows 安装/升级/卸载未验证，P0 仍进行中。
+
+### 产物与下一批
+
+本地日志、截图及 20 个最终性能样本在 `out/qa/perf3b-*`；汇总 `perf3b-measurements.json`。安装包 `out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe` 为 155,033,088 字节，SHA-256 `067E382E188E57DB6793655DBF60500A68618523B59364902D4D23EFAC5FA089`。这些 `out` 产物被 Git 忽略，未公开发行；没有将 make 成功等同干净机安装/卸载通过。
+
+下一批 PERF3C 继续剩余正文布局/调度和源码输入热路径，再补 200 可见卡片/大量批注样本；后续 UX6B → UX7 → UX8 → QA1。不得为缩短耗时放宽完整 Markdown 语义、锚点核验或导出边界。
+
+GitHub：本批已完成本地验证，提交与 PR 同步记录将在推送后补充。

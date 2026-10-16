@@ -208,7 +208,7 @@ Markdown 由用户 `Ctrl+S` 明确保存，退出时提示。新建或已确认�
 | 桌面容器 | Electron + Electron Forge | Windows 安装包；Electron 提供打印 PDF 和页面捕获 API，满足导出主需求。代价是安装包和内存占用较高。 |
 | 界面 | React + TypeScript + Vite | 三视图共享模型、卡片组件及快速迭代。 |
 | 源码编辑器 | CodeMirror 6 | 面向文本编辑器的可组合扩展与 Markdown 支持。 |
-| Markdown 管线 | unified / remark-parse / remark-gfm / remark-frontmatter + react-markdown；阅读 HTML 使用 pre-raw 元素策略 + rehype-raw + HAST 元素策略 + rehype-sanitize | 统一解析配置与源码位置映射，驱动章节、阅读和批注锚点；frontmatter 单独识别。非白名单原始 HTML 容器先在 Markdown AST 层整棵占位，避免 HTML5 foster parenting；形成 HAST 后再兜底并按显式 schema 清除属性和协议。当前所有 HTML 派生文字均禁止批注；当前阅读实现与核心各自解析，选区必须验证两者位置一致。 |
+| Markdown 管线 | unified / remark-parse / remark-gfm / remark-frontmatter / remark-rehype + react-markdown；阅读 HTML 使用 pre-raw 元素策略 + rehype-raw + HAST 元素策略 + rehype-sanitize | 统一解析配置与源码位置映射，驱动章节、阅读和批注锚点；frontmatter 单独识别。非白名单原始 HTML 容器先在 Markdown AST 层整棵占位，避免 HTML5 foster parenting；形成 HAST 后再兜底并按显式 schema 清除属性和协议。当前所有 HTML 派生文字均禁止批注。PERF3B 中章节、选区与安全正文树在 Worker 共用同一解析快照，界面复用原 React 组件；选区仍须核验精确位置与原文。 |
 | 批注持久化 | 受限 YAML 1.2 解析/序列化 + `src/core` 锚点映射 | 文本 sidecar 便于携带和审阅；精确映射与保守重定位独立于 React/Electron。具体库在安全解析与差异稳定性原型后固定版本。 |
 | 卡片画布 | React Flow（`@xyflow/react`） | 节点拖动、连接、缩放以及嵌套节点；折叠语义和结构拖入由本项目实现。 |
 | 初始布局与自动整理 | ELK.js | 首次打开时自动排布章节树，用户可再次触发“自动整理”；复杂嵌套与跨层级边使用分层图布局，手动坐标在用户未要求重新整理时始终保留。 |
