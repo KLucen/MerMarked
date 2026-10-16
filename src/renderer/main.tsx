@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { StrictMode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, DragEvent as ReactDragEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ReaderMarkdown } from './reader-markdown';
@@ -43,7 +43,7 @@ import { useWorkspacePanels, WorkspaceTaskPanel } from './workspace-panels';
 import { ReaderEditableBlock } from './reader-editable-block';
 import { CanvasView } from './canvas-view';
 import { DocumentRecoveryView } from './document-recovery-view';
-import { collectVisibleSearchMatches } from './reader-search';
+import { useReaderSearch } from './use-reader-search';
 import type { VisibleSearchMatch } from './reader-search';
 import { useMarkdownEditor } from './use-markdown-editor';
 import './style.css';
@@ -307,8 +307,6 @@ function App() {
   const [readerSearchOpen, setReaderSearchOpen] = useState(false);
   const [readerSearchQuery, setReaderSearchQuery] = useState('');
   const [readerSearchIndex, setReaderSearchIndex] = useState(0);
-  const [readerSearchCount, setReaderSearchCount] = useState(0);
-  const [readerSearchTruncated, setReaderSearchTruncated] = useState(false);
   const [annotationView, setAnnotationView] = useState<AnnotationDocumentView | null>(null);
   const [annotationLoading, setAnnotationLoading] = useState(false);
   const [annotationSaving, setAnnotationSaving] = useState(false);
@@ -485,8 +483,6 @@ function App() {
     setReaderSearchOpen(false);
     setReaderSearchQuery('');
     setReaderSearchIndex(0);
-    setReaderSearchCount(0);
-    setReaderSearchTruncated(false);
     setAnnotationView(null);
     setSelectedAnnotationId(null);
     setUnpaintableIds([]);
@@ -574,6 +570,8 @@ function App() {
   const readingAnalysis = useReadingAnalysis(openedDocument ? String(noteDocumentKey.current) : null,
     readerDocument?.content ?? '', readerDocument?.bomByteLength ?? 0, activeMode === 'reader');
   const readingReady = readingAnalysis.status === 'ready';
+  const readerSearch = useReaderSearch(openedDocument ? String(noteDocumentKey.current) : null,
+    readerDocument?.content ?? '', activeMode === 'reader' && readingReady && readerSearchOpen, readerSearchOpen ? readerSearchQuery : '');
   const readerCanEdit = readingReady && Boolean(editorController.editor?.editable) && !editorController.busy &&
     !openedDocument?.recoveryPending && !annotationView?.canReloadSource && readerEditFeedback?.draftText === undefined;
   useEffect(() => {
@@ -690,8 +688,6 @@ function App() {
     setReaderSearchOpen(false);
     setReaderSearchQuery('');
     setReaderSearchIndex(0);
-    setReaderSearchCount(0);
-    setReaderSearchTruncated(false);
     setAnnotationView(null);
     setSelectedAnnotationId(null);
     setUnpaintableIds([]);
@@ -1520,24 +1516,18 @@ function App() {
     }
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     clearReaderSearchPaint();
-    setReaderSearchCount(0);
     setReaderSearchIndex(0);
-    setReaderSearchTruncated(false);
-    if (activeMode !== 'reader' || !readerSearchOpen || !readerSearchQuery || !readerDocument) return;
-    const article = window.document.querySelector<HTMLElement>('.markdown-body');
-    if (!article) return;
-    const result = collectVisibleSearchMatches(article, readerSearchQuery);
+    const result = readerSearch.result;
+    if (!result) return;
     readerSearchMatches.current = result.matches;
-    setReaderSearchCount(result.matches.length);
-    setReaderSearchTruncated(result.truncated);
     if (result.matches.length) paintReaderSearch(0, true);
     return () => clearReaderSearchPaint();
-  }, [activeMode, clearReaderSearchPaint, paintReaderSearch, readerDocument, readingReady,
-    readerSearchOpen, readerSearchQuery]);
+  }, [clearReaderSearchPaint, paintReaderSearch, readerSearch.result]);
 
   const moveReaderSearch = useCallback((direction: 1 | -1) => {
+    if (readerSearch.status !== 'ready') return;
     const total = readerSearchMatches.current.length;
     if (!total) return;
     setReaderSearchIndex((current) => {
@@ -1545,7 +1535,7 @@ function App() {
       paintReaderSearch(next, true);
       return next;
     });
-  }, [paintReaderSearch]);
+  }, [paintReaderSearch, readerSearch.status]);
 
   const closeReaderSearch = useCallback(() => {
     setReaderSearchOpen(false);
@@ -2099,7 +2089,8 @@ function App() {
       sourceChangeMessage={!dirtyPreview && annotationView?.canReloadSource
         ? annotationView.reason ?? '原 Markdown 已在外部修改，请重新载入后继续。' : null}
       search={{ open: readerSearchOpen, query: readerSearchQuery,
-        currentIndex: readerSearchIndex, total: readerSearchCount, truncated: readerSearchTruncated }}
+        currentIndex: readerSearchIndex, total: readerSearch.result?.matches.length ?? 0,
+        truncated: readerSearch.result?.truncated ?? false, status: readerSearch.status }}
       onOpen={() => void openMarkdown()} onModeChange={(mode) => void changeMode(mode)}
       onSave={saveSource}
       canSave={Boolean(editorController.editor?.editable)}

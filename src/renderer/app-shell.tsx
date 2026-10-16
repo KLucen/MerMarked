@@ -19,6 +19,7 @@ export interface ReaderSearchState {
   readonly currentIndex: number;
   readonly total: number;
   readonly truncated: boolean;
+  readonly status?: 'idle' | 'pending' | 'ready' | 'error';
 }
 
 export interface RecentDocumentItem {
@@ -407,8 +408,8 @@ export function AppShell({
       <input id="reader-search-input" ref={searchInput} type="search" value={search.query}
         onChange={(event) => onSearchQueryChange(event.target.value)} onKeyDown={handleSearchKeys}
         autoComplete="off" spellCheck={false} />
-      <output aria-live="polite">{search.query
-        ? search.total > 0
+      <output aria-live="polite" aria-busy={search.status === 'pending'}>{search.query
+        ? search.status === 'pending' ? '正在查找…' : search.status === 'error' ? '查找暂不可用，请重新输入' : search.total > 0
           ? `${search.currentIndex + 1} / ${search.total}${search.truncated ? '（仅显示前 1000 项）' : ''}`
           : '没有匹配'
         : '输入文字开始查找'}</output>

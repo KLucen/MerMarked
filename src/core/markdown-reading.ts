@@ -4,10 +4,7 @@ import { parseMarkdownSnapshot, type MarkdownSnapshot } from './markdown-snapsho
 
 export type UnsupportedMarkdownExtension = 'display-math' | 'wiki-link' | 'directive';
 
-export interface TextMatch {
-  readonly start: number;
-  readonly end: number;
-}
+export { findVisibleTextMatches, type TextMatch } from './visible-text-search.ts';
 
 const READING_HTML_TAGS = [
   'a', 'abbr', 'b', 'bdi', 'bdo', 'blockquote', 'br', 'cite', 'code', 'dd', 'del', 'details',
@@ -339,38 +336,4 @@ export function extensionsFromSnapshot(snapshot: MarkdownSnapshot): readonly Uns
 
   if (mathDelimiterCount >= 2) found.add('display-math');
   return UNSUPPORTED_EXTENSION_ORDER.filter((kind) => found.has(kind));
-}
-
-/** Find non-overlapping visible-text matches using UTF-16 DOM offsets. */
-export function findVisibleTextMatches(
-  text: string,
-  query: string,
-  limit = Number.POSITIVE_INFINITY,
-): readonly TextMatch[] {
-  if (!query) return [];
-  const expression = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
-  const matches: TextMatch[] = [];
-  const graphemeBoundaries = new Set<number>([0, text.length]);
-  if (typeof Intl.Segmenter === 'function') {
-    for (const segment of new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text)) {
-      graphemeBoundaries.add(segment.index);
-      graphemeBoundaries.add(segment.index + segment.segment.length);
-    }
-  } else {
-    let offset = 0;
-    for (const character of Array.from(text)) {
-      graphemeBoundaries.add(offset);
-      offset += character.length;
-      graphemeBoundaries.add(offset);
-    }
-  }
-  for (let match = expression.exec(text); match; match = expression.exec(text)) {
-    const end = match.index + match[0].length;
-    if (graphemeBoundaries.has(match.index) && graphemeBoundaries.has(end)) {
-      matches.push({ start: match.index, end });
-      if (matches.length >= limit) break;
-    }
-    if (match[0].length === 0) expression.lastIndex += 1;
-  }
-  return matches;
 }
