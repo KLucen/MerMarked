@@ -2293,7 +2293,7 @@ function App() {
                   reportReaderEditRestriction(offset, '这段内容暂不能直接编辑，请在源码中继续。');
                 }
               }}>
-              <ReaderMarkdown content={readerDocument!.content} components={components} />
+              <ReaderMarkdown tree={readingAnalysis.data!.renderTree} components={components} />
             </article> : <div className="empty-document"><h2>这份文档目前没有内容</h2><p>可以打开另一份 Markdown 文件继续阅读。</p></div>}
             {readerContextMenu && <div ref={readerContextMenuRef} className="editor-context-menu reader-context-menu" role="menu" aria-label="正文选区操作" data-reader-context-menu="true" tabIndex={-1}
               style={{ left: readerContextMenu.left, top: readerContextMenu.top }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={handleReaderContextMenuKeyDown}>

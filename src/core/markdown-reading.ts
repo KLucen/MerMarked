@@ -1,5 +1,6 @@
 import type { Element, Root as HastRoot, RootContent } from 'hast';
 import type { Html as MdastHtml, Root as MdastRoot } from 'mdast';
+import type { Options as SanitizeSchema } from 'rehype-sanitize';
 import { parseMarkdownSnapshot, type MarkdownSnapshot } from './markdown-snapshot.ts';
 
 export type UnsupportedMarkdownExtension = 'display-math' | 'wiki-link' | 'directive';
@@ -28,7 +29,7 @@ const UNSUPPORTED_PLACEHOLDER_TAG = 'mermarkd-unsupported-html';
 const UNSUPPORTED_EXTENSION_ORDER: readonly UnsupportedMarkdownExtension[] = [
   'display-math', 'wiki-link', 'directive',
 ];
-export const readingSanitizeSchema = {
+export const readingSanitizeSchema: SanitizeSchema = {
   tagNames: [...READING_HTML_TAGS],
   clobberPrefix: 'mermarkd-user-content-',
   protocols: {
