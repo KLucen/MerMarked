@@ -311,12 +311,12 @@ export function MarkdownEditorView({
 
   const recordAndEmit = useCallback((nextValue: string, nextSelection: EditorSelection) => {
     const before = currentValue.current;
-    const entry = changedSpan(before, nextValue, selection.current, nextSelection);
-    if (!entry) {
+    if (before === nextValue) {
       reportSelection(nextSelection);
       return;
     }
     if (!usesSharedHistory) {
+      const entry = changedSpan(before, nextValue, selection.current, nextSelection)!;
       history.current.past.push(entry);
       if (history.current.past.length > MAX_EDITOR_HISTORY_ENTRIES) history.current.past.shift();
       history.current.future = [];

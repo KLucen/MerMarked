@@ -1,5 +1,25 @@
 # MerMarkd 开发进度
 
+## 2026-10-16 · PERF3C 源码输入热路径（当前切片已完成）
+
+从已合并 PERF3B / [PR #10](https://github.com/KLucen/MerMarked/pull/10)（`b0c6cd9`）建立 `codex/perf3c-source-input`。验收、完整性能表和限制见 [PERF3C_ACCEPTANCE.md](PERF3C_ACCEPTANCE.md)。
+
+- 源码视图使用共享历史时省去重复的全文差异扫描；输入及外壳复用当前 LF 会话，避免把旧/新 CRLF 源码反复转换回来。相同源码的 IPC/草稿确认保持历史，不再重建 LF 投影。
+- 保留逐 revision 完整候选、即时 dirty、旧回复隔离、拒绝恢复及保存等待；没有新增依赖、preload IPC、持久化格式或写入路径。
+- Worker 数字计时补充发送到开始分析、分析结束到回复两个分段，仅用于诊断。没有更改正文布局或任务调度，首屏仍是后续性能重点。
+
+验证：类型检查、286/286 单测、22 组打包窗口 E2E、真实 Vite 输入专项、package、Squirrel make 和 make 后 PERF3C 复跑通过。专项核对延迟确认、连续输入、真实草稿、模式切换、撤销重做、拒绝恢复、排队保存、BOM/CRLF/emoji 及三文件 bytes/mtime。既有阅读编辑、批注、结构、保存恢复和全图导出回归通过。
+
+同机 1/5 MiB 各交替五对采样：5 MiB 输入处理段中位数 **77.6 → 52.4 ms**，事件至后续帧 **130.3 → 102.1 ms**，含自动化等待的命令 **306 → 277 ms**，最长帧间隔 **113 → 88 ms**。事件至后续帧最差 **137.6 → 139.5 ms**；1 MiB 输入后堆采样 **29 → 33 MiB**，查找入口和部分模式切换也有退化，不声称所有路径改善。首屏 **3444 → 3393 ms** 近似持平，不计为本批收益。
+
+新增计时显示本机 5 MiB 请求发送至 Worker 开始分析约 **1888.5 ms**，分析结束至回复约 **33.8 ms**，回复至后续帧约 **430 ms**；首段包含启动、模块加载和消息调度，平台原因未确定。早期诊断曾出现约 25.5 ms 的首段，最终采用交替样本控制运行状态波动。最初捕获监听的 microtask 计时口径错误已修正，不纳入结果。
+
+产物在 `out/qa/perf3c-*`，最终性能样本使用 `paired-*`；安装包 155,032,576 字节，SHA-256 `844FEBFF1CDEDF2D4B22B06A9B6D0406503203B42FBE790B98F06F396D35CA45`，本地生成未公开发行。三项用户原有修改保持原样。
+
+下一批 **PERF3D 启动调度、正文布局与规模样本**：确认启动等待来源，补 200 可见卡片/大量批注的实际窗口预算，再按 UX6B → UX7 → UX8 → QA1 推进。真实中文 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。
+
+GitHub：实现提交 `bf9f102` 已推送至 `origin/codex/perf3c-source-input`，成功创建 [PR #11](https://github.com/KLucen/MerMarked/pull/11)，目标 main，尚未合并。推送及连接器创建均成功，PR 已附加到当前任务。
+
 ## 2026-10-16 · PERF3B 后台准备语义正文（当前切片已完成）
 
 基于已合并 PERF3A / [PR #9](https://github.com/KLucen/MerMarked/pull/9)（`7446e12`），在 `codex/perf3b-reading-render` 完成本批。完整验证与性能口径见 [PERF3B_ACCEPTANCE.md](PERF3B_ACCEPTANCE.md)，决定见 ADR-043。

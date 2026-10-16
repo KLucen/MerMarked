@@ -1578,3 +1578,51 @@ npm.cmd run test:e2e:perf3b
 暂存 diff 检查发现新增窗口脚本的多余 EOF 空行，去除后通过；这次仅空白修正未改变运行逻辑。
 
 GitHub：实现提交 `e53a4bf` 已推送至 `origin/codex/perf3b-reading-render`，成功创建 [PR #10](https://github.com/KLucen/MerMarked/pull/10)，目标 main，尚未合并。推送及连接器创建 PR 均成功；PR 已附加到当前任务。
+
+## 2026-10-16 · PERF3C 源码输入热路径
+
+### 目标与实现
+
+用户继续下一批开发。确认 PERF3B / PR #10 已合并为 b0c6cd9，快进主线后建立 codex/perf3c-source-input。先保留旧安装包作为基线，量化实际输入事件与 Worker 等待，再实施源码输入的小切片。
+
+- editor-view.tsx 在存在共享历史时不再计算未使用的本地全文差异；独立本地历史保留。
+- use-markdown-editor.ts 复用共享 LF 会话，候选在 IPC 前恢复原换行，相同源码的确认保留历史并跳过 LF 重建。main.tsx 从同一会话直接取得源码投影。
+- reading-analysis.worker.ts / task 类型增加数字时间戳，用于区分开始分析前等待与结果传递；任务取消及语义数据未变。
+- 新增 PERF3C 打包输入专项、前后测量脚本、npm 命令及验收文档。没有依赖升级、schema、preload IPC 或新的文件写入规则；不需要新的数据模型 ADR。
+
+### 实际验证
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+$env:MERMARKD_ELECTRON_ZIP_DIR='C:/Users/KLucen/AppData/Local/electron/Cache/d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b'
+npm.cmd run package
+npm.cmd run test:e2e:perf3c
+# 依次运行 perf3b/perf3a/perf2/perf1/ux6a/ux1/ux2/ux3/ux4/ux5/b1/a6/a7-1/a7-2/a7-3b/a7-4/a7-5/a8-2/a8-3/a8-4/a8-5
+node tests/e2e/perf3c-responsiveness-packaged.mjs
+.\node_modules\.bin\vite.cmd --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort
+$env:MERMARKD_QA_RENDERER_URL='http://127.0.0.1:5178/'
+npm.cmd run test:e2e:perf3c
+# 停止 Vite 后，在不带 renderer URL 的独立命令环境中完成：
+npm.cmd run make -- --skip-package
+npm.cmd run test:e2e:perf3c
+git diff --cached --check
+```
+
+286/286 单测、类型检查、22 组生产打包 E2E、Vite 专项和 make 后复跑通过。新专项验证延迟确认不回滚新输入、连续 revision 单调且有序、真实草稿确认后的撤销/重做、拒绝更新恢复、保存等待队列、保存后历史基线；BOM/CRLF/emoji 精确字节及三文件 bytes/mtime 断言通过。420×360 源码截图已检查。既有阅读编辑、批注锚点、结构预览、事务恢复和完整场景导出回归通过。开发服务已停止。
+
+### 性能、失败与限制
+
+最终 1/5 MiB 各交替五对，5 MiB 输入处理段中位/最差 77.6/79.3 → 52.4/54.1 ms，输入命令 306/311 → 277/281 ms，最长帧间隔 113/121 → 88/96 ms；事件至后续帧中位数 130.3 → 102.1 ms，但最差 137.6 → 139.5 ms。1 MiB 输入处理 17.2 → 11.4 ms，输入后堆采样 29 → 33 MiB。打开查找/模式切换等退化均记录在 PERF3C_ACCEPTANCE.md，不声称全部改善。
+
+首屏 3444 → 3393 ms 近似持平。本批新计时显示 5 MiB 发送至开始分析中位数 1888.5 ms，分析结束至回复 33.8 ms；开始前含启动、模块载入与消息调度，尚未定位平台原因。早期诊断中这段也曾为 25.5 ms，分段先跑前后版本的读数有波动，因此最终使用交替样本；所有原始记录保留。
+
+最初捕获监听的 microtask 在 React 监听前执行，产生 0 ms 错误处理段，已改用 window 冒泡监听并重测；错误样本不入最终表格。CPU profile 误用 require 读取扩展名导致语法错误，改用 JSON.parse；ASAR 路径改用 Windows path.join 后成功确认重复扫描函数。Node 既有 MODULE_TYPELESS_PACKAGE_JSON 提示未通过改模块类型规避。
+
+### 产物与下一步
+
+out/qa/perf3c-* 保存日志、截图、诊断与最终 paired-* 样本，perf3c-measurements.json 为汇总。Setup.exe 为 155,032,576 字节，SHA-256 844FEBFF1CDEDF2D4B22B06A9B6D0406503203B42FBE790B98F06F396D35CA45。本地产物被 Git 忽略，未公开发行；未重新验收干净安装/升级/卸载、真实中文 IME 和物理多屏 DPI。
+
+下一批 PERF3D 确认启动调度与布局瓶颈、补齐 200 可见卡片和大量批注的实际窗口样本；后续 UX6B → UX7 → UX8 → QA1。P0 和整体性能门槛仍未完成，三项用户已有修改保持原样，不纳入提交。
+
+GitHub：实现提交 bf9f102 已推送至 origin/codex/perf3c-source-input；成功创建 [PR #11](https://github.com/KLucen/MerMarked/pull/11)，目标 main，尚未合并。PR 已附加到当前任务，推送和连接器创建成功。

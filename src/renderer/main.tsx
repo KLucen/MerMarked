@@ -636,8 +636,9 @@ function App() {
   }, [documentForReaderAnalysis, sectionTree]);
   const unsupportedExtensions = readingAnalysis.data?.extensions ?? [];
   const editorText = useMemo(
-    () => editorController.editor ? markdownToEditorText(editorController.editor.content) : '',
-    [editorController.editor],
+    () => editorController.editSession?.current.content ??
+      (editorController.editor ? markdownToEditorText(editorController.editor.content) : ''),
+    [editorController.editSession?.current.content, editorController.editor?.content],
   );
   const parsedOutline = useMemo(() => {
     if (!documentForReaderAnalysis || !sectionTree ||

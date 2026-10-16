@@ -1,7 +1,9 @@
 import type { ReadingAnalysis } from '../core/reading-analysis';
 
 export interface ReadingAnalysisRequest { readonly id: number; readonly source: string; readonly bomByteLength: 0 | 3 }
-export type ReadingAnalysisResponse = { readonly id: number; readonly result: ReadingAnalysis; readonly analysisMs: number }
+export type ReadingAnalysisResponse = { readonly id: number; readonly result: ReadingAnalysis; readonly analysisMs: number;
+  /** Same clock as Window.timeOrigin + Window.now, for separating startup and reply costs. */
+  readonly analysisStartedAt: number }
   | { readonly id: number; readonly error: true };
 export type ReadingAnalysisWorker = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 'onerror' | 'onmessageerror'>;
 
