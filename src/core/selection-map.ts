@@ -215,6 +215,14 @@ export function resolveSelection(
   visibleStart: number,
   visibleEnd: number,
 ): SelectionResolution {
+  return resolveSelectionWithOffsets(map, blockStart, visibleStart, visibleEnd,
+    offset => encoder.encode(map.source.slice(0, offset)).length);
+}
+
+function resolveSelectionWithOffsets(
+  map: SelectionMap, blockStart: number, visibleStart: number, visibleEnd: number,
+  byteOffset: (offset: number) => number,
+): SelectionResolution {
   const block = map.blocks.find((entry) => entry.blockStart === blockStart);
   if (!block) return { ok: false, reason: '选区不在可映射的段落或标题内。' };
   if (!block.supported) return { ok: false, reason: block.reason ?? '当前块暂不支持精确映射。' };
@@ -251,8 +259,8 @@ export function resolveSelection(
     blockStart,
     visibleStart,
     visibleEnd,
-    startByte: map.bomByteLength + encoder.encode(map.source.slice(0, sourceStart)).length,
-    endByte: map.bomByteLength + encoder.encode(map.source.slice(0, sourceEnd)).length,
+    startByte: map.bomByteLength + byteOffset(sourceStart),
+    endByte: map.bomByteLength + byteOffset(sourceEnd),
     sourceExact: map.source.slice(sourceStart, sourceEnd),
     displayQuote: block.visibleText.slice(visibleStart, visibleEnd),
     sourceStart,
@@ -274,6 +282,55 @@ export function resolveStoredHighlight(
     readonly displayQuote: string;
   },
 ): StoredHighlightResolution {
+  // Single-anchor callers retain the full-scan path; only explicit batches
+  // retain an index, so saving/transaction checks do not build one per anchor.
+  return resolveStoredHighlightIndexed(map, anchor, () => ({
+    sourceBytes: encoder.encode(map.source),
+    byteOffset: offset => encoder.encode(map.source.slice(0, offset)).length,
+    blocks: map.blocks.map(block => ({ block, range: null })),
+  }));
+}
+
+type StoredAnchor = Parameters<typeof resolveStoredHighlight>[1];
+
+/** A batch resolver bound to one immutable selection-map snapshot; never global. */
+export function createStoredHighlightResolver(map: SelectionMap): (anchor: StoredAnchor) => StoredHighlightResolution {
+  let index: ReturnType<typeof storedHighlightIndex> | undefined;
+  return anchor => resolveStoredHighlightIndexed(map, anchor, () => index ??= storedHighlightIndex(map));
+}
+
+function storedHighlightIndex(map: SelectionMap) {
+  const source = map.source;
+  const boundary = (offset: number) => Number.isSafeInteger(offset) && offset >= 0 && offset <= source.length &&
+    !(offset > 0 && offset < source.length && /[\uDC00-\uDFFF]/u.test(source[offset]) && /[\uD800-\uDBFF]/u.test(source[offset - 1]));
+  const points = [...new Set([0, source.length, ...map.blocks.flatMap(block => [block.blockStart, block.blockEnd])])]
+    .filter(boundary).sort((a, b) => a - b);
+  const seen = new Set<number>(); const duplicated = new Set<number>();
+  for (const block of map.blocks) {
+    if (seen.has(block.blockStart)) duplicated.add(block.blockStart);
+    seen.add(block.blockStart);
+  }
+  const bytesAt = [0];
+  for (let i = 1; i < points.length; i++) {
+    bytesAt.push(bytesAt[i - 1] + encoder.encode(source.slice(points[i - 1], points[i])).length);
+  }
+  const byteOffset = (offset: number): number => {
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset > source.length) return encoder.encode(source.slice(0, offset)).length;
+    let low = 0; let high = points.length;
+    while (low + 1 < high) {
+      const middle = (low + high) >>> 1;
+      if (points[middle] <= offset) low = middle; else high = middle;
+    }
+    return bytesAt[low] + encoder.encode(source.slice(points[low], offset)).length;
+  };
+  return { sourceBytes: encoder.encode(source), byteOffset,
+    blocks: map.blocks.map(block => ({ block, range: !duplicated.has(block.blockStart) && boundary(block.blockStart) && boundary(block.blockEnd) && block.blockStart <= block.blockEnd
+      ? { start: byteOffset(block.blockStart), end: byteOffset(block.blockEnd) } : null })) };
+}
+
+function resolveStoredHighlightIndexed(
+  map: SelectionMap, anchor: StoredAnchor, getIndex: () => ReturnType<typeof storedHighlightIndex>,
+): StoredHighlightResolution {
   const { startByte, endByte, sourceExact, displayQuote } = anchor;
   if (
     !Number.isSafeInteger(startByte) || !Number.isSafeInteger(endByte) ||
@@ -283,7 +340,7 @@ export function resolveStoredHighlight(
     return { ok: false, reason: '存储的高亮锚点范围无效。' };
   }
 
-  const sourceBytes = encoder.encode(map.source);
+  const { sourceBytes, byteOffset, blocks } = getIndex();
   const exactBytes = encoder.encode(sourceExact);
   const relativeStart = startByte - map.bomByteLength;
   const relativeEnd = endByte - map.bomByteLength;
@@ -295,12 +352,13 @@ export function resolveStoredHighlight(
   }
 
   let match: { blockStart: number; visibleStart: number; visibleEnd: number } | undefined;
-  for (const block of map.blocks) {
+  for (const { block, range } of blocks) {
     if (!block.supported) continue;
+    if (range && (relativeStart < range.start || relativeEnd > range.end)) continue;
     let visibleStart = block.visibleText.indexOf(displayQuote);
     while (visibleStart !== -1) {
       const visibleEnd = visibleStart + displayQuote.length;
-      const resolved = resolveSelection(map, block.blockStart, visibleStart, visibleEnd);
+      const resolved = resolveSelectionWithOffsets(map, block.blockStart, visibleStart, visibleEnd, byteOffset);
       if (
         resolved.ok && resolved.startByte === startByte && resolved.endByte === endByte &&
         resolved.sourceExact === sourceExact && resolved.displayQuote === displayQuote

@@ -1626,3 +1626,60 @@ out/qa/perf3c-* 保存日志、截图、诊断与最终 paired-* 样本，perf3c
 下一批 PERF3D 确认启动调度与布局瓶颈、补齐 200 可见卡片和大量批注的实际窗口样本；后续 UX6B → UX7 → UX8 → QA1。P0 和整体性能门槛仍未完成，三项用户已有修改保持原样，不纳入提交。
 
 GitHub：实现提交 bf9f102 已推送至 origin/codex/perf3c-source-input；成功创建 [PR #11](https://github.com/KLucen/MerMarked/pull/11)，目标 main，尚未合并。PR 已附加到当前任务，推送和连接器创建成功。
+
+## 2026-10-17 · PERF3D 批注加载与规模验证
+
+### 目标与实现
+
+用户继续下一批开发。确认 PERF3C / PR #11 已合并为 7f2eb7a，快进主线后建立 codex/perf3d-startup-scale。先保留旧打包应用作为基线，定位启动等待，再补大量批注及 200 可见卡片的实际窗口样本。完整数据和测量边界见 PERF3D_ACCEPTANCE.md，设计见 ADR-044。
+
+- annotation-relocation.ts 保持字节/UTF-8/摘要核验，按需要解析选区和章节投影并复用同一快照；空列表不做 Markdown 解析。
+- selection-map.ts 增加绑定单份不可变快照的批量 resolver，复用 UTF-8 字节和稀疏边界索引；完整字素、源码反向核验和重复候选拒绝仍由同一内核实现。单条 API、保存/事务路径不强制建索引。
+- main.tsx 在一次批注着色 effect 内共享 resolver，沿用原模式、源内容和清理规则；无全局或跨文档缓存。
+- 新增空列表验证及独立全文扫描 oracle 对照、规模 E2E、前后测量脚本和 npm 命令；不改依赖、IPC、schema 或写入合同。
+
+### 实际验证
+
+```powershell
+npm.cmd run typecheck
+npm.cmd test
+$env:MERMARKD_ELECTRON_ZIP_DIR='C:/Users/KLucen/AppData/Local/electron/Cache/d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b'
+npm.cmd run package
+npm.cmd run test:e2e:perf3d
+# 独立进程交替测量基线/当前版本；空批注 1/5 MiB 各五对，规模 5 MiB 三对
+$env:MERMARKD_QA_EXE='C:/Users/KLucen/Desktop/MerMarkd/out/qa/perf3d-perf3c-baseline/lib/net45/MerMarkd.exe'
+$env:MERMARKD_PERF_MIB='5'
+$env:MERMARKD_PERF_LABEL='paired-before-5m-1'
+node tests/e2e/perf3d-responsiveness-packaged.mjs
+# 当前版本不设 QA_EXE；规模场景增加 MERMARKD_PERF_SCALE=1，标签 scale-before/after-5m-N
+node out/qa/perf3d-summarize.cjs
+# 另起命令环境串行执行原 22 组：perf3c/perf3b/perf3a/perf2/perf1/ux6a/ux1–ux5/b1/a6/a7-1/a7-2/a7-3b/a7-4/a7-5/a8-2–a8-5
+.\node_modules\.bin\vite.cmd --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort
+$env:MERMARKD_QA_RENDERER_URL='http://127.0.0.1:5178/'
+npm.cmd run test:e2e:perf3d
+# 停止 Vite 后，另起无 QA_EXE/renderer URL 的命令环境
+npm.cmd run make -- --skip-package
+npm.cmd run test:e2e:perf3d
+Get-FileHash -LiteralPath 'out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe' -Algorithm SHA256
+git diff --cached --check
+```
+
+类型检查、289/289 单测、23 组生产打包窗口 E2E、Vite 专项、package、make 和 make 后规模专项通过。窗口验证真实文件 → 主进程核验 → Worker 正文 → 500 高亮 → 查找/输入/撤销 → 200 卡片适应全图 → 返回阅读，三文件 bytes/mtime 不变。原数据写入、dirty、结构、恢复与完整导出回归通过；服务已停止。超过 2000 个合法/篡改选区、BOM、CRLF、emoji、组合字符、实体/转义、重复块及多文档对照均通过。
+
+### 测量、失败与限制
+
+- 空批注各五对：5 MiB 主进程加载中位数 2035.4 → 58.6 ms；首屏中位/最差 1696/4408 → 1614/1660 ms。旧版部分样本 Worker 先于主进程阻塞启动，因此不能只引用最差收益。5 MiB 输入处理 92.5 → 97.5 ms、无匹配查询 150 → 185 ms 等退化保留。
+- 规模样本三对：5 MiB / 500 高亮完整出现 39.57 → 2.72 秒，返回阅读 25.17 → 0.81 秒；首屏本身 1.60 → 2.72 秒，不能把旧版先显示正文而随后冻结遗漏。200 卡片切换仍约 20.9 秒、最长帧间隔 18.8 秒；新版适应全图最差约 2 秒。
+- 卡片后 renderer 堆采样中位数 152 → 307 MiB，未强制 GC，不含 main/Worker/RSS；不宣称内存改善或已排除泄漏。非空批注主进程仍约 1.1 秒同步工作，整体性能未通过。
+- 仅延迟 annotations:load 的测试干预支持主进程重复解析阻挡启动的判断，产品未使用人为延迟。只做按需解析的中间版仍需约 40 秒完成 500 高亮，促使增加批量索引；中间结果不混入最终表。
+- 初始 200 卡片自动平排在最小缩放下只有 56 张位于视口，断言失败。改用预存 20×10 网格后通过真实“适应全图”验证全数可见；没有改变产品自动布局或删除可见性断言，自动布局边界留待后续。
+- 重复 blockStart 的范围过滤可能隐藏歧义，已让这些块走原完整候选核验，并新增不一致 blockEnd 对照后重跑全部单测及最终 package。所有最终性能样本均来自这一修正后的 runtime。
+- Node 既有 MODULE_TYPELESS_PACKAGE_JSON 提示保留；make 的 skip-package 使用最终已验证目录。打包成功不代表干净安装/升级/卸载或真实 IME/多屏 DPI 验收。
+
+### 产物与下一步
+
+日志、截图和最终 26 次交替样本保存在 out/qa/perf3d-*，汇总 perf3d-measurements.json。安装包为 155,034,112 字节，SHA-256 F1B002AFB7D10161B7062099BBE8FDE75CEC107563F916EC12C30873F41AF2B0；这些本地产物被 Git 忽略，未公开发行。
+
+下一批 PERF3E 处理卡片准备、提交和布局成本，补连续拖动/画布查找规模验证，核查同步批注和内存生命周期；之后 UX6B → UX7 → UX8 → QA1。P0 未完成，三项用户原有修改保持原样，不纳入提交。
+
+GitHub：实现提交 `12701d6` 已推送至 `origin/codex/perf3d-startup-scale`，成功创建 [PR #12](https://github.com/KLucen/MerMarked/pull/12)，目标 main，尚未合并。PR 已附加到当前任务，推送与连接器创建均成功。

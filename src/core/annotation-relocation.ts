@@ -1,5 +1,6 @@
-import { extractSections } from './sections.ts';
-import { buildSelectionMap, resolveStoredHighlight, type SelectionMap } from './selection-map.ts';
+import { sectionsFromSnapshot, type SectionTree } from './sections.ts';
+import { selectionMapFromSnapshot, createStoredHighlightResolver } from './selection-map.ts';
+import { parseMarkdownSnapshot, type MarkdownSnapshot } from './markdown-snapshot.ts';
 import type { AnnotationAnchor, AnnotationSidecar } from './annotations';
 
 const encoder = new TextEncoder();
@@ -48,8 +49,8 @@ export interface AnnotationSidecarRelocation {
 interface PreparedSource extends AnnotationRelocationSource {
   readonly bytes: Uint8Array;
   readonly bomByteLength: 0 | 3;
-  readonly sections: ReturnType<typeof extractSections>['sections'];
-  readonly selectionMap: SelectionMap;
+  readonly sections: SectionTree['sections'];
+  readonly resolveHighlight: ReturnType<typeof createStoredHighlightResolver>;
 }
 
 function invalidSource(message: string): never {
@@ -81,16 +82,22 @@ async function prepareSource(source: AnnotationRelocationSource): Promise<Prepar
   const actualSha256 = await hashHex(bytes);
   if (actualSha256 !== source.sha256) invalidSource('当前原文摘要与字节不一致。');
 
+  // An empty sidecar still verifies bytes, UTF-8 and the digest, but needs no
+  // Markdown projections. Non-empty sidecars share one immutable parse, and
+  // current-basis anchors do not need the section tree at all.
+  const content = decoded;
+  const bomByteLength = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0;
+  let snapshot: MarkdownSnapshot | undefined;
+  let sections: SectionTree['sections'] | undefined;
+  let resolveHighlight: ReturnType<typeof createStoredHighlightResolver> | undefined;
+  const parsed = () => snapshot ??= parseMarkdownSnapshot(content);
   return {
     bytes,
-    content: source.content,
+    content,
     sha256: source.sha256,
-    bomByteLength: bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0,
-    sections: extractSections(source.content).sections,
-    selectionMap: buildSelectionMap(
-      source.content,
-      bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0,
-    ),
+    bomByteLength,
+    get sections() { return sections ??= sectionsFromSnapshot(parsed()).sections; },
+    get resolveHighlight() { return resolveHighlight ??= createStoredHighlightResolver(selectionMapFromSnapshot(parsed(), bomByteLength)); },
   };
 }
 
@@ -174,7 +181,7 @@ function relocatePrepared(anchor: AnnotationAnchor, source: PreparedSource): Ann
     if (!exactRangeMatches(anchor, source)) {
       return { status: 'unresolved', anchor, reason: 'current-range-mismatch' };
     }
-    return resolveStoredHighlight(source.selectionMap, anchor).ok
+    return source.resolveHighlight(anchor).ok
       ? { status: 'unchanged', anchor }
       : { status: 'unresolved', anchor, reason: 'rendered-range-unresolved' };
   }
@@ -207,7 +214,7 @@ function relocatePrepared(anchor: AnnotationAnchor, source: PreparedSource): Ann
     displayQuote: anchor.displayQuote,
     ...(currentSection ? { sectionHint: currentSection } : {}),
   };
-  if (!resolveStoredHighlight(source.selectionMap, relocated).ok) {
+  if (!source.resolveHighlight(relocated).ok) {
     return { status: 'unresolved', anchor, reason: 'rendered-range-unresolved' };
   }
   return { status: 'relocated', anchor: relocated };
