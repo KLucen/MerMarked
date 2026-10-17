@@ -18,6 +18,8 @@
 
 产物在 `out/qa/perf3d-*`，最终 26 次样本为 `paired-*` / `scale-before/after-5m-*`。安装包 155,034,112 字节，SHA-256 `F1B002AFB7D10161B7062099BBE8FDE75CEC107563F916EC12C30873F41AF2B0`；本地生成未公开发行。真实中文 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。三项用户原有修改保持原样。
 
+GitHub：实现提交 `12701d6` 已推送至 `origin/codex/perf3d-startup-scale`，成功创建 [PR #12](https://github.com/KLucen/MerMarked/pull/12)，目标 main，尚未合并。PR 已附加到当前任务；推送与连接器创建均成功。
+
 ## 2026-10-16 · PERF3C 源码输入热路径（当前切片已完成）
 
 从已合并 PERF3B / [PR #10](https://github.com/KLucen/MerMarked/pull/10)（`b0c6cd9`）建立 `codex/perf3c-source-input`。验收、完整性能表和限制见 [PERF3C_ACCEPTANCE.md](PERF3C_ACCEPTANCE.md)。

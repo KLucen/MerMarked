@@ -1681,3 +1681,5 @@ git diff --cached --check
 日志、截图和最终 26 次交替样本保存在 out/qa/perf3d-*，汇总 perf3d-measurements.json。安装包为 155,034,112 字节，SHA-256 F1B002AFB7D10161B7062099BBE8FDE75CEC107563F916EC12C30873F41AF2B0；这些本地产物被 Git 忽略，未公开发行。
 
 下一批 PERF3E 处理卡片准备、提交和布局成本，补连续拖动/画布查找规模验证，核查同步批注和内存生命周期；之后 UX6B → UX7 → UX8 → QA1。P0 未完成，三项用户原有修改保持原样，不纳入提交。
+
+GitHub：实现提交 `12701d6` 已推送至 `origin/codex/perf3d-startup-scale`，成功创建 [PR #12](https://github.com/KLucen/MerMarked/pull/12)，目标 main，尚未合并。PR 已附加到当前任务，推送与连接器创建均成功。
