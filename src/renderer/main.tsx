@@ -11,7 +11,7 @@ import { markdownToEditorText } from '../core/editor-text';
 import { activeSectionAtMarker, countGraphemes } from '../core/reader-navigation';
 import { sectionFragmentIds } from '../core/sections';
 import { normalizeOutlineOffsets, projectSourceOutline } from '../core/source-outline';
-import { resolveSelection, resolveStoredHighlight } from '../core/selection-map';
+import { resolveSelection, createStoredHighlightResolver } from '../core/selection-map';
 import {
   applyReaderMappedTextEdit,
   escapeReaderPlainText,
@@ -730,13 +730,14 @@ function App() {
         blockElements.set(Number(element.dataset.sourceBlockStart), element);
       });
       const sourceBlocks = new Map(selectionMap.blocks.map((block) => [block.blockStart, block]));
+      const resolveHighlight = createStoredHighlightResolver(selectionMap);
       for (const item of annotationView.items) {
         if (item.status !== 'resolved') continue;
         if (item.kind === 'highlight' && (!item.color || !HIGHLIGHT_COLORS.some(({ value }) => value === item.color))) {
           failures.push(item.id);
           continue;
         }
-        const mapped = resolveStoredHighlight(selectionMap, item.anchor);
+        const mapped = resolveHighlight(item.anchor);
         if (!mapped.ok) {
           failures.push(item.id);
           continue;

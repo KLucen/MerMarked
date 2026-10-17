@@ -9,6 +9,29 @@ import {
 } from '../../src/core/annotation-relocation.ts';
 import { parseAnnotationYaml, serializeAnnotationYaml, type AnnotationAnchor, type AnnotationSidecar } from '../../src/core/annotations.ts';
 
+test('empty sidecars retain tags and validate the immutable source before advancing its basis', async () => {
+  const current = source('\uFEFF# 中文😀\r\n\r\n正文\r\n', true);
+  const sidecar: AnnotationSidecar = { schemaVersion: 1,
+    source: { sha256: '0'.repeat(64), encoding: 'utf-8', coordinateSystem: 'utf8-byte' },
+    tags: [{id:'tag',name:'保留标签'}], annotations: [] };
+  const before = structuredClone(sidecar);
+  const result = await relocateAnnotationSidecarCandidate(sidecar, current, '2026-10-17T00:00:00Z');
+  assert.deepEqual(sidecar, before);
+  assert.equal(result.changed, true);
+  assert.equal(result.model.source.sha256, current.sha256);
+  assert.deepEqual(result.model.tags, sidecar.tags);
+  assert.deepEqual(result.items, []);
+  assert.equal(result.unresolvedCount, 0);
+  assert.equal(result.relocatedCount, 0);
+  const unchanged = await relocateAnnotationSidecarCandidate(result.model, current, '2026-10-17T00:00:00Z');
+  assert.equal(unchanged.model, result.model);
+  assert.equal(unchanged.changed, false);
+  await assert.rejects(relocateAnnotationSidecarCandidate(sidecar, {...current,content:'different'}, '2026-10-17T00:00:00Z'), /字节与文本/);
+  await assert.rejects(relocateAnnotationSidecarCandidate(sidecar, {...current,sha256:'1'.repeat(64)}, '2026-10-17T00:00:00Z'), /摘要与字节/);
+  await assert.rejects(relocateAnnotationSidecarCandidate(sidecar, {...current,bytes:Uint8Array.from([0xff])}, '2026-10-17T00:00:00Z'), /UTF-8/);
+  await assert.rejects(relocateAnnotationSidecarCandidate(sidecar, current, 'invalid'), /时间/);
+});
+
 function source(content: string, bom = false): AnnotationRelocationSource {
   const bytes = bom
     ? Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(content, 'utf8')])

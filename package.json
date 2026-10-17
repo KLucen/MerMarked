@@ -40,7 +40,9 @@
     "test:e2e:perf3b": "node tests/e2e/perf3b-reading-render-packaged.mjs",
     "test:qa:reading-render": "node tests/e2e/perf3b-responsiveness-packaged.mjs",
     "test:e2e:perf3c": "node tests/e2e/perf3c-source-input-packaged.mjs",
-    "test:qa:source-input": "node tests/e2e/perf3c-responsiveness-packaged.mjs"
+    "test:qa:source-input": "node tests/e2e/perf3c-responsiveness-packaged.mjs",
+    "test:e2e:perf3d": "node tests/e2e/perf3d-scale-packaged.mjs",
+    "test:qa:startup-scale": "node tests/e2e/perf3d-responsiveness-packaged.mjs"
   },
   "dependencies": {
     "@xyflow/react": "12.12.0",
