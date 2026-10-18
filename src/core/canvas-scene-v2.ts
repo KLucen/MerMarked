@@ -1,4 +1,4 @@
-import { canvasCardContent } from './canvas-card-content.ts';
+import { canvasCardContent, type CanvasCardContentCache } from './canvas-card-content.ts';
 import type { CanvasBinding } from './canvas-state.ts';
 import type { CanvasStateV2 } from './canvas-state-v2.ts';
 import { CANVAS_DEFAULT_CARD_SIZE } from './canvas-state-v2.ts';
@@ -148,7 +148,11 @@ export function buildCanvasSceneV2(
   state: CanvasStateV2,
   bindings: readonly CanvasBinding[],
   minimumHeights: Readonly<Record<string, number>> = {},
+  contentCache?: CanvasCardContentCache,
 ): CanvasSceneV2 {
+  if (contentCache && (contentCache.source !== content || contentCache.tree !== tree)) {
+    throw new Error('Canvas content cache belongs to a different source/tree snapshot.');
+  }
   const cardById = new Map(state.cards.map((card) => [card.id, card]));
   const idBySection = new Map(bindings.filter((item) => item.sectionIndex !== null).map((item) => [item.sectionIndex!, item.id]));
   const sectionByCard = new Map(bindings.map((item) => [item.id, item.sectionIndex]));
@@ -180,7 +184,7 @@ export function buildCanvasSceneV2(
       ...(parentCardId ? { parentId: groupId(parentCardId) } : {}), hidden,
       hiddenDescendants: card.descendantsCollapsed ? hiddenDescendants : 0,
       position: { ...card.position }, width: 360, height: bodyHeight + 80 });
-    const cardContent = canvasCardContent(content, tree, binding.sectionIndex);
+    const cardContent = contentCache ? contentCache.get(binding.sectionIndex) : canvasCardContent(content, tree, binding.sectionIndex);
     contents.push({ id: contentId(binding.id), cardId: binding.id, groupId: groupId(binding.id), sectionIndex: binding.sectionIndex,
       hidden, position: { x: Math.max(16, card.contentPosition.x), y: Math.max(38, card.contentPosition.y) },
       width: preferredSize.width, height: bodyHeight, bodyDisplay: card.bodyDisplay,

@@ -1683,3 +1683,51 @@ git diff --cached --check
 下一批 PERF3E 处理卡片准备、提交和布局成本，补连续拖动/画布查找规模验证，核查同步批注和内存生命周期；之后 UX6B → UX7 → UX8 → QA1。P0 未完成，三项用户原有修改保持原样，不纳入提交。
 
 GitHub：实现提交 `12701d6` 已推送至 `origin/codex/perf3d-startup-scale`，成功创建 [PR #12](https://github.com/KLucen/MerMarked/pull/12)，目标 main，尚未合并。PR 已附加到当前任务，推送与连接器创建均成功。
+
+
+## 2026-10-18 · PERF3E 卡片正文复用与画布规模验证
+
+### 目标与实现
+
+用户要求继续下一批开发并沿用 GitHub 交付。确认 PR #12 已合并（3591f58），从 origin/main 建立 codex/perf3e-canvas-content。以 5 MiB / 200 卡片 CPU profile 定位重复章节正文解析，本批只分离文本派生与几何更新，决定见 ADR-045。
+
+- src/core/canvas-card-content.ts 增加精确 source/tree 作用域的惰性缓存，只保存冻结文本结果；摘要保留 160-code-point 规则，避免展开全文字符数组。
+- src/core/canvas-scene-v2.ts 接受可选缓存并拒绝不匹配快照；src/renderer/canvas-view.tsx 的首次场景、后续场景与节点 effect 共用缓存。独立导出路径不变。
+- tests/core/canvas-card-content.test.ts 用独立旧算法核对语义、Unicode 与正文变化，比较不同位置/尺寸/折叠/正文显示/隐藏箭头下的完整场景。
+- 新增 perf3e-canvas-packaged.mjs 与 lifecycle 包装，增加 npm 窗口专项和规模采样命令；A6 只补激活窗口，UX6A 只补可见正文等待。
+- 不新增依赖、IPC、schema 或持久化写入路径。三项用户原有修改保持原样，不纳入提交。
+
+### 性能与诊断
+
+同机 1/5 MiB 各交替五对，共 20 次普通窗口采样，不并行构建、不启用 profile/GC。5 MiB / 200 卡片切换中位数 11543 → 3381 ms、最长帧间隔 10359 → 2220 ms；首次拖动最长帧间隔 3207 → 77 ms，拖动至保存确认 6960 → 4837 ms。拖动每轮都等待保存，不称为不中断的连续拖动。500 高亮、每卡正文、全数适应、查找定位、三次真实指针拖动、撤销重做、Markdown/YAML bytes/mtime 均核对。
+
+5 MiB 打开阅读中位数 1944 → 2676 ms、全部高亮出现 1789.7 → 2645.7 ms、首次卡片堆 105 → 135 MiB，退化完整记录。两版 Worker 启动等待都有双峰波动，不据此确定因果。三轮独立 GC 的末轮卡片堆 95.7 → 55.2 MiB、返回阅读 41.5 → 41.6 MiB，只覆盖 renderer 和短周期，不证明没有泄漏。
+
+独立 main profile 中首次拖动约 4782 ms，章节解析调用链约 3849 ms；事务 validateBundles 约 2165 ms，prepare/load 仍分别核验。renderer 首次卡片 profile 约 3446 ms，parse 约 2781 ms。已核对 ASAR 中压缩函数与源码，调用链包含时间不可直接相加。完整表与口径见 PERF3E_ACCEPTANCE.md。
+
+### 失败与限制
+
+- 核心场景测试最初用了不存在的 summary 显示值，改为既有 preview 枚举后类型检查和全单测通过；没有修改产品枚举。
+- 新窗口专项最初假定修改正文仍保留 card-0，因保守锚点/ID 匹配而超时；改为检查当前标题对应正文，保留 dirty 和三文件零写入断言。
+- 旧 PERF1/UX6A 等窗口隐藏造成帧等待停顿；本地 out/qa/perf3e-show-test-windows.cjs 仅激活测试主窗口，不修改产品。辅助脚本不参与普通性能采样。
+- UX6A 重开文档后选区先于后台阅读完成，出现 null.scrollIntoView；helper 增加目标可见等待，草稿/离开/文件断言保持。
+- A6 窄窗断言连续两次超时，缩窗前激活窗口后原尺寸/抽屉/数据断言通过。ASAR 诊断首次使用正斜线路径在 Windows 未找到文件，改为实际 archive 路径后完成核对。
+- Node 既有 MODULE_TYPELESS_PACKAGE_JSON 提示保留；用户 fixture 自带末尾空行警告不改动。自动平排、首次卡片长任务、保存时只读等待、真实中文 IME、物理多屏 DPI 和干净安装/升级/卸载仍未验收，P0 未完成。
+
+### 下一步
+
+PERF3F 画布准备与保存核验：以精确源快照为边界拆解并复用重复解析，评估调度方案；保留摘要、外部修改、歧义拒绝、三文件版本、事务恢复和 dirty 冻结。继续相同规模样本与失败恢复验证，之后 UX6B → UX7 → UX8 → QA1。
+
+
+### 实际验证与产物
+
+- npm.cmd run typecheck、npm.cmd test：通过，292/292 单测；日志 perf3e-typecheck.log / perf3e-unit.log。
+- npm.cmd run package：通过，最终运行代码无后续改动；perf3e-package.log。
+- npm.cmd run test:e2e:perf3e：通过，含同标题正文编辑/撤销、200 卡片/500 高亮、三次真实拖动与撤销重做、三文件写入边界。最终打包和 make 后各验证一次。
+- 既有 23 组窗口回归通过：perf3d、perf3c、perf3b、perf3a、perf2、perf1、ux6a、ux1–ux5、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2–a8-5。连同本批共 24 组；成功日志索引 perf3e-regression-manifest.json。日志索引初次假定所有脚本输出 passed，规模脚本实际输出 JSON；以串行命令退出码与日志索引为准，没有因此重跑产品。
+- Vite --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort，与 MERMARKD_QA_RENDERER_URL 指向实际服务的本批专项通过；perf3e-vite.log。服务和测试窗口辅助进程均已停止。
+- npm.cmd run make -- --skip-package：通过，基于已验证的最终 package；perf3e-make.log。make 后本批专项通过，perf3e-post-make.log。
+- 安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：155,034,624 字节，SHA-256 B063585AFBD332311FB1C23B2CB98094D86FBD20D5A1EDAA00142E8B4B227789。本地生成未公开发行，不等于干净安装/升级/卸载验收。
+- 本地产物与截图为 out/qa/perf3e-*；20 个 paired 普通样本的汇总 perf3e-measurements.json。检查了阅读高亮与全图概览，用户三文件 SHA-256 与测试前一致。
+
+GitHub：实现提交 `afdaa5b` 已推送至 `origin/codex/perf3e-canvas-content`，成功创建 [PR #13](https://github.com/KLucen/MerMarked/pull/13)，目标 main，尚未合并。PR 已附加到当前任务；推送与连接器创建均成功。
