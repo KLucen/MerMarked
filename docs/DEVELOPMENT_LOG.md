@@ -1729,3 +1729,5 @@ PERF3F 画布准备与保存核验：以精确源快照为边界拆解并复用�
 - npm.cmd run make -- --skip-package：通过，基于已验证的最终 package；perf3e-make.log。make 后本批专项通过，perf3e-post-make.log。
 - 安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：155,034,624 字节，SHA-256 B063585AFBD332311FB1C23B2CB98094D86FBD20D5A1EDAA00142E8B4B227789。本地生成未公开发行，不等于干净安装/升级/卸载验收。
 - 本地产物与截图为 out/qa/perf3e-*；20 个 paired 普通样本的汇总 perf3e-measurements.json。检查了阅读高亮与全图概览，用户三文件 SHA-256 与测试前一致。
+
+GitHub：实现提交 `afdaa5b` 已推送至 `origin/codex/perf3e-canvas-content`，成功创建 [PR #13](https://github.com/KLucen/MerMarked/pull/13)，目标 main，尚未合并。PR 已附加到当前任务；推送与连接器创建均成功。

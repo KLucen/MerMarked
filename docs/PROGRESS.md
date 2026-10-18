@@ -18,6 +18,8 @@
 
 下一批 **PERF3F 画布准备与保存核验**：首次切换仍有 2.22 秒长帧，保存仍约 4.8 秒；main CPU profile 中章节解析约占 3.85 秒。优先核查精确源快照中的重复解析和调度，保留所有冲突/锚点/事务恢复校验，再按 UX6B → UX7 → UX8 → QA1 推进。自动平排、真实中文 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。
 
+GitHub：实现提交 `afdaa5b` 已推送至 `origin/codex/perf3e-canvas-content`，成功创建 [PR #13](https://github.com/KLucen/MerMarked/pull/13)，目标 main，尚未合并。PR 已附加到当前任务；推送与连接器创建均成功。
+
 ## 2026-10-17 · PERF3D 批注加载与规模验证（当前切片已完成）
 
 从已合并 PERF3C / [PR #11](https://github.com/KLucen/MerMarked/pull/11)（`7f2eb7a`）建立 `codex/perf3d-startup-scale`。完整测量、失败和限制见 [PERF3D_ACCEPTANCE.md](PERF3D_ACCEPTANCE.md)，决定见 ADR-044。
