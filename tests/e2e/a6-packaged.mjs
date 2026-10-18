@@ -379,6 +379,7 @@ try {
   assert.deepEqual(await readFile(sidecarPath), sidecarBeforeSummary);
   assert.equal(digest(await readFile(documentPath)), firstExternalHash);
 
+  await cdp.send('Page.bringToFront');
   await waitFor(cdp, `(() => {
     window.resizeTo(800, 600);
     return matchMedia('(max-width: 1100px)').matches && innerWidth <= 800;

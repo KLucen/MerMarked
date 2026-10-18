@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
 import { ArrowDownToLine, ArrowUpToLine, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
-import { canvasCardContent } from '../core/canvas-card-content';
+import { createCanvasCardContentCache } from '../core/canvas-card-content';
 import { buildCanvasSceneV2, isCanvasViewportVisible } from '../core/canvas-scene-v2';
 import {
   classifyDragOutPromotion,
@@ -174,6 +174,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const detachCandidateRef = useRef<DragOutPromotionCandidate | null>(null);
   const lastFocusRequest = useRef(0);
   const tree = useMemo(() => extractSections(document.content), [document.content]);
+  const cardContent = useMemo(() => createCanvasCardContentCache(document.content, tree), [document.content, tree]);
   const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
 
   useEffect(() => {
@@ -211,7 +212,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       const rootAtCorner = boundCards.some((card) => rootIds.has(card.id) && card.position.x < 32 && card.position.y < 32);
       const needsArrangement = loaded.model === null || hasNewCards || (sourceChanged && reconciled.unresolvedCardIds.length > 0) || allCardsAtOrigin || rootAtCorner;
       if (needsArrangement) initial = await arrangeCanvasV2(tree, initial, reconciled.bindings);
-      const initialScene = buildCanvasSceneV2(document.content, tree, initial, reconciled.bindings);
+      const initialScene = buildCanvasSceneV2(document.content, tree, initial, reconciled.bindings, {}, cardContent);
       const viewportValid = loaded.model !== null && isCanvasViewportVisible(loaded.model.viewport, initialScene.cards);
       if (loaded.model && !viewportValid && !needsArrangement) loadWarningText ??= '已保存的画布视口不再覆盖当前卡片，已自动定位到当前布局。';
       if (loaded.model && needsArrangement && (sourceChanged || hasNewCards || rootAtCorner)) loadWarningText ??= '检测到卡片位置未初始化或文档结构已变化，已自动整理当前章节。';
@@ -233,7 +234,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       });
     })().catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('画布无法载入，原文件未修改；请重新载入或检查 Markdown。'); setMessage('画布未载入'); } });
     return () => { generation.current += 1; };
-  }, [document.path, document.content, document.bomByteLength, dirty, loadRevision, tree]);
+  }, [document.path, document.content, document.bomByteLength, dirty, loadRevision, tree, cardContent]);
 
   useEffect(() => {
     if (!initialLayout.current || !model || bindings.some((binding) => !minimumHeights[binding.id])) return;
@@ -277,7 +278,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const measured = useCallback((id: string, height: number) => {
     setMinimumHeights((previous) => previous[id] === height ? previous : { ...previous, [id]: height });
   }, []);
-  const scene = useMemo(() => model ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights) : null, [bindings, document.content, minimumHeights, model, tree]);
+  const scene = useMemo(() => model ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights, cardContent) : null, [bindings, document.content, minimumHeights, model, tree, cardContent]);
   useEffect(() => {
     if (activeSection !== null) {
       setSelectedCardId(bindings.find(binding => binding.sectionIndex === activeSection)?.id ?? null);
@@ -362,7 +363,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       return { id: card.id, type: 'chapter', parentId: card.parentId, position: card.position,
         hidden: card.hidden, selected: card.id === selectedCardId && !selectedLink,
         draggable: !readOnly, connectable: !readOnly, style: { width: card.width, height: card.height },
-        data: { ...canvasCardContent(document.content, tree, card.sectionIndex), pathLabel: titlePath.join(' / ') || (card.sectionIndex === null ? '文档' : '未命名章节'), sectionIndex: card.sectionIndex, hiddenDescendants: card.hiddenDescendants,
+        data: { ...cardContent.get(card.sectionIndex), pathLabel: titlePath.join(' / ') || (card.sectionIndex === null ? '文档' : '未命名章节'), sectionIndex: card.sectionIndex, hiddenDescendants: card.hiddenDescendants,
           bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, size: card.size ?? CANVAS_DEFAULT_CARD_SIZE, descendantsCollapsed: card.descendantsCollapsed, readOnly,
           fold: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? { ...item, descendantsCollapsed: !item.descendantsCollapsed } : item) }); },
           edit: () => onEditSection(card.sectionIndex),
@@ -370,7 +371,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
           hiddenLinks: scene.links.filter(link => link.hiddenEndpoint && (link.from === card.id || link.to === card.id)).length,
           measure: (height) => measured(card.id, height) } };
     }));
-  }, [selectedCardId, selectedLink, document.content, measured, model, onEditSection, onOpenProperties, persist, readOnly, scene, tree]);
+  }, [selectedCardId, selectedLink, cardContent, measured, model, onEditSection, onOpenProperties, persist, readOnly, scene, tree]);
 
   useEffect(() => {
     setNodes((previous) => previous.map((node) => ({ ...node, data: {

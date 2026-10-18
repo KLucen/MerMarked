@@ -1,5 +1,23 @@
 # MerMarkd 开发进度
 
+## 2026-10-18 · PERF3E 卡片正文复用与画布规模验证（当前切片已完成）
+
+从已合并 PERF3D / [PR #12](https://github.com/KLucen/MerMarked/pull/12)（`3591f58`）建立 `codex/perf3e-canvas-content`。完整测量、失败和限制见 [PERF3E_ACCEPTANCE.md](PERF3E_ACCEPTANCE.md)，决定见 ADR-045。
+
+- 当前源码和章节树共用一份按需卡片正文缓存，首次场景、几何更新和节点 effect 复用派生文本；不保留 parser AST，源码变化或卸载后释放旧缓存。场景拒绝不匹配的源码/树。
+- 摘要只收集前 160 个 Unicode code point，保持原截取语义与完整正文；不改布局、卡片 ID、保存、导出、依赖、IPC 或 schema。
+- 新增独立旧算法与场景等价测试，以及 200 卡片/500 高亮的查找、三次真实拖动、撤销重做、同标题正文编辑/撤销和 dirty 零写入专项。
+
+验证：类型检查、292/292 单测、24 组生产窗口 E2E、真实 Vite 专项、package、Squirrel make 和 make 后专项通过。原批注、正文编辑、结构、恢复及全图导出回归通过。UX6A 增加后台正文就绪等待，A6 缩窗前激活窗口；原断言保留，失败详情见验收记录。
+
+产物位于 `out/qa/perf3e-*`；安装包 155,034,624 字节，SHA-256 `B063585AFBD332311FB1C23B2CB98094D86FBD20D5A1EDAA00142E8B4B227789`，本地生成未公开发行。三项用户原有修改的 SHA-256 保持一致，不纳入提交。
+
+同机 1/5 MiB 各交替五对：5 MiB 卡片切换中位数 **11543 → 3381 ms**、最长帧间隔 **10359 → 2220 ms**；首次拖动最长帧间隔 **3207 → 77 ms**，拖动至保存确认 **6960 → 4837 ms**。三个拖动之间均等待保存确认，不能宣称持续拖动或整体性能达标。
+
+退化保留：5 MiB 打开阅读 **1944 → 2676 ms**，全部高亮出现 **1789.7 → 2645.7 ms**，首次卡片堆采样 **105 → 135 MiB**。两版均观察到 Worker 启动等待的双峰波动，尚未确定因果。独立三轮 GC 诊断的末轮卡片堆 **95.7 → 55.2 MiB**，回到阅读 **41.5 → 41.6 MiB**；不代表全应用内存，也不能排除长期泄漏。
+
+下一批 **PERF3F 画布准备与保存核验**：首次切换仍有 2.22 秒长帧，保存仍约 4.8 秒；main CPU profile 中章节解析约占 3.85 秒。优先核查精确源快照中的重复解析和调度，保留所有冲突/锚点/事务恢复校验，再按 UX6B → UX7 → UX8 → QA1 推进。自动平排、真实中文 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。
+
 ## 2026-10-17 · PERF3D 批注加载与规模验证（当前切片已完成）
 
 从已合并 PERF3C / [PR #11](https://github.com/KLucen/MerMarked/pull/11)（`7f2eb7a`）建立 `codex/perf3d-startup-scale`。完整测量、失败和限制见 [PERF3D_ACCEPTANCE.md](PERF3D_ACCEPTANCE.md)，决定见 ADR-044。
@@ -251,7 +269,7 @@ GitHub：实现提交 `f33326d` 已推送至 `codex/ux2-shared-panels`，已创�
 
 验证：源码搜索与定向读取、历史截图人工检查、官方交互指南核对、`git diff --check -- docs/DESIGN_REVIEW_2026-10-11.md docs/PROGRESS.md docs/DEVELOPMENT_LOG.md`。本轮为文档评审，未运行类型检查、单测、打包或新的 Electron 窗口；历史验证结果不作为本轮实测。P0 与最新实现的真实窗口回归仍按原记录待验收。
 
-> 2026-10-16。当前阶段：P0 可行性原型，仍进行中。UX1–UX5、PERF1、UX6A、PERF2 与 PERF3A 已合并；PERF3B 后台正文准备通过 286 项单测与 21 组打包窗口回归。下一批 PERF3C 继续剩余正文布局/调度及源码输入，再补画布/批注性能样本。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [PERF3B 验收](PERF3B_ACCEPTANCE.md)。真实 IME、安装/卸载、多显示器 DPI 和整体性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-18。当前阶段：P0 可行性原型，仍进行中。UX1–UX5、PERF1、UX6A、PERF2 与 PERF3A–PERF3D 已合并；PERF3E 卡片正文复用已通过 292 项单测、24 组打包窗口及开发服务专项。下一批 PERF3F 处理画布首次准备与保存核验，再推进 UX6B → UX7 → UX8 → QA1。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [PERF3E 验收](PERF3E_ACCEPTANCE.md)。真实 IME、安装/升级/卸载、多显示器 DPI、自动平排和整体性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## B1.3 窄窗口抽屉与画布工具栏收敛（当前切片已完成）
 

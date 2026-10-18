@@ -63,6 +63,7 @@ async function screenshot(name) {
 }
 async function select(selector) {
   await page.send('Page.bringToFront');
+  await wait(`Boolean(document.querySelector(${JSON.stringify(selector)})?.getClientRects().length)`, 'reading selection target ready');
   await page.evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); e.scrollIntoView({block:'center'}); e.focus(); const r=document.createRange(); r.selectNodeContents(e); const s=getSelection(); s.removeAllRanges(); s.addRange(r); document.dispatchEvent(new Event('selectionchange')); })()`);
   await wait(`Boolean(document.querySelector('[data-selection-capability]')) && document.querySelector('.selection-quote')?.title===document.querySelector(${JSON.stringify(selector)}).textContent`, 'selection capability');
 }
