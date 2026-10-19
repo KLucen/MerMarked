@@ -18,6 +18,8 @@
 
 下一批 **PERF3G 画布首次准备与保存响应**：验证可取消的后台准备和精确源版本内的进一步复用，拆分解析/匹配/节点提交/落盘成本，继续跟踪内存。模式切换与长帧仍超过 300 / 100 ms 候选预算，PERF3 尚不能退出；之后按 UX6B → UX7 → UX8 → QA1 推进。自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍待验收，P0 未完成。
 
+GitHub：实现提交 `427a2b0` 已推送至 `origin/codex/perf3f-canvas-source`，成功创建 [PR #14](https://github.com/KLucen/MerMarked/pull/14)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。
+
 ## 2026-10-18 · PERF3E 卡片正文复用与画布规模验证（当前切片已完成）
 
 从已合并 PERF3D / [PR #12](https://github.com/KLucen/MerMarked/pull/12)（`3591f58`）建立 `codex/perf3e-canvas-content`。完整测量、失败和限制见 [PERF3E_ACCEPTANCE.md](PERF3E_ACCEPTANCE.md)，决定见 ADR-045。

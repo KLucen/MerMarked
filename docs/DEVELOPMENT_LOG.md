@@ -1773,3 +1773,5 @@ GitHub：实现提交 `afdaa5b` 已推送至 `origin/codex/perf3e-canvas-content
 ### 限制与下一步
 
 首次解析、正文准备和每次新保存的一次解析仍同步；200 卡片切换 2249 ms、长帧 1154 ms 仍超过候选预算，保存仍只读约 1.6–1.7 秒。PERF3 不退出。下一批 PERF3G 验证可取消的后台准备、精确源版本进一步复用与生命周期，拆分解析/匹配/节点提交/落盘成本，保留全部候选与磁盘核验。随后 UX6B → UX7 → UX8 → QA1；自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
+
+GitHub：实现提交 `427a2b0` 已推送至 `origin/codex/perf3f-canvas-source`，成功创建 [PR #14](https://github.com/KLucen/MerMarked/pull/14)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。原有三项用户修改未纳入提交。
