@@ -2,11 +2,10 @@ import { createHash, randomUUID } from 'node:crypto';
 import { link, lstat, open, readFile, readdir, realpath, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { parseAnnotationYaml, MAX_ANNOTATION_YAML_BYTES } from '../core/annotations.ts';
-import { MAX_CANVAS_JSON_BYTES, reconcileCanvasState } from '../core/canvas-state.ts';
+import { createCanvasSourceSnapshot, MAX_CANVAS_JSON_BYTES, reconcileCanvasState, type CanvasSourceSnapshot } from '../core/canvas-state.ts';
 import { parseCanvasStateJson, reconcileCanvasStateV2 } from '../core/canvas-state-v2.ts';
 import type { CanvasStateDocument } from '../core/canvas-state-v2.ts';
 import { assertMarkdownLineEndingsPreserved, decodeMarkdownBytes } from '../core/markdown-source.ts';
-import { extractSections } from '../core/sections.ts';
 import { buildSelectionMap, resolveStoredHighlight } from '../core/selection-map.ts';
 
 export type DocumentFileKind = 'markdown' | 'annotations' | 'canvas';
@@ -117,7 +116,9 @@ function bundleHashes(bundle: DocumentBundle): Record<DocumentFileKind, string |
   return { markdown: digest(bundle.markdown), annotations: bundle.annotations === null ? null : digest(bundle.annotations), canvas: bundle.canvas === null ? null : digest(bundle.canvas) };
 }
 
-async function validateBundles(before: DocumentBundle, after: DocumentBundle): Promise<void> {
+interface ValidationContext { snapshot?: CanvasSourceSnapshot }
+
+async function validateBundles(before: DocumentBundle, after: DocumentBundle, context: ValidationContext = {}): Promise<void> {
   for (const kind of kinds) {
     if ((before[kind]?.byteLength ?? 0) > limits[kind] || (after[kind]?.byteLength ?? 0) > limits[kind]) invalid();
     // Deletion needs its own preview/recovery policy; v1 only replaces or creates.
@@ -130,7 +131,9 @@ async function validateBundles(before: DocumentBundle, after: DocumentBundle): P
   if (original.format.bomByteLength !== next.format.bomByteLength) invalid();
   if (beforeHash !== afterHash && original.format.lineEnding === 'mixed') invalid();
   assertMarkdownLineEndingsPreserved(original.format, next.format);
-  extractSections(next.content);
+  const snapshot = context.snapshot ?? createCanvasSourceSnapshot(next.content);
+  if (snapshot.source !== next.content) invalid();
+  context.snapshot = snapshot;
   const oldAnnotations = before.annotations === null ? null : parseAnnotationYaml(decode(before.annotations));
   if (after.annotations !== null) {
     const model = parseAnnotationYaml(decode(after.annotations));
@@ -153,8 +156,8 @@ async function validateBundles(before: DocumentBundle, after: DocumentBundle): P
     if (!same(before.canvas, after.canvas)) {
       if (model.source.sha256 !== afterHash) invalid();
       const unresolvedCardIds = model.schemaVersion === 2
-        ? (await reconcileCanvasStateV2(model, { bytes: after.markdown, content: next.content, sha256: afterHash })).unresolvedCardIds
-        : (await reconcileCanvasState(model, { bytes: after.markdown, content: next.content, sha256: afterHash })).unresolvedCardIds;
+        ? (await reconcileCanvasStateV2(model, { bytes: after.markdown, content: next.content, sha256: afterHash }, undefined, snapshot)).unresolvedCardIds
+        : (await reconcileCanvasState(model, { bytes: after.markdown, content: next.content, sha256: afterHash }, undefined, snapshot)).unresolvedCardIds;
       for (const card of model.cards) {
         if (card.anchor.basisSha256 === afterHash) {
           if (unresolvedCardIds.includes(card.id)) invalid();
@@ -168,9 +171,23 @@ async function validateBundles(before: DocumentBundle, after: DocumentBundle): P
 }
 
 /** Immutable candidate/baseline copies and journal precede every target mutation. */
-export async function prepareDocumentTransaction(input: {
+interface TransactionInput {
   readonly documentPath: string; readonly before: DocumentBundle; readonly after: DocumentBundle;
-}): Promise<DocumentTransactionRef> {
+}
+
+export async function prepareDocumentTransaction(input: TransactionInput): Promise<DocumentTransactionRef> {
+  return prepare(input);
+}
+
+/** Reuse only source-derived work; publish still reloads and validates the journal and all three files. */
+export async function prepareAndCommitDocumentTransaction(input: TransactionInput, operations: DocumentTransactionOperations = {}): Promise<DocumentTransactionResult> {
+  const documentPath = input.documentPath;
+  const context: ValidationContext = {};
+  const ref = await prepare(input, context);
+  return publish(documentPath, ref, false, operations, context);
+}
+
+async function prepare(input: TransactionInput, context?: ValidationContext): Promise<DocumentTransactionRef> {
   const documentPath = await canonicalPath(input.documentPath);
   const before = { ...input.before, markdown: Uint8Array.from(input.before.markdown),
     annotations: input.before.annotations === null ? null : Uint8Array.from(input.before.annotations),
@@ -178,7 +195,7 @@ export async function prepareDocumentTransaction(input: {
   const after = { ...input.after, markdown: Uint8Array.from(input.after.markdown),
     annotations: input.after.annotations === null ? null : Uint8Array.from(input.after.annotations),
     canvas: input.after.canvas === null ? null : Uint8Array.from(input.after.canvas) };
-  await validateBundles(before, after);
+  await validateBundles(before, after, context);
   const id = randomUUID();
   for (const kind of kinds) for (const [version, bundle] of [['before', before], ['after', after]] as const) {
     const bytes = bundle[kind];
@@ -213,7 +230,7 @@ function parseJournal(bytes: Uint8Array, documentPath: string, ref: DocumentTran
   return entry;
 }
 
-async function loadTransaction(documentPath: string, ref: DocumentTransactionRef): Promise<{ journal: Journal; before: DocumentBundle; after: DocumentBundle }> {
+async function loadTransaction(documentPath: string, ref: DocumentTransactionRef, context?: ValidationContext): Promise<{ journal: Journal; before: DocumentBundle; after: DocumentBundle }> {
   if (!uuidPattern.test(ref.id)) invalid();
   const bytes = await readBytes(journalPath(documentPath, ref.id), 16_384);
   if (!bytes) invalid();
@@ -230,7 +247,7 @@ async function loadTransaction(documentPath: string, ref: DocumentTransactionRef
   };
   const before = await load('before');
   const after = await load('after');
-  await validateBundles(before, after);
+  await validateBundles(before, after, context);
   return { journal, before, after };
 }
 
@@ -288,9 +305,10 @@ async function acquireLocks(documentPath: string, id: string, recover: boolean):
 
 async function publish(
   documentPath: string, ref: DocumentTransactionRef, recover: boolean, operations: DocumentTransactionOperations,
+  context?: ValidationContext,
 ): Promise<DocumentTransactionResult> {
   const canonical = await canonicalPath(documentPath);
-  const loaded = await loadTransaction(canonical, ref);
+  const loaded = await loadTransaction(canonical, ref, context);
   const release = await acquireLocks(canonical, ref.id, recover);
   if (!release) return { status: 'busy', ref };
   try {

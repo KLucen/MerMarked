@@ -34,6 +34,7 @@ if(scale){
       prefix:Array.from(content.slice(Math.max(0,start-96),start)).slice(-48).join(''),suffix:Array.from(content.slice(start+exact.length,start+exact.length+96)).slice(0,48).join('')}};});
   await writeFile(fixture+'.annotations.yaml',serializeAnnotationYaml({schemaVersion:1,source:{sha256:hash,encoding:'utf-8',coordinateSystem:'utf8-byte'},tags:[],annotations}));
 }
+const artifactPrefix = process.env.MERMARKD_QA_ARTIFACT_PREFIX ?? 'perf3e';
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
 const child=spawn(process.env.MERMARKD_QA_EXE ?? path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
@@ -95,7 +96,7 @@ async function details(selector, open = true) {
 async function visible(selector) { return page.evaluate(`Boolean(document.querySelector(${JSON.stringify(selector)})?.getClientRects().length)`); }
 async function screenshot(name) {
   const result = await page.send('Page.captureScreenshot', { format: 'png' });
-  await writeFile(path.join(qa, `perf3e-${name}.png`), Buffer.from(result.data, 'base64'));
+  await writeFile(path.join(qa, `${artifactPrefix}-${name}.png`), Buffer.from(result.data, 'base64'));
 }
 async function metrics(width, height) {
   await page.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false }); await frame();
@@ -125,6 +126,7 @@ async function measure(name, action, condition) {
 }
 try {
   page=await connect(port,'page'); main=await connect(port+200,'node');
+  await main.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().forEach(window=>{window.show();window.focus();})');
   if(process.env.MERMARKD_QA_RENDERER_URL) await page.send('Page.navigate',{url:process.env.MERMARKD_QA_RENDERER_URL});
   await main.evaluate(`(()=>{const ipc=process.mainModule.require('electron').ipcMain;const original=ipc._invokeHandlers.get('annotations:load');
     globalThis.__annotationTrace=[];globalThis.__mainGaps=[];let previous=performance.now();setInterval(()=>{const now=performance.now();globalThis.__mainGaps.push(now-previous);previous=now;},10);
@@ -157,7 +159,7 @@ try {
   await measure('open-reader',()=>click('[data-start-open]'),'document.querySelectorAll(".markdown-body h1").length==='+headingCount);
   if (process.env.MERMARKD_PERF_PROFILE) {
     const { profile } = await page.send('Profiler.stop');
-    await writeFile(path.join(qa,'perf3e-open-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));
+    await writeFile(path.join(qa,artifactPrefix+'-open-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));
   }
   const readingTrace=await page.evaluate(`(()=>{const t=window.__readingTrace;return {
     loadingFeedbackMs:t.loading?Math.round(t.loading-t.started):null,
@@ -175,7 +177,7 @@ try {
   if(scale){
     if(process.env.MERMARKD_PERF_PROFILE_CARDS){await page.send('Profiler.enable');await page.send('Profiler.start');}
     await measure('switch-200-cards',()=>click('[data-mode="cards"]'),'document.querySelectorAll(".react-flow__node").length===200 && document.querySelector("[data-canvas-save]")?.disabled===false');
-    if(process.env.MERMARKD_PERF_PROFILE_CARDS){const {profile}=await page.send('Profiler.stop');await writeFile(path.join(qa,'perf3e-cards-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));}
+    if(process.env.MERMARKD_PERF_PROFILE_CARDS){const {profile}=await page.send('Profiler.stop');await writeFile(path.join(qa,artifactPrefix+'-cards-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));}
     await measure('fit-200-cards',()=>click('[aria-label="适应全图"]'),`(()=>{const r=document.querySelector('[data-canvas-flow]').getBoundingClientRect();return [...document.querySelectorAll('.react-flow__node')].filter(e=>{const b=e.getBoundingClientRect();return b.width>0&&b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom;}).length===200;})()`);
     const visibleCards=await page.evaluate(`(()=>{const r=document.querySelector('[data-canvas-flow]').getBoundingClientRect();return [...document.querySelectorAll('.react-flow__node')].filter(e=>{const b=e.getBoundingClientRect();return b.width>0&&b.left>=r.left&&b.right<=r.right&&b.top>=r.top&&b.bottom<=r.bottom;}).length;})()`);
     measurements.at(-1).visibleCards=visibleCards;
@@ -210,7 +212,7 @@ try {
         }
         await page.send('Input.dispatchMouseEvent',{type:'mouseReleased',x:point.x-6,y:point.y-3,button:'left',buttons:0,clickCount:1});
       },'document.querySelector("[data-canvas-save]")?.disabled===false && document.querySelector("[data-canvas-status]").textContent.includes("画布已保存")');
-      if(turn===1&&process.env.MERMARKD_PERF_PROFILE_CARDS){const {profile}=await main.send('Profiler.stop');await writeFile(path.join(qa,'perf3e-drag-main-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));}
+      if(turn===1&&process.env.MERMARKD_PERF_PROFILE_CARDS){const {profile}=await main.send('Profiler.stop');await writeFile(path.join(qa,artifactPrefix+'-drag-main-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));}
       const current=(await page.evaluate('window.mermarkd.loadCanvasV2()')).model;
       assert.ok(current);
       assert.notDeepEqual(current.cards[0].position,previous.cards[0].position,'each pointer drag is persisted');
@@ -279,7 +281,7 @@ try {
   const annotationTrace=await main.evaluate('({loads:globalThis.__annotationTrace,maxMainGapMs:Math.max(...globalThis.__mainGaps)})');
   const annotationsReadyMs=scale?await page.evaluate('window.__readingTrace.annotationsReady-window.__readingTrace.started'):null;
   const result={label:process.env.MERMARKD_PERF_LABEL??'current',sourceBytes:bytes.length,headings:headingCount,annotations:scale?500:0,annotationsReadyMs,readingTrace,workerTrace,annotationTrace,measurements,retainedHeap};
-  await writeFile(path.join(qa,'perf3e-'+result.label+'.json'),JSON.stringify(result,null,2));
+  await writeFile(path.join(qa,artifactPrefix+'-'+result.label+'.json'),JSON.stringify(result,null,2));
   console.log(JSON.stringify(result,null,2));
 } catch(error) {
   if(page) {try {await screenshot('failure');} catch {}}

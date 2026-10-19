@@ -1731,3 +1731,47 @@ PERF3F 画布准备与保存核验：以精确源快照为边界拆解并复用�
 - 本地产物与截图为 out/qa/perf3e-*；20 个 paired 普通样本的汇总 perf3e-measurements.json。检查了阅读高亮与全图概览，用户三文件 SHA-256 与测试前一致。
 
 GitHub：实现提交 `afdaa5b` 已推送至 `origin/codex/perf3e-canvas-content`，成功创建 [PR #13](https://github.com/KLucen/MerMarked/pull/13)，目标 main，尚未合并。PR 已附加到当前任务；推送与连接器创建均成功。
+
+
+## 2026-10-19 · PERF3F 画布源码投影与事务核验复用
+
+### 目标与实现
+
+用户要求继续下一批。确认 PR #13 已合并为 4d56ea4，从 origin/main 快进后建立 codex/perf3f-canvas-source。仍处理原设计路线第 3 批 PERF3，没有提前进入 UX6B。
+
+- core/canvas-state 增加冻结的精确源码章节快照，内部 WeakMap 按快照身份保存一份锚点描述，不保留 parser AST 或跨文档历史；每次命中仍复制并核验原始字节、SHA、严格 UTF-8。v2 匹配沿用同一内核。
+- CanvasEditor 的章节投影和 reconcile 共用快照；一次画布保存通过 prepareAndCommitDocumentTransaction 在 prepare/load 之间复用源派生数据。所有 sidecar schema/锚点、journal、快照摘要、锁、目标文件重查和部分写入恢复保持。
+- 新增 core 源快照与 main 事务测试，覆盖两代画布、BOM/CRLF/Unicode、同名与歧义、错误字节/源码/UTF-8、冻结与输入别名、外部冲突及中断恢复。类型检查和 298 项单测通过。
+- 复用已有 PERF3E 窗口验收，新增可选产物前缀；测试启动前显示并激活自己的窗口，普通计时起点在此之后，旧/新版一致。
+- 更新 DESIGN_REVIEW 顶部路线快照，保留原始规划与退出条件；不改变依赖、IPC、schema 或自动保存语义。ADR-046 说明投影复用边界。
+
+### 实际命令与初始结果
+
+- git fetch origin、git merge --ff-only origin/main、git switch -c codex/perf3f-canvas-source：通过；用户三项原有修改先记录 SHA-256。
+- npm.cmd run typecheck、npm.cmd test：通过，298/298；日志 out/qa/perf3f-typecheck.log / perf3f-unit.log。
+- npm.cmd run package：首次 Electron 下载在 20.205.243.166:443 超时，Vite 构建已成功。使用项目既有 MERMARKD_ELECTRON_ZIP_DIR 配置重试；本机 ZIP 的 SHA-256 为 34BC07977D6C43B6514B956A5F2E3292255DAA3838A49E6110F3FE19FFAFB83F，与此前已校验记录一致，最终 package 通过。
+- npm.cmd run test:e2e:perf3e，MERMARKD_QA_ARTIFACT_PREFIX=perf3f、MERMARKD_PERF_LABEL=lifecycle：通过。既有共同脚本验证 200 卡片、500 高亮、查找/适应、三次拖动/撤销重做、dirty 正文投影及三文件边界。
+- npm.cmd run test:qa:canvas-scale：使用旧 PERF3E nupkg 解包 EXE 和本批最终 package，1/5 MiB 各五对交替执行；普通采样不启用 profile/GC，也不并行构建或其他窗口测试。
+
+### 性能与诊断
+
+20 次普通窗口采样完成。5 MiB / 200 卡片切换中位数 3180 → 2249 ms、最长帧间隔 2079 → 1154 ms；首次拖动至保存确认 4551 → 1735 ms，后两次 4459 → 1610 ms、4475 → 1576 ms。每轮等待保存，不代表持续拖动。三文件 bytes/mtime、200 卡片摘要和 500 高亮均核对。
+
+退化保留：5 MiB 打开阅读 1655 → 2570 ms，卡片后 renderer 堆中位数 65 → 112 MiB，返回阅读 55 → 137 MiB；1 MiB 打开阅读和部分查找也有退化。两版 Worker 启动等待存在双峰，本批未改阅读运行路径，但尚不能确定因果或排除回归。独立三轮 GC 后两版末轮卡片/阅读均约 45.2 / 31.6 MiB，只覆盖 renderer 和短周期，不能否定普通堆采样升高或证明没有泄漏。
+
+独立 CPU 诊断：首次卡片总时长 3283 → 2433 ms，Markdown parse 包含时间 2639 → 1792 ms；首次拖动 main 总时长 4579 → 1735 ms，parse 3668 → 926 ms。已核对 ASAR 中压缩函数与源码；包含时间重叠，不相加。全部样本与表见 PERF3F_ACCEPTANCE.md / out/qa/perf3f-measurements.json。
+
+### 最终验证与产物
+
+- 24 组打包窗口回归通过：perf3e、perf3d、perf3c、perf3b、perf3a、perf2、perf1、ux6a、ux1–ux5、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2–a8-5。仍复用既有 perf3e 专项，总数不是 25；索引 out/qa/perf3f-regression-manifest.json。
+- A8.4 首轮在取消结构预览后再次拖动超时；保留 perf3f-regression-a8-4.log 和失败截图，产品/脚本不变的复跑通过，记录 perf3f-regression-a8-4-retry.log。未确定根因，不声称已修复稳定性问题。
+- Vite --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort 配合 MERMARKD_QA_RENDERER_URL，实际 IPC/临时文件的生命周期专项通过，perf3f-vite.log。后台启动并收尾的组合命令被自动执行策略拒绝，改用前台工具会话完成并停止服务。
+- npm.cmd run make -- --skip-package 通过，使用已验证且运行代码未再修改的 package；make 后再次 npm.cmd run test:e2e:perf3e 通过。日志 perf3f-make.log / perf3f-post-make.log。
+- 安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：155,034,624 字节，SHA-256 58AA0EC03C298B32514502C92F000A734B0CD69E4430DD4ED4AA77640497AC06，仅本地生成，未公开发行。
+- 阅读高亮与全图截图已检查；Vite、测试窗口和辅助进程已停止。三项用户原有修改 SHA-256 与测试前一致，不纳入提交。
+
+### 限制与下一步
+
+首次解析、正文准备和每次新保存的一次解析仍同步；200 卡片切换 2249 ms、长帧 1154 ms 仍超过候选预算，保存仍只读约 1.6–1.7 秒。PERF3 不退出。下一批 PERF3G 验证可取消的后台准备、精确源版本进一步复用与生命周期，拆分解析/匹配/节点提交/落盘成本，保留全部候选与磁盘核验。随后 UX6B → UX7 → UX8 → QA1；自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
+
+GitHub：实现提交 `427a2b0` 已推送至 `origin/codex/perf3f-canvas-source`，成功创建 [PR #14](https://github.com/KLucen/MerMarked/pull/14)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。原有三项用户修改未纳入提交。
