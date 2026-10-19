@@ -8,7 +8,7 @@ import {
 } from '../core/canvas-state-v2.ts';
 import type { CanvasStateV2 } from '../core/canvas-state-v2.ts';
 import { parseCanvasJson } from '../core/canvas-state.ts';
-import { commitDocumentTransaction, prepareDocumentTransaction } from './document-transaction.ts';
+import { prepareAndCommitDocumentTransaction } from './document-transaction.ts';
 
 const MAX_CANVAS_JSON_BYTES = 4 * 1024 * 1024;
 
@@ -72,9 +72,8 @@ export async function saveCanvasFileV2(input: {
     let annotations: Buffer | null = null;
     try { annotations = await readFile(`${input.documentPath}.annotations.yaml`); }
     catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
-    const ref = await prepareDocumentTransaction({ documentPath: input.documentPath,
+    const result = await prepareAndCommitDocumentTransaction({ documentPath: input.documentPath,
       before: { markdown, annotations, canvas: existing }, after: { markdown, annotations, canvas: bytes } });
-    const result = await commitDocumentTransaction(input.documentPath, ref);
     return result.status === 'committed' ? { status: 'saved', sidecarSha256: digest(bytes) }
       : { status: result.status === 'pending' ? 'pending' : 'conflict', reason: result.status };
   } catch (error) {

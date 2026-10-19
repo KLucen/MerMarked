@@ -3,7 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { MAX_CANVAS_JSON_BYTES } from '../core/canvas-state.ts';
 import { parseCanvasStateJson, serializeCanvasStateJson } from '../core/canvas-state-v2.ts';
 import type { CanvasStateDocument } from '../core/canvas-state-v2.ts';
-import { commitDocumentTransaction, prepareDocumentTransaction } from './document-transaction.ts';
+import { prepareAndCommitDocumentTransaction } from './document-transaction.ts';
 
 function digest(bytes: Uint8Array): string { return createHash('sha256').update(bytes).digest('hex'); }
 function sidecarPath(documentPath: string): string { return `${documentPath}.mermarkd.json`; }
@@ -42,8 +42,7 @@ export async function saveCanvasFile(input: {
     let annotations: Buffer | null = null;
     try { annotations = await readFile(`${input.documentPath}.annotations.yaml`); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     const before = { markdown, annotations, canvas: existing };
-    const ref = await prepareDocumentTransaction({ documentPath: input.documentPath, before, after: { ...before, canvas: bytes } });
-    const result = await commitDocumentTransaction(input.documentPath, ref);
+    const result = await prepareAndCommitDocumentTransaction({ documentPath: input.documentPath, before, after: { ...before, canvas: bytes } });
     return result.status === 'committed' ? { status: 'saved', sidecarSha256: digest(bytes) }
       : { status: result.status === 'pending' ? 'pending' : 'conflict', reason: result.status };
   } catch (error) {

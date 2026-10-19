@@ -1,4 +1,4 @@
-import type { CanvasAnchor, CanvasCard, CanvasLink, CanvasState } from './canvas-state.ts';
+import type { CanvasAnchor, CanvasCard, CanvasLink, CanvasSourceSnapshot, CanvasState } from './canvas-state.ts';
 import { arrangeCanvas, buildCanvasScene } from './canvas-scene.ts';
 import { mapCanvasThroughSectionTransform, parseCanvasJson, reconcileCanvasState, serializeCanvasJson, validateCanvasAnchor, validateCanvasState } from './canvas-state.ts';
 import type { AnnotationRelocationSource } from './annotation-relocation.ts';
@@ -226,9 +226,10 @@ function fromV1(state: CanvasState, previous: ReadonlyMap<string, CanvasCardV2>)
 /** Reconcile Markdown identities while retaining the independent v2 presentation fields. */
 export async function reconcileCanvasStateV2(
   state: CanvasStateV2 | null, source: AnnotationRelocationSource, makeId = () => globalThis.crypto.randomUUID(),
+  snapshot?: CanvasSourceSnapshot,
 ): Promise<ReconciledCanvasV2> {
   const previous = new Map(state?.cards.map((card) => [card.id, card]) ?? []);
-  const reconciled = await reconcileCanvasState(state ? asV1(state) : null, source, makeId);
+  const reconciled = await reconcileCanvasState(state ? asV1(state) : null, source, makeId, snapshot);
   return { model: fromV1(reconciled.model, previous), bindings: reconciled.bindings,
     unresolvedCardIds: reconciled.unresolvedCardIds, unresolvedLinkIds: reconciled.unresolvedLinkIds };
 }

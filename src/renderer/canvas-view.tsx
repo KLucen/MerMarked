@@ -19,10 +19,9 @@ import type {
   DragOutPromotionCandidate,
   OverlapDwellState,
 } from '../core/canvas-structure-candidates';
-import type { CanvasBinding } from '../core/canvas-state';
+import { createCanvasSourceSnapshot, type CanvasBinding } from '../core/canvas-state';
 import { arrangeCanvasV2, CANVAS_CARD_SIZE_LIMITS, CANVAS_DEFAULT_CARD_SIZE, projectCanvasStateV2ToV1, reconcileCanvasStateV2 } from '../core/canvas-state-v2';
 import type { CanvasBodyDisplay, CanvasStateV2 } from '../core/canvas-state-v2';
-import { extractSections } from '../core/sections';
 import { encodeMarkdownBytes } from '../core/markdown-source';
 import type { OpenedMarkdownDocument, SectionStructurePreview } from '../types/reader-api';
 import type { SectionTransformOperation } from '../core/section-transform';
@@ -173,7 +172,8 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const nestCandidateRef = useRef<CanvasOverlapCandidate | null>(null);
   const detachCandidateRef = useRef<DragOutPromotionCandidate | null>(null);
   const lastFocusRequest = useRef(0);
-  const tree = useMemo(() => extractSections(document.content), [document.content]);
+  const sourceSnapshot = useMemo(() => createCanvasSourceSnapshot(document.content), [document.content]);
+  const tree = sourceSnapshot.tree;
   const cardContent = useMemo(() => createCanvasCardContentCache(document.content, tree), [document.content, tree]);
   const readOnly = dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
 
@@ -200,7 +200,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       const digest = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes));
       const sha256 = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
       sourceVersion.current = loaded.sourceVersion ?? 1;
-      let reconciled = await reconcileCanvasStateV2(loaded.model, { bytes, content: document.content, sha256 });
+      let reconciled = await reconcileCanvasStateV2(loaded.model, { bytes, content: document.content, sha256 }, undefined, sourceSnapshot);
       let loadWarningText = sidecarInvalid ? '画布文件无法安全载入，已使用当前 Markdown 重新生成临时布局，原文件未修改。' : null;
       let initial = reconciled.model;
       const oldIds = new Set(loaded.model?.cards.map((card) => card.id) ?? []);
@@ -234,7 +234,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       });
     })().catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('画布无法载入，原文件未修改；请重新载入或检查 Markdown。'); setMessage('画布未载入'); } });
     return () => { generation.current += 1; };
-  }, [document.path, document.content, document.bomByteLength, dirty, loadRevision, tree, cardContent]);
+  }, [document.path, document.content, document.bomByteLength, dirty, loadRevision, tree, cardContent, sourceSnapshot]);
 
   useEffect(() => {
     if (!initialLayout.current || !model || bindings.some((binding) => !minimumHeights[binding.id])) return;

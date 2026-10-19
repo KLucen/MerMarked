@@ -70,6 +70,33 @@ interface Descriptor {
   readonly anchor: CanvasAnchor;
 }
 
+/** One exact source, with no retained parser AST or cross-document registry. */
+export interface CanvasSourceSnapshot {
+  readonly source: string;
+  readonly tree: SectionTree;
+}
+
+const sourceSnapshots = new WeakMap<CanvasSourceSnapshot, Map<string, Promise<Descriptor[]>>>();
+
+export function createCanvasSourceSnapshot(source: string): CanvasSourceSnapshot {
+  const tree = extractSections(source);
+  for (const section of tree.sections) {
+    Object.freeze(section.childIndexes);
+    Object.freeze(section.headingRange);
+    Object.freeze(section.directContentRange);
+    Object.freeze(section.subtreeRange);
+    Object.freeze(section);
+  }
+  Object.freeze(tree.sections);
+  Object.freeze(tree.rootIndexes);
+  Object.freeze(tree.preambleRange);
+  if (tree.virtualCard) { Object.freeze(tree.virtualCard.sourceRange); Object.freeze(tree.virtualCard); }
+  Object.freeze(tree);
+  const snapshot = Object.freeze({ source, tree });
+  sourceSnapshots.set(snapshot, new Map());
+  return snapshot;
+}
+
 function invalid(): never { throw new Error('画布 JSON 格式或版本无效，未修改文件。'); }
 
 function record(value: unknown, fields: readonly string[]): Record<string, unknown> {
@@ -171,11 +198,28 @@ async function digest(bytes: Uint8Array): Promise<string> {
   return Array.from(new Uint8Array(result), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-async function descriptors(source: AnnotationRelocationSource): Promise<{ tree: SectionTree; entries: Descriptor[] }> {
+async function descriptors(input: AnnotationRelocationSource, snapshot?: CanvasSourceSnapshot): Promise<{ tree: SectionTree; entries: Descriptor[] }> {
+  // Capture caller-owned bytes before yielding. Even cache hits must prove the
+  // supplied UTF-8 bytes, text and digest agree; a hash alone is not a cache key.
+  const source = { content: input.content, sha256: input.sha256, bytes: Uint8Array.from(input.bytes) };
   if (!hashPattern.test(source.sha256) || await digest(source.bytes) !== source.sha256 ||
     new TextDecoder('utf-8', { fatal: true }).decode(source.bytes) !== source.content) invalid();
+  if (snapshot && (snapshot.source !== source.content || !sourceSnapshots.has(snapshot))) invalid();
+  const current = snapshot ?? createCanvasSourceSnapshot(source.content);
+  const cache = sourceSnapshots.get(current)!;
+  let pending = cache.get(source.sha256);
+  if (!pending) {
+    // At most one byte representation is retained (BOM changes invalidate it).
+    cache.clear();
+    pending = buildDescriptors(source, current.tree);
+    cache.set(source.sha256, pending);
+    void pending.catch(() => { if (cache.get(source.sha256) === pending) cache.delete(source.sha256); });
+  }
+  return { tree: current.tree, entries: await pending };
+}
+
+async function buildDescriptors(source: AnnotationRelocationSource, tree: SectionTree): Promise<Descriptor[]> {
   const bom = source.bytes[0] === 0xef && source.bytes[1] === 0xbb && source.bytes[2] === 0xbf ? 3 : 0;
-  const tree = extractSections(source.content);
   const entries: Descriptor[] = [];
   let offset = 0;
   let byteOffset = bom;
@@ -194,7 +238,7 @@ async function descriptors(source: AnnotationRelocationSource): Promise<{ tree: 
   }
   if (tree.virtualCard) entries.push({ sectionIndex: null, anchor: { kind: tree.virtualCard.kind, basisSha256: source.sha256,
     bodySha256: await digest(encoder.encode(source.content.slice(tree.virtualCard.sourceRange.start, tree.virtualCard.sourceRange.end))) } });
-  return { tree, entries };
+  return entries;
 }
 
 function key(anchor: CanvasAnchor, exact: boolean): string {
@@ -237,13 +281,15 @@ function reconcile(
 /** External edits accept only a unique exact heading/path/body tuple on both sides. */
 export async function reconcileCanvasState(
   state: CanvasState | null, source: AnnotationRelocationSource, makeId = () => globalThis.crypto.randomUUID(),
+  snapshot?: CanvasSourceSnapshot,
 ): Promise<ReconciledCanvas> {
+  const sourceHash = source.sha256;
   const current = state ? validateCanvasState(state) : { schemaVersion: 1 as const,
     source: { sha256: source.sha256, encoding: 'utf-8' as const, coordinateSystem: 'utf8-byte' as const },
     cards: [], links: [], viewport: { x: 0, y: 0, zoom: 1 } };
-  const { entries } = await descriptors(source);
+  const { entries } = await descriptors(source, snapshot);
   const candidates = current.cards.map((card) => entries.flatMap((entry, index) =>
-    key(card.anchor, card.anchor.basisSha256 === source.sha256) === key(entry.anchor, card.anchor.basisSha256 === source.sha256) ? [index] : []));
+    key(card.anchor, card.anchor.basisSha256 === sourceHash) === key(entry.anchor, card.anchor.basisSha256 === sourceHash) ? [index] : []));
   const proposed = new Map<number, string[]>();
   current.cards.forEach((card, index) => {
     if (candidates[index].length !== 1) return;
@@ -252,7 +298,7 @@ export async function reconcileCanvasState(
   });
   const matches = new Map<string, number>();
   for (const [target, ids] of proposed) if (ids.length === 1) matches.set(ids[0], target);
-  return reconcile(current, source.sha256, entries, matches, makeId);
+  return reconcile(current, sourceHash, entries, matches, makeId);
 }
 
 /** Verified structural commands preserve identities even when paths/markers change. */
