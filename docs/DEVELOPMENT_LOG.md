@@ -1775,3 +1775,43 @@ GitHub：实现提交 `afdaa5b` 已推送至 `origin/codex/perf3e-canvas-content
 首次解析、正文准备和每次新保存的一次解析仍同步；200 卡片切换 2249 ms、长帧 1154 ms 仍超过候选预算，保存仍只读约 1.6–1.7 秒。PERF3 不退出。下一批 PERF3G 验证可取消的后台准备、精确源版本进一步复用与生命周期，拆分解析/匹配/节点提交/落盘成本，保留全部候选与磁盘核验。随后 UX6B → UX7 → UX8 → QA1；自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
 
 GitHub：实现提交 `427a2b0` 已推送至 `origin/codex/perf3f-canvas-source`，成功创建 [PR #14](https://github.com/KLucen/MerMarked/pull/14)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。原有三项用户修改未纳入提交。
+
+## 2026-10-20 · PERF3G 可取消的后台画布准备
+
+### 目标与实现
+
+用户要求继续下一批。确认 PR #14 已合并为 a6a5a5d，git fetch origin、git merge --ff-only origin/main 后建立 codex/perf3g-background-canvas。用户三项原有修改记录 SHA-256 并保留。按 PERF3G 先处理首次准备阻塞；不改变主进程保存核验与保存期间只读，保存响应仍随规模采样跟踪。
+
+- src/core/canvas-preparation.ts：复用精确源码快照、v2 匹配及原卡片文本算法，返回可结构化克隆的紧凑树、匹配结果与文本；页面只读缓存没有解析回退。
+- src/renderer/canvas-preparation.worker.ts / canvas-preparation-task.ts：每次准备独立 Worker；结束、取消、错误与 30 秒超时均终止并结算 Promise；generation 隔离排队旧回复。canvas-view.tsx 去掉渲染时的全文解析，准备中清空旧节点并禁用写入，当前 path/source/BOM/dirty/reload 对应结果才能安装。
+- src/core/canvas-scene.ts：既有异步布局入口按需导入 ELK，算法不变。初版准备 Worker 间接载入 ELK，约 1.6 MB；拆开后为 157,431 字节，避免在只解析的任务中载入布局引擎。
+- 新增 core 准备等价和任务生命周期测试；新增 PERF3G 窗口专项及 npm 命令，沿用 PERF3E 实际规模/拖动与 dirty 场景，共享脚本按显式验收标志追加真实 Worker 取消、旧回复、文档切换和失败重试检查。没有新依赖、preload IPC 或 schema，lockfile 无依赖变更。
+
+### 实际命令与验证
+
+- npm.cmd run typecheck、npm.cmd test：通过，302/302；日志 out/qa/perf3g-typecheck.log / perf3g-unit.log。初次类型检查发现 makeId 默认返回 UUID 的窄类型不匹配，沿用被调用函数参数类型修正。初次等价测试复用旧 ID 序列触发重复 ID 拒绝，改为独立新序列；产品唯一性规则未放宽。
+- npm.cmd run package：使用既有 MERMARKD_ELECTRON_ZIP_DIR 的本机已校验 Electron ZIP，初版与最终版通过。最终日志 perf3g-package-final.log；首版日志 perf3g-package.log。普通采样前将 PERF3F 最终 package 复制至 out/qa/perf3g-perf3f-baseline，未修改基线。
+- npm.cmd run test:e2e:perf3g：初版与最终版通过，最终日志 perf3g-lifecycle-final.log。实际 Worker 回复前模式取消约 3 ms 为单次诊断，未作为五对性能结论。源/画布/批注 bytes/mtime 与缺失 sidecar 零创建核对。
+- 既有 24 套打包窗口回归通过：perf3e、perf3d、perf3c、perf3b、perf3a、perf2、perf1、ux6a、ux1–ux5、b1、a6、a7-1、a7-2、a7-3b、a7-4、a7-5、a8-2–a8-5；连同新专项共 25 套。UX2 首轮“专注模式后撤销”超时，原脚本复跑通过，根因未确定；原失败及成功日志均保留，索引 perf3g-regression-manifest.json。没有修改 UX2 或撤销逻辑。
+- Vite --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort 配合 MERMARKD_QA_RENDERER_URL，再跑 PERF3G 专项通过，perf3g-vite.log。覆盖真实 preload/主进程、磁盘文件、开发模式 Worker 与新文档自动布局的动态模块加载。Vite 和仅激活测试主窗口的本地辅助脚本已停止，普通采样不启用它们。
+- 初次 paired-* 探索运行发现准备 Worker 携带 ELK，主动中止后拆开依赖并重新打包、回归；这些记录不用于最终统计。正式采样使用 final-paired-*，1/5 MiB 各五对交替，普通样本不启用 CPU profile/强制 GC，不并行构建或其他窗口测试。
+
+### 最终测量与诊断
+
+20 个正式普通样本完成，完整表见 PERF3G_ACCEPTANCE.md / out/qa/perf3g-measurements.json。5 MiB / 200 卡片切换最长帧间隔中位数 1154 → 134 ms，最差 1183 → 146 ms；1 MiB 中位数 375 → 129 ms。5 MiB 完全就绪 2265 → 2209 ms，首次拖动至保存确认 1729 → 1736 ms。后台准备改善界面响应，保存逻辑未改，不能称为保存优化。
+
+退化保留：5 MiB 打开阅读 1658 → 1835 ms、适应全图 24 → 92 ms；1 MiB 第二次拖动后未强制 GC 的 renderer 堆 36 → 66 MiB、返回阅读 18 → 46 MiB。独立三轮强制 GC 后末轮卡片 55.3 → 54.6 MiB、阅读 41.7 → 41.0 MiB，只覆盖短周期 renderer；不否定普通采样退化，也未覆盖全应用 RSS 或活动 Worker 峰值。
+
+独立页面 CPU profile 总时长 2535 → 2257 ms，新版约 1914 ms 为页面 idle，Worker CPU 不在其中。首次拖动 main profile 1765 → 1776 ms，parse 包含时间 946 → 921 ms，保存解析成本仍在；包含时间重叠，不相加。
+
+### 最终构建与产物
+
+- npm.cmd run make -- --skip-package：通过，使用已验证且运行代码未再修改的最终 package；日志 perf3g-make.log。
+- make 后使用 5 MiB 文档运行 npm.cmd run test:e2e:perf3g：通过；perf3g-post-make.log / perf3g-lifecycle-post-make-5m.json。该次实际 Worker 回复前取消约 8 ms，只是单次诊断。
+- 安装包 out/make/squirrel.windows/x64/MerMarkd-0.1.0 Setup.exe：154,648,064 字节，SHA-256 8115625ECB3F725FFAA44E825F6E61C0CC1B0D8B1ADC17CC34F5A81A0463E620，仅本地生成，未公开发行。
+- 最终 5 MiB 加载中/失败截图已检查：没有旧卡片，保存禁用，失败可重新载入。测试窗口、Vite 与辅助进程均已停止。
+- 三项用户原有修改 SHA-256 与测试前一致，均不纳入提交。
+
+下一批 PERF3H 处理保存准备的精确源版本复用与失效/内存边界，并定位节点提交长帧及首次完整就绪成本。当前 2209 ms / 134 ms 仍超过 300 / 100 ms 候选目标，PERF3 不退出；后续 UX6B → UX7 → UX8 → QA1。自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
+
+GitHub：实现提交 `f50bec9` 已推送至 `origin/codex/perf3g-background-canvas`，成功创建 [PR #15](https://github.com/KLucen/MerMarked/pull/15)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。暂存变更的 diff 检查通过；三项用户原有修改保持未暂存。收尾只补充交付文档，运行代码未再修改。
