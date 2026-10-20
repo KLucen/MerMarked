@@ -1,4 +1,3 @@
-import ELK from 'elkjs/lib/elk.bundled.js';
 import type { ElkNode } from 'elkjs/lib/elk-api.js';
 import type { CanvasBinding, CanvasState } from './canvas-state.ts';
 import type { SectionTree } from './sections.ts';
@@ -74,6 +73,9 @@ export function buildCanvasScene(tree: SectionTree, state: CanvasState, bindings
 
 /** Layout only when first opened without saved positions, or explicitly requested. */
 export async function arrangeCanvas(tree: SectionTree, state: CanvasState, bindings: readonly CanvasBinding[], minimumHeights: Readonly<Record<string, number>> = {}): Promise<CanvasState> {
+  // Parsing/reconciliation workers never arrange a scene. Load the engine only
+  // for an explicit layout request, instead of evaluating it on every import.
+  const { default: ELK } = await import('elkjs/lib/elk.bundled.js');
   const elk = new ELK();
   let model = state;
   const children = new Map<string | undefined, CanvasSceneCard[]>();

@@ -1,5 +1,21 @@
 # MerMarkd 开发进度
 
+## 2026-10-20 · PERF3G 可取消的后台画布准备（当前切片已完成）
+
+基于已合并 PERF3F / [PR #14](https://github.com/KLucen/MerMarked/pull/14)（`a6a5a5d`）建立 `codex/perf3g-background-canvas`。仍属设计复核第 3 批 PERF3，优先解决首次准备阻塞；保存流程与只读保护保持，保存响应继续测量。证据见 [PERF3G_ACCEPTANCE.md](PERF3G_ACCEPTANCE.md)，决定见 ADR-047。
+
+- 章节解析、保守匹配和卡片正文准备移至可终止 Worker，页面使用精确当前任务的只读文本投影，不同步回退。取消、失败、超时和成功都释放 Worker，旧回复不回填。
+- ELK 按布局调用动态载入，后台脚本由约 1.6 MB 降到 157 KB，不改变布局算法和文件边界。未增加依赖、IPC 或 schema。
+- 类型检查、302/302 单测、新打包窗口专项与既有 24 套窗口回归、真实 Vite 专项通过。加载、实际回复前取消、dirty 源码撤销、换文档、失败重试、Worker 释放与三文件零写入已验证。UX2 首轮“专注模式后撤销”超时，原样复跑通过，未确定根因；保留失败记录。
+
+同机 1/5 MiB 各五对交替采样：5 MiB / 200 卡片首次准备最长帧间隔中位数 **1154 → 134 ms**，最差 **1183 → 146 ms**；1 MiB 中位数 **375 → 129 ms**。5 MiB 完全就绪 **2265 → 2209 ms**，保存确认 **1729 → 1736 ms**，收益主要是准备期间可以响应，不能说总计算或保存等待已解决。
+
+退化保留：5 MiB 打开阅读 **1658 → 1835 ms**、适应全图 **24 → 92 ms**；1 MiB 第二次拖动后未强制 GC 的 renderer 堆 **36 → 66 MiB**、返回阅读 **18 → 46 MiB**。5 MiB 多数 renderer 堆采样下降，独立三轮强制 GC 后末轮卡片 **55.3 → 54.6 MiB**、阅读 **41.7 → 41.0 MiB**，不代表全应用 RSS 或长期泄漏已验证。完整表、测量口径与诊断见 [PERF3G 验收](PERF3G_ACCEPTANCE.md)。
+
+最终 package、Squirrel make 与 make 后 5 MiB 专项通过；该次实际 Worker 回复前取消约 8 ms，仅作单次诊断。本地安装包 154,648,064 字节，SHA-256 `8115625ECB3F725FFAA44E825F6E61C0CC1B0D8B1ADC17CC34F5A81A0463E620`。产物与日志位于 `out/qa/perf3g-*`，未公开发行。加载/失败截图已检查，测试进程已停止；三项用户原有文件修改校验值保持一致，不纳入提交。
+
+下一批 **PERF3H 保存准备与画布提交**：核查 main 一次保存仍约 0.9 秒解析的精确源版本复用与失效边界，继续定位节点提交长帧和首次完全就绪耗时。2209 ms 与 134 ms 仍超过模式切换 300 ms / 长帧 100 ms 候选目标，PERF3 尚不能退出；后续 UX6B → UX7 → UX8 → QA1。自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
+
 ## 2026-10-19 · PERF3F 画布源码投影与事务核验复用（当前切片已完成）
 
 基于已合并 PERF3E / [PR #13](https://github.com/KLucen/MerMarked/pull/13)（`4d56ea4`），建立 `codex/perf3f-canvas-source`。本批仍属于设计复核第 3 批 PERF3；尚未进入 UX6B。证据见 [PERF3F_ACCEPTANCE.md](PERF3F_ACCEPTANCE.md)，决定见 ADR-046。
@@ -291,7 +307,7 @@ GitHub：实现提交 `f33326d` 已推送至 `codex/ux2-shared-panels`，已创�
 
 验证：源码搜索与定向读取、历史截图人工检查、官方交互指南核对、`git diff --check -- docs/DESIGN_REVIEW_2026-10-11.md docs/PROGRESS.md docs/DEVELOPMENT_LOG.md`。本轮为文档评审，未运行类型检查、单测、打包或新的 Electron 窗口；历史验证结果不作为本轮实测。P0 与最新实现的真实窗口回归仍按原记录待验收。
 
-> 2026-10-19。当前阶段：P0 可行性原型，仍进行中。UX1–UX5、PERF1、UX6A、PERF2 与 PERF3A–PERF3E 已合并；PERF3F 画布源码投影与事务核验复用已通过 298 项单测、24 组打包窗口及开发服务专项。下一批 PERF3G 处理画布首次准备与保存响应，再推进 UX6B → UX7 → UX8 → QA1。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [PERF3F 验收](PERF3F_ACCEPTANCE.md)。真实 IME、安装/升级/卸载、多显示器 DPI、自动平排和整体性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
+> 2026-10-20。当前阶段：P0 可行性原型，仍进行中。UX1–UX5、PERF1、UX6A、PERF2 与 PERF3A–PERF3F 已合并；PERF3G 可取消的后台画布准备已通过 302 项单测、25 套打包窗口及开发服务专项。下一批 PERF3H 处理保存准备与画布提交，再推进 UX6B → UX7 → UX8 → QA1。最新路线见 [当前设计复核](DESIGN_REVIEW_2026-10-14.md)，本批证据见 [PERF3G 验收](PERF3G_ACCEPTANCE.md)。真实 IME、安装/升级/卸载、多显示器 DPI、自动平排和整体性能门槛仍未闭合。开发时间线见 [DEVELOPMENT_LOG.md](DEVELOPMENT_LOG.md)。
 
 ## B1.3 窄窗口抽屉与画布工具栏收敛（当前切片已完成）
 

@@ -274,6 +274,10 @@ try {
     await wait('document.querySelector("[data-id=card-0] .canvas-card-summary")?.textContent.startsWith("Marker-0") && document.querySelector("[data-canvas-save]")?.disabled===false','restored body');
     assert.deepEqual(await snapshot(),persisted,'restored projection does not persist');
   }
+  if(process.env.MERMARKD_PERF_VERIFY_CANVAS_WORKER) {
+    const { verifyCanvasWorker } = await import('./perf3g-canvas-worker-checks.mjs');
+    await verifyCanvasWorker({page,main,click,wait,frame,key,screenshot,snapshot,fixture,workspace});
+  }
   assert.deepEqual((await snapshot()).slice(0,2),before.slice(0,2),'canvas operations never write Markdown or annotations');
   const workerTrace=await page.evaluate(`(()=>{const t=window.__readingTrace;return {loadingToCreateMs:t.created-t.loading,createToPostMs:t.posted-t.created,postToReplyMs:t.reply-t.posted,analysisMs:t.analysisMs,
     postToAnalysisMs:t.analysisStartedAt===undefined?null:t.analysisStartedAt-performance.timeOrigin-t.posted,

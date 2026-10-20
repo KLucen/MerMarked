@@ -44,6 +44,7 @@
     "test:e2e:perf3d": "node tests/e2e/perf3d-scale-packaged.mjs",
     "test:qa:startup-scale": "node tests/e2e/perf3d-responsiveness-packaged.mjs",
     "test:e2e:perf3e": "node tests/e2e/perf3e-lifecycle-packaged.mjs",
+    "test:e2e:perf3g": "node tests/e2e/perf3g-background-canvas-packaged.mjs",
     "test:qa:canvas-scale": "node tests/e2e/perf3e-canvas-packaged.mjs"
   },
   "dependencies": {
