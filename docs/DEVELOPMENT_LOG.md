@@ -1813,3 +1813,5 @@ GitHub：实现提交 `427a2b0` 已推送至 `origin/codex/perf3f-canvas-source`
 - 三项用户原有修改 SHA-256 与测试前一致，均不纳入提交。
 
 下一批 PERF3H 处理保存准备的精确源版本复用与失效/内存边界，并定位节点提交长帧及首次完整就绪成本。当前 2209 ms / 134 ms 仍超过 300 / 100 ms 候选目标，PERF3 不退出；后续 UX6B → UX7 → UX8 → QA1。自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
+
+GitHub：实现提交 `f50bec9` 已推送至 `origin/codex/perf3g-background-canvas`，成功创建 [PR #15](https://github.com/KLucen/MerMarked/pull/15)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。暂存变更的 diff 检查通过；三项用户原有修改保持未暂存。收尾只补充交付文档，运行代码未再修改。

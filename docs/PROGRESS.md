@@ -16,6 +16,8 @@
 
 下一批 **PERF3H 保存准备与画布提交**：核查 main 一次保存仍约 0.9 秒解析的精确源版本复用与失效边界，继续定位节点提交长帧和首次完全就绪耗时。2209 ms 与 134 ms 仍超过模式切换 300 ms / 长帧 100 ms 候选目标，PERF3 尚不能退出；后续 UX6B → UX7 → UX8 → QA1。自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
 
+GitHub：实现提交 `f50bec9` 已推送至 `origin/codex/perf3g-background-canvas`，成功创建 [PR #15](https://github.com/KLucen/MerMarked/pull/15)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。三项用户原有修改未纳入提交。
+
 ## 2026-10-19 · PERF3F 画布源码投影与事务核验复用（当前切片已完成）
 
 基于已合并 PERF3E / [PR #13](https://github.com/KLucen/MerMarked/pull/13)（`4d56ea4`），建立 `codex/perf3f-canvas-source`。本批仍属于设计复核第 3 批 PERF3；尚未进入 UX6B。证据见 [PERF3F_ACCEPTANCE.md](PERF3F_ACCEPTANCE.md)，决定见 ADR-046。
