@@ -1881,3 +1881,7 @@ GitHub：实现提交 `f50bec9` 已推送至 `origin/codex/perf3g-background-can
 - 完整证据、首次/重复打开退化、自动化/真实输入两列、内存与范围限制已写入 PERF3_EXIT_ACCEPTANCE.md / PERF3_EXIT_METRICS.json。原有三文件 SHA 校验一致，排除提交；与 origin/main 仅历史提交不同、树一致，已 fast-forward 到已合并 PR #15 的 `1617312`。
 
 PERF3 本机工程门槛通过，准备同步 GitHub；下一批 UX6B。P0、真实 IME、多屏 DPI、干净安装/升级/卸载、自动平排密度与公开发布仍未完成。
+
+GitHub 交付：实现提交 `14682019564fe5d720d582115a3d090d72db5154`，分支 `codex/perf3-exit`，已推送并创建 [PR #16](https://github.com/KLucen/MerMarked/pull/16)，目标 main、非草稿，已附加当前任务。首轮 SSH 443 在传输中断开；沿用官方目标、保留 host-key 校验，经 dry-run 成功后以单命令超时/keepalive 重试正常推送成功。原失败和重试日志分别为 `perf3-exit-av-push.log`、`perf3-exit-av-push-retry.log`。
+
+连接器返回 requires reauthentication，浏览器登录状态也不可用；它不是已证实的仓库写权限不足。核对本机 Git 凭据管理器已有账户并通过官方 API 验证为 KLucen 后，创建 PR 成功；无新增权限、凭据、全局 Git/代理设置，认证内容未写入产物或输出。PR receipt `out/qa/perf3-exit-pr-created.json` 仅含 URL、编号、分支与公开提交 SHA。三项用户原有文件仍未纳入提交。

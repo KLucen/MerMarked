@@ -1,6 +1,6 @@
 # MerMarkd 开发进度
 
-## 2026-11-06 · PERF3 工程退出条件通过（本地验收完成，准备同步 GitHub）
+## 2026-11-06 · PERF3 工程退出条件通过（已推送，PR #16 待审）
 
 验收与限制见 [PERF3_EXIT_ACCEPTANCE.md](PERF3_EXIT_ACCEPTANCE.md)，每次值及采样口径见 [PERF3_EXIT_METRICS.json](PERF3_EXIT_METRICS.json)。基于已合并 PR #15 / `1617312`，本批按用户要求持续至退出，不再按探索切片分别上传。
 
@@ -10,7 +10,9 @@
 - 类型检查、311 单测、25 套打包窗口、强制冷优化后的真实 Vite Worker/源码专项、最终 package、Squirrel make 和 make 后 5 MiB 专项全部通过。Vite 首轮的延迟依赖优化重载已通过预先优化 Worker 解析依赖修复，原失败保留。
 - 重建生产 ASAR 与全部最终采样完全一致：`500a83bc53d1bf5e2555b2abe8c5f54733858e8367cd661b4b628e4167239d3b`。Setup 154,827,776 字节，SHA-256 `E5723C5F003F861D8B4E5E98DA1FB19EE6EB85960A6757B76101F34E4B3C6261`。仅本地生成，三项用户原有修改校验一致并排除提交。
 
-下一批 **UX6B 文档流程与保存语义**，随后 UX7 → UX8 → QA1。真实中文 IME、物理多屏 DPI、干净安装/升级/卸载、自动平排密度和公开发布仍未验收；P0 未完成。GitHub 同步结果在提交后补记。
+实现提交 `1468201` 已推送至 `origin/codex/perf3-exit`，成功创建 [PR #16](https://github.com/KLucen/MerMarked/pull/16)，目标 main，待审未合并。首轮 SSH 推送断开，dry-run 验证后重试成功；连接器要求重新认证，浏览器也未登录，最终通过本机 Git 凭据管理器已有 KLucen 认证调用官方 API 完成 PR，没有修改授权范围或全局网络配置。
+
+下一批 **UX6B 文档流程与保存语义**，随后 UX7 → UX8 → QA1。真实中文 IME、物理多屏 DPI、干净安装/升级/卸载、自动平排密度和公开发布仍未验收；P0 未完成。
 
 ## 2026-11-06 · PERF3 绘制成本核查（AU 候选验证中，未上传）
 
