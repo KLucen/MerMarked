@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -20,7 +21,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -91,7 +92,7 @@ async function snapshot(file = fixture) {
 const outlineReady = 'document.querySelector("[data-outline-status]")?.dataset.outlineStatus==="ready"';
 async function prepend(text) {
   await frame();
-  await page.evaluate('(()=>{const e=document.querySelector("[data-editor-textarea]");e.focus();e.setSelectionRange(0,0)})()');
+  await page.evaluate('(()=>{const e=__sourceControl();e.focus();e.setSelectionRange(0,0)})()');
   await page.send('Input.insertText',{text});
   await frame();
 }
@@ -116,14 +117,14 @@ try {
   assert.equal(await page.evaluate('document.querySelectorAll(".toc-link").length'),4);
   assert.equal(await page.evaluate('window.__workers.length'),0,'reuse the existing reading parse on initial load');
   await click('[data-mode="editor"]');
-  await wait('Boolean(document.querySelector("[data-editor-textarea]")?.getClientRects().length)','source');
+  await wait('Boolean(__sourceControl()?.getClientRects().length)','source');
   await page.evaluate('window.__holdOutline=true');
   await prepend('# Added\n\n');
   await wait('window.__replies.length===1','first held parse');
   assert.ok(await page.evaluate('window.__workers.length>0'),'dirty source parses in a real worker');
   assert.equal(await page.evaluate('document.querySelector("[data-outline-status]").dataset.outlineStatus'),'pending');
   assert.equal(await page.evaluate('document.querySelectorAll(".toc-link,[data-editor-structure-toggle]").length'),0,'pending offsets and structural commands are unavailable');
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").readOnly'),false,'source input stays available');
+  assert.equal(await page.evaluate('__sourceControl().readOnly'),false,'source input stays available');
   await prepend('# Latest\n\n');
   await wait('window.__replies.length===2','newer held parse');
   await page.evaluate('window.__replies.shift()()'); await frame();
@@ -133,8 +134,8 @@ try {
   assert.deepEqual(await page.evaluate('[...document.querySelectorAll(".toc-link")].slice(0,2).map(e=>e.textContent)'),['Latest','Added']);
   await wait('document.querySelector(".toc-link.active")?.textContent==="Added"','worker completion restores the current cursor section');
   await click('.toc-link[data-editor-section="1"]');
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").selectionStart'),10,'jump uses latest buffer offsets');
-  await page.evaluate('window.__holdOutline=false;document.querySelector("[data-editor-textarea]").focus()');
+  assert.equal(await page.evaluate('__sourceControl().selectionStart'),10,'jump uses latest buffer offsets');
+  await page.evaluate('window.__holdOutline=false;__sourceControl().focus()');
   await key('z','KeyZ',90,2); await frame(); await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','undo clean');
   await wait(outlineReady,'clean outline');
@@ -143,14 +144,14 @@ try {
   await page.evaluate('window.__failOutline=true');
   await prepend('# Recoverable\n\n');
   await wait('document.querySelector("[data-outline-status]")?.dataset.outlineStatus==="error"','worker startup failure');
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").readOnly'),false);
+  assert.equal(await page.evaluate('__sourceControl().readOnly'),false);
   assert.equal(await page.evaluate('document.querySelectorAll(".toc-link").length'),0);
   await screenshot('outline-error');
   await page.evaluate('window.__failOutline=false');
   await click('[data-outline-status] button');
   await wait(outlineReady,'retry');
   assert.equal(await page.evaluate('document.querySelector(".toc-link").textContent'),'Recoverable');
-  await page.evaluate('document.querySelector("[data-editor-textarea]").focus()');
+  await page.evaluate('__sourceControl().focus()');
   await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','retry undo clean');
   await wait(outlineReady,'retry clean outline');
@@ -178,7 +179,7 @@ try {
   await frame();
   assert.equal(await page.evaluate('window.__dirtyParagraph===document.querySelector(".markdown-body p")'),true,'same-content IPC checkpoint keeps reading DOM');
   await click('[data-mode="editor"]'); await frame();
-  await page.evaluate('document.querySelector("[data-editor-textarea]").focus()');
+  await page.evaluate('__sourceControl().focus()');
   await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','checkpoint undo clean');
   assert.deepEqual(await snapshot(),before,'draft checkpoint and undo leave document files untouched');

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -42,7 +43,7 @@ async function seed(file, source, huge = false) {
 await seed(fixture, content); await seed(hugeFixture, hugeContent, true);
 const qa = path.join(root, 'out/qa'); await mkdir(qa, { recursive: true });
 const port = 15600 + Math.floor(Math.random() * 100);
-const child = spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
+const child = await spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
   [`--inspect=${port + 200}`, `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`],
   { cwd: root, stdio: 'ignore', windowsHide: true });
 const clients = [];
@@ -125,8 +126,15 @@ async function snapshot(file = fixture) {
 }
 async function canvasJson(predicate, label) {
   for (let count = 0; count < 200; count++) {
-    const model = JSON.parse(await readFile(fixture + '.mermarkd.json', 'utf8'));
-    if (predicate(model)) return model;
+    try {
+      const model = JSON.parse(await readFile(fixture + '.mermarkd.json', 'utf8'));
+      if (predicate(model)) return model;
+    } catch (error) {
+      // Publication briefly moves the previous file to its recoverable backup.
+      // Wait through that documented gap; malformed JSON and other I/O errors
+      // still fail rather than being treated as an incomplete write.
+      if (error.code !== 'ENOENT') throw error;
+    }
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
   throw Error('Canvas file did not reach ' + label);
@@ -292,10 +300,10 @@ try {
   await wait('!document.querySelector("[data-canvas-status]").textContent.includes("正在")', 'staged scene settled');
   await frame();
   await click('[data-canvas-source-undo]'); await dirty(false);
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").value'), content.replaceAll('\r\n', '\n'));
+  assert.equal(await page.evaluate('__sourceControl().value'), content.replaceAll('\r\n', '\n'));
   await wait('document.querySelector("[data-canvas-source-redo]")?.disabled===false', 'source redo from canvas');
   await click('[data-canvas-source-redo]'); await dirty(true);
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").value'), candidate.replaceAll('\r\n', '\n'));
+  assert.equal(await page.evaluate('__sourceControl().value'), candidate.replaceAll('\r\n', '\n'));
   assert.deepEqual(await snapshot(), beforeStructure, 'undo and redo do not write any content file');
   await click('[data-workspace-save]'); await dirty(false);
   assert.deepEqual(await readFile(fixture), Buffer.concat([Buffer.from([239, 187, 191]), Buffer.from(candidate)]));

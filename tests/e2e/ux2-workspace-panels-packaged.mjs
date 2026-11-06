@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,7 +13,7 @@ const content = '# 工作笔记\n\n这是一段可以编辑和批注的正文。
 await writeFile(fixture, content + Array.from({length: 35}, (_,i)=>'\n## 章节 ' + (i+1) + '\n\n这里是用于验证目录和正文独立滚动的内容。\n').join(''));
 const qa = path.join(root, 'out/qa'); await mkdir(qa, { recursive: true });
 const port = 14800 + Math.floor(Math.random() * 100);
-const child = spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
+const child = await spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
   [`--inspect=${port + 200}`, `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`],
   { cwd: root, stdio: 'ignore', windowsHide: true });
 const clients = [];
@@ -63,6 +64,7 @@ async function screenshot(name) {
 }
 async function select(selector) {
   await page.send('Page.bringToFront');
+  await wait(`document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' && !document.querySelector('.markdown-body')?.closest('[hidden], [inert]')`, 'visible complete reader');
   await page.evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); e.scrollIntoView({block:'center'}); e.focus(); const r=document.createRange(); r.selectNodeContents(e); const s=getSelection(); s.removeAllRanges(); s.addRange(r); document.dispatchEvent(new Event('selectionchange')); })()`);
   await wait(`Boolean(document.querySelector('[data-selection-capability]')) && document.querySelector('.selection-quote')?.title===document.querySelector(${JSON.stringify(selector)}).textContent`, 'selection capability');
 }
@@ -102,7 +104,7 @@ try {
   await wait('Boolean(document.querySelector("[data-start-open]"))','start');
   await main.evaluate('process.mainModule.require("electron").dialog.showOpenDialog = async () => ({canceled:false,filePaths:['+JSON.stringify(fixture)+']})');
   await metrics(1200,800); await click('[data-start-open]');
-  await wait('Boolean(document.querySelector("p[data-reader-editable]")) && document.querySelectorAll(".toc-link").length > 30','reader ready');
+  await wait('document.querySelector("[data-reading-analysis]")?.dataset.readingAnalysis === "ready" && document.querySelectorAll(".toc-link").length > 30','complete reader and outline ready');
   const untouched=await snapshot();
   assert.equal(await visible('#workspace-left-panel'),true);
   assert.equal(await visible('#workspace-right-panel'),false,'empty annotation panel starts closed');
@@ -110,14 +112,19 @@ try {
   assert.equal(await visible('#workspace-left-panel'),true,'wide panels may coexist');
   assert.equal(await visible('#annotation-sidebar'),true);
   assert.equal(await page.evaluate('document.querySelectorAll("[aria-modal=true]").length'),0,'wide sidebars are nonmodal');
+  // This fixture starts with its first heading at the reading marker. Let the
+  // initial chapter tracking finish before testing a manually scrolled outline.
+  await wait('document.querySelector(".toc-link[aria-current=location]")?.textContent===document.querySelector(".markdown-body h1")?.textContent','initial visible chapter tracked');
   await page.evaluate('document.querySelector(".workspace-task-content").scrollTop=20;document.querySelector(".toc-inner").scrollTop=180');
   const tocScroll = await page.evaluate('document.querySelector(".toc-inner").scrollTop');
+  const outlineBeforeFocus = await page.evaluate('({scrollY,active:document.querySelector(".toc-link[aria-current=location]")?.textContent,heading:document.querySelector(".markdown-body h1")?.getBoundingClientRect().top})');
   await focusMode();
   assert.equal(await visible('#workspace-left-panel'),false);
   assert.equal(await visible('#workspace-right-panel'),false);
   await focusMode();
   assert.equal(await visible('#workspace-left-panel'),true);
   assert.equal(await visible('#workspace-right-panel'),true);
+  if(await page.evaluate('document.querySelector(".toc-inner").scrollTop')!==tocScroll) console.log('outline focus diagnostic',outlineBeforeFocus,await page.evaluate('({scrollY,active:document.querySelector(".toc-link[aria-current=location]")?.textContent,heading:document.querySelector(".markdown-body h1")?.getBoundingClientRect().top,scroll:document.querySelector(".toc-inner").scrollTop,focused:document.activeElement?.outerHTML})'));
   assert.equal(await page.evaluate('document.querySelector(".toc-inner").scrollTop'),tocScroll);
   await click('[aria-label="关闭批注栏"]');
   for (const [width,height] of [[800,700],[420,800]]) {
@@ -144,7 +151,7 @@ try {
   }
   await metrics(1200,800);
   await click('[data-mode="cards"]');
-  await wait('Boolean(document.querySelector(".react-flow__node.draggable"))','canvas ready');
+  await wait('document.querySelector("[data-canvas-preparation]")?.dataset.canvasPreparation==="ready" && document.querySelector("[data-canvas-save]")?.disabled===false','canvas fully measured');
   const canvasBefore=await page.evaluate('document.querySelector(".canvas-flow").getBoundingClientRect().height');
   await metrics(1200,1000);
   await wait('document.querySelector(".canvas-flow").getBoundingClientRect().height > '+(canvasBefore+150),'canvas grows with window');
@@ -188,17 +195,19 @@ try {
   assert.ok(Math.abs(await page.evaluate('scrollY')-readerScroll)<2,'reader scroll survives focus');
   assert.equal(await page.evaluate('document.querySelector(".toc-link[aria-current]")?.textContent'), readerChapter);
   await click('[data-mode="editor"]');
-  await wait('Boolean(document.querySelector("[data-editor-textarea]"))','editor');
+  await wait('Boolean(__sourceControl())','editor');
   if (!await visible('#workspace-left-panel')) await click('.topbar > button');
   await click('[data-editor-section="8"]');
-  await wait('document.querySelector("[data-editor-textarea]").scrollTop > 0', 'source jump reveals caret');
-  const selection=await page.evaluate('document.querySelector("[data-editor-textarea]").selectionStart');
-  const sourceScroll=await page.evaluate('document.querySelector("[data-editor-textarea]").scrollTop');
+  await wait('__sourceControl().scrollTop > 0', 'source jump reveals caret');
+  const selection=await page.evaluate('__sourceControl().selectionStart');
+  const sourceScroll=await page.evaluate('__sourceControl().scrollTop');
   await focusShortcut(); await focusShortcut();
   assert.equal(await visible('[data-editor-search]'),false,'focus shortcut does not open source search');
-  await focusMode(); await focusMode();
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").selectionStart'),selection);
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").scrollTop'),sourceScroll);
+  await focusMode();
+  assert.equal(await page.evaluate('document.activeElement?.matches("[data-source-input]")'),true,'source focus mode targets the actual editor input');
+  await focusMode();
+  assert.equal(await page.evaluate('__sourceControl().selectionStart'),selection);
+  assert.equal(await page.evaluate('__sourceControl().scrollTop'),sourceScroll);
   await screenshot('source-wide');
   for (const [width,height] of [[1200,800],[800,700],[420,800]]) {
     await metrics(width,height);
@@ -216,7 +225,7 @@ try {
   }
   assert.deepEqual(await snapshot(),seeded,'panel, focus, resize and mode changes preserve three-file bytes and mtimes');
   await metrics(1200,800);
-  await click('[data-editor-textarea]');
+  await click('[data-source-editor], [data-editor-textarea]');
   await page.send('Input.insertText',{text:'验证历史'});
   await wait('document.querySelector(".app-shell").dataset.dirty==="true"','editor dirty');
   await focusMode(); await focusMode();

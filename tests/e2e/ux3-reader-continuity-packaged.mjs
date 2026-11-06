@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,7 +13,7 @@ const content = '# 阅读笔记\r\n\r\n已有批注对应的原文。\r\n\r\n准
 await writeFile(fixture, '\ufeff' + content);
 const qa = path.join(root, 'out/qa'); await mkdir(qa, { recursive: true });
 const port = 15200 + Math.floor(Math.random() * 100);
-const child = spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
+const child = await spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
   [`--inspect=${port + 200}`, `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`],
   { cwd: root, stdio: 'ignore', windowsHide: true });
 const clients = [];
@@ -63,6 +64,7 @@ async function screenshot(name) {
 }
 async function select(selector) {
   await page.send('Page.bringToFront');
+  await wait(`document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' && !document.querySelector('.markdown-body')?.closest('[hidden], [inert]')`, 'visible complete reader');
   await page.evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); e.scrollIntoView({block:'center'}); e.focus(); const r=document.createRange(); r.selectNodeContents(e); const s=getSelection(); s.removeAllRanges(); s.addRange(r); document.dispatchEvent(new Event('selectionchange')); })()`);
   await wait(`Boolean(document.querySelector('[data-selection-capability]')) && document.querySelector('.selection-quote')?.title===document.querySelector(${JSON.stringify(selector)}).textContent`, 'selection capability');
 }
@@ -135,8 +137,13 @@ try {
   await screenshot('reference-only');
   await compose(second,'针对保存后原文的新批注。');
   await dirty(false);
+  // Source persistence completes before the background annotation recheck.
+  // The composer keeps its draft meanwhile; count records only when the new
+  // source/annotation pair is fully ready to accept an explicit note save.
+  await wait('document.querySelector(".note-composer button[type=submit]")?.disabled===false', 'saved source annotations rechecked');
   const saved=await snapshot();
   assert.equal(saved[0].content,'\ufeff'+content.replace('准备修改的句子。',revised));
+  assert.ok(!saved[1].content.includes('针对保存后原文的新批注。'),'source save leaves the new note draft out of YAML');
   assert.equal(await page.evaluate('document.querySelectorAll(".note-card").length'),1,'saving source does not submit annotation');
   assert.equal(saved[2].content,seeded[2].content,'saving prose preserves canvas');
   await saveNote(2);
@@ -176,16 +183,16 @@ try {
 
   const beforeRestrictions=await snapshot();
   // Composition event ordering is a logic regression, not real OS IME acceptance.
-  const beforeComposition=await page.evaluate('document.querySelector("[data-editor-textarea]").value');
+  const beforeComposition=await page.evaluate('__sourceControl().value');
   await page.evaluate(`(() => {
     const e=document.querySelector(${JSON.stringify(second)}); e.focus();
     e.dispatchEvent(new CompositionEvent('compositionstart',{bubbles:true}));
     e.textContent+='组合文字'; e.dispatchEvent(new Event('input',{bubbles:true}));
     e.blur();
   })()`);
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").value'),beforeComposition,'blur during composition defers commit');
+  assert.equal(await page.evaluate('__sourceControl().value'),beforeComposition,'blur during composition defers commit');
   await page.evaluate(`document.querySelector(${JSON.stringify(second)}).dispatchEvent(new CompositionEvent('compositionend',{bubbles:true}))`);
-  await wait('document.querySelector("[data-editor-textarea]").value.includes("组合文字")','composition commits after end');
+  await wait('__sourceControl().value.includes("组合文字")','composition commits after end');
   await click('[data-mode="editor"]'); await click('[data-editor-undo]'); await dirty(false);
   await click('[data-mode="reader"]');
   await select(second);
@@ -194,7 +201,7 @@ try {
   await wait('Boolean(document.querySelector("[data-reader-continue-source]"))','Enter restriction');
   await click('[data-reader-continue-source]');
   await wait('document.querySelector(".app-shell").dataset.activeMode==="editor"','source continuation');
-  assert.ok(await page.evaluate('document.querySelector("[data-editor-textarea]").selectionStart>0'));
+  assert.ok(await page.evaluate('__sourceControl().selectionStart>0'));
   await click('[data-mode="reader"]'); await select(second);
   await main.evaluate('process.mainModule.require("electron").clipboard.writeText("多行输入\\n第二行😀")');
   await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'v',code:'KeyV',windowsVirtualKeyCode:86,modifiers:2});
@@ -227,7 +234,7 @@ try {
   await wait('document.querySelector(".reader-edit-feedback")?.textContent.includes("暂不能直接编辑")','code block source entry');
   await click('[data-reader-continue-source]');
   await wait('document.querySelector(".app-shell").dataset.activeMode==="editor"','code source');
-  await wait('(()=>{const e=document.querySelector("[data-editor-textarea]");return e.value.slice(e.selectionStart,e.selectionStart+7)==="```text"})()','code source caret');
+  await wait('(()=>{const e=__sourceControl();return e.value.slice(e.selectionStart,e.selectionStart+7)==="```text"})()','code source caret');
   await click('[data-mode="reader"]'); await click('.reader-feedback-actions button:last-child');
   assert.deepEqual(await snapshot(),beforeRestrictions);
   console.log('UX3: restricted Enter, paste, cross-leaf editing and responsive layout passed');

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,7 +13,7 @@ const content = '# 阅读笔记\r\n\r\n已有批注对应的原文。\r\n\r\n准
 await writeFile(fixture, '\ufeff' + content);
 const qa = path.join(root, 'out/qa'); await mkdir(qa, { recursive: true });
 const port = 15200 + Math.floor(Math.random() * 100);
-const child = spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
+const child = await spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
   [`--inspect=${port + 200}`, `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`],
   { cwd: root, stdio: 'ignore', windowsHide: true });
 const clients = [];
@@ -207,13 +208,13 @@ try {
   assert.equal(await promptCount(),noteCompositionCount);
   await page.evaluate(`document.querySelector('#new-note-body').dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'文'}))`);
   await click('[data-mode="editor"]');
-  await page.evaluate(`(()=>{const e=document.querySelector('[data-editor-textarea]');e.focus();e.setSelectionRange(0,0)})()`);
+  await page.evaluate(`(()=>{const e=__sourceControl();e.focus();e.setSelectionRange(0,0)})()`);
   await page.send('Input.insertText',{text:'未保存正文\n\n'}); await dirty(true);
   // Discarding local forms is only a permission: cancelling the subsequent source
   // save dialog must keep those forms intact.
   await choice(1); await closeAttempt();
   assert.equal(await main.evaluate('globalThis.__leavePrompts.at(-1).title'),'Markdown 尚未保存');
-  await page.evaluate(`document.querySelector('[data-editor-textarea]').focus()`);
+  await page.evaluate(`__sourceControl().focus()`);
   await page.send('Input.dispatchKeyEvent',{type:'keyDown',key:'z',code:'KeyZ',windowsVirtualKeyCode:90,modifiers:2});
   await page.send('Input.dispatchKeyEvent',{type:'keyUp',key:'z',code:'KeyZ',windowsVirtualKeyCode:90,modifiers:2});
   await dirty(false); await click('[data-mode="reader"]');

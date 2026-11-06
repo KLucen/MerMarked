@@ -1,6 +1,7 @@
 import { openWorkspaceTask } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
-import { spawn, execFileSync, execFile } from 'node:child_process';
+import { execFileSync, execFile } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { promisify } from 'node:util';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -64,7 +65,7 @@ const locked = await fixture(workspace, '保存锁');
 const live = await fixture(workspace, '本轮写入失败');
 assert.equal((await commitDocumentTransaction(live.document.path, live.ref)).status, 'committed');
 const port = 11500 + Math.floor(Math.random() * 150); const inspectorPort = port + 400;
-const child = spawn(executable, [`--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`], { cwd: root, stdio: 'ignore' });
+const child = await spawn(executable, [`--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`], { cwd: root, stdio: 'ignore' });
 let cdp; let mainCdp;
 try {
   cdp = await connect(await endpoint(port)); mainCdp = await connect(await endpoint(inspectorPort, 'node'));
@@ -96,8 +97,8 @@ try {
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   await click(cdp, '[data-recovery-confirm]'); await waitFor(cdp, `!document.querySelector('[data-document-recovery]') && !document.querySelector('[data-document-recovery-pending]')`, 'partial recovered');
   await verifyAfter(partial);
-  await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'recovered editor');
-  await cdp.evaluate(`(() => { const element = document.querySelector('[data-editor-textarea]'); const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(element, element.value + ${JSON.stringify('后续编辑\n')}); element.dispatchEvent(new Event('input', {bubbles:true})); })()`);
+  await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(__sourceControl())`, 'recovered editor');
+  await cdp.evaluate(`(() => { const element = __sourceControl(); const setter = __setSourceControlValue; setter.call(element, element.value + ${JSON.stringify('后续编辑\n')}); element.dispatchEvent(new Event('input', {bubbles:true})); })()`);
   await click(cdp, '[data-workspace-save]'); await waitFor(cdp, `document.querySelector('[data-editor-status]')?.textContent.includes('已保存') && document.querySelector('[data-workspace-save]')?.disabled === true`, 'later source save');
   await drop(cdp, partial.document.path); await waitFor(cdp, `document.querySelector('[data-active-mode]')?.dataset.activeMode === 'reader'`, 'later reopen');
   assert.deepEqual(await cdp.evaluate('window.mermarkd.listDocumentRecovery()'), []); assert.equal(await cdp.evaluate(`Boolean(document.querySelector('[data-document-recovery-pending]'))`), false);
@@ -117,7 +118,15 @@ try {
   assert.equal(busy.status, 'conflict'); assert.deepEqual(await readFile(locked.paths[0]), Buffer.from(locked.plan.before.markdown));
   await rm(lock); const recovered = await cdp.evaluate(`window.mermarkd.confirmDocumentRecovery(${JSON.stringify(lockPreview.token)})`); assert.equal(recovered.status, 'recovered'); await verifyAfter(locked);
   await drop(cdp, live.document.path); await waitFor(cdp, `document.querySelector('.file-name')?.textContent === '本轮写入失败.md'`, 'live failure document');
-  await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false`, 'live failure canvas');
+  // A backgrounded page may defer ResizeObserver/rAF; restoring it must resume preparation.
+  await mainCdp.evaluate(`process.mainModule.require('electron').BrowserWindow.getAllWindows()[0].minimize()`);
+  await waitFor(cdp, `document.visibilityState === 'hidden'`, 'background canvas window');
+  await click(cdp, '[data-mode="cards"]');
+  await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 3`, 'background canvas nodes');
+  await mainCdp.evaluate(`(() => { const w = process.mainModule.require('electron').BrowserWindow.getAllWindows()[0]; w.restore(); w.setAlwaysOnTop(true); w.show(); w.focus(); })()`);
+  await cdp.send('Page.bringToFront');
+  await waitFor(cdp, `document.visibilityState === 'visible'`, 'foreground canvas window');
+  await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false`, 'live failure canvas resumes');
   await openWorkspaceTask(cdp);
   await cdp.evaluate(`document.querySelector('[data-canvas-structure-tools] > summary').click()`);
   await cdp.evaluate(`(() => { for (const [selector,value] of [['[data-canvas-structure-source]','2'],['[data-canvas-structure-parent]','0']]) {
@@ -127,7 +136,7 @@ try {
   await click(cdp, '[data-canvas-structure-confirm]'); await waitFor(cdp, `document.querySelector('[data-editor-status]')?.textContent.includes('未保存')`, 'live structure dirty');
   await mainCdp.evaluate(`(() => { const fs = process.mainModule.require('node:fs/promises'); globalThis.__mermarkdOriginalLink = fs.link;
     fs.link = async (source,destination) => { if (destination === ${JSON.stringify(live.paths[1])}) throw Object.assign(new Error('injected publication failure'),{code:'EIO'}); return globalThis.__mermarkdOriginalLink(source,destination); }; })()`);
-  await click(cdp, '[data-workspace-save]'); await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.readOnly === true && document.querySelector('[data-editor-status]')?.textContent.includes('结构保存未完成')`, 'live failed save frozen');
+  await click(cdp, '[data-workspace-save]'); await waitFor(cdp, `__sourceControl()?.readOnly === true && document.querySelector('[data-editor-status]')?.textContent.includes('结构保存未完成')`, 'live failed save frozen');
   await mainCdp.evaluate(`process.mainModule.require('node:fs/promises').link = globalThis.__mermarkdOriginalLink`);
   if (await cdp.evaluate(`Boolean(document.querySelector('[aria-label="文档菜单"]')) && !document.querySelector('[data-open-document-recovery]')`)) await click(cdp, '[aria-label="文档菜单"]');
   await click(cdp, '[data-open-document-recovery]');
@@ -143,4 +152,22 @@ try {
   console.log(JSON.stringify({ status: 'passed', missingSourceRecovery: true, partialYamlRecovery: true, previewCancelNoWrites: true,
     pendingWritesFrozen: true, externalConflictPreserved: true, activeLockBlocked: true, historicalReceiptSurvivesLaterEdit: true,
     annotationRetained: true, liveFailureFreezesEditor: true, dirtyOwnTransactionRecovery: true, widths: [1200, 800, 420] }));
+} catch (error) {
+  console.error('failure window', await mainCdp?.evaluate(`(() => { const w = process.mainModule.require('electron').BrowserWindow.getAllWindows()[0]; return { visible:w?.isVisible(), focused:w?.isFocused(), minimized:w?.isMinimized(), bounds:w?.getBounds() }; })()`));
+  console.error('failure canvas', JSON.stringify(await cdp?.evaluate(`(() => {
+    const host = document.querySelector('[data-canvas-preparation]');
+    const element = document.querySelector('.react-flow');
+    let fiber = element && element[Object.keys(element).find(key => key.startsWith('__reactFiber'))];
+    while (fiber && !(fiber.memoizedState?.next?.next?.memoizedState?.cards)) fiber = fiber.return;
+    const hooks = []; let hook = fiber?.memoizedState;
+    while (hook) { const state = hook.memoizedState;
+      hooks.push(Array.isArray(state) ? {length:state.length, ids:state.slice(0,4).map(value=>value?.id)} :
+        state && typeof state === 'object' ? Object.hasOwn(state,'current') ? {ref:typeof state.current === 'object' ? Boolean(state.current) : state.current} : {keys:Object.keys(state).slice(0,10)} : state);
+      hook = hook.next;
+    }
+    return { visibility:document.visibilityState, status:document.querySelector('[data-canvas-status]')?.textContent,
+      preparation:host?.dataset.canvasPreparation, hooks,
+      nodes:[...document.querySelectorAll('.react-flow__node')].map(node=>({id:node.dataset.id, bodyHeight:node.querySelector('.canvas-card-body')?.offsetHeight, rect:node.getBoundingClientRect().toJSON(), visibility:getComputedStyle(node).visibility})) };
+  })()`), null, 2));
+  throw error;
 } finally { cdp?.close(); mainCdp?.close(); try { execFileSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill('SIGKILL'); } await new Promise((resolve) => setTimeout(resolve, 300)); await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); }

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -20,7 +21,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -88,15 +89,15 @@ async function snapshot(file = fixture) {
   return Promise.all([file, file + '.annotations.yaml', file + '.mermarkd.json'].map(async (name) => ({ bytes: await readFile(name), mtime: (await stat(name)).mtimeMs })));
 }
 
-const editorValue = 'document.querySelector("[data-editor-textarea]").value';
+const editorValue = '__sourceControl().value';
 const lf = content.replaceAll('\r\n', '\n');
 async function assertValue(value) { assert.equal(await page.evaluate(editorValue), value); }
 async function prepend(text) {
-  await page.evaluate('(()=>{const e=document.querySelector("[data-editor-textarea]");e.focus();e.setSelectionRange(0,0)})()');
+  await page.evaluate('(()=>{const e=__sourceControl();e.focus();e.setSelectionRange(0,0)})()');
   await page.send('Input.insertText',{text}); await frame();
 }
 async function historyKey(redo = false) {
-  await page.evaluate('document.querySelector("[data-editor-textarea]").focus()');
+  await page.evaluate('__sourceControl().focus()');
   await key('z','KeyZ',90,redo ? 10 : 2); await frame();
 }
 async function mainWait(expression, label) {
@@ -125,7 +126,7 @@ try {
   await click('[data-start-open]');
   await wait('document.querySelector("[data-reading-analysis]")?.dataset.readingAnalysis==="ready"','reading');
   await click('[data-mode="editor"]');
-  await wait('Boolean(document.querySelector("[data-editor-textarea]")?.getClientRects().length)','source');
+  await wait('Boolean(__sourceControl()?.getClientRects().length)','source');
   await assertValue(lf);
 
   // Acknowledgement of revision 1 arrives after the UI has already entered 2.

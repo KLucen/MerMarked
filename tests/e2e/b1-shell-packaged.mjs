@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -23,7 +24,7 @@ async function waitFor(cdp, expression, label) { const deadline = Date.now() + 1
 async function click(cdp, selector) { assert.equal(await cdp.evaluate(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!(element instanceof HTMLElement) || element.hasAttribute('disabled')) return false; element.click(); return true; })()`), true, `enabled element missing: ${selector}`); }
 async function launch(userData) {
   const port = 12400 + Math.floor(Math.random() * 120); const inspectorPort = port + 400;
-  const child = spawn(executable, [`--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
+  const child = await spawn(executable, [`--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
   const cdp = await connect(await endpoint(port)); const mainCdp = await connect(await endpoint(inspectorPort, 'node'));
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer');
   return { child, cdp, mainCdp };
@@ -45,8 +46,8 @@ try {
   await waitFor(cdp, `document.querySelector('.file-name')?.textContent === '未命名.md'`, 'untitled document');
   assert.equal(await stat(created).then(() => true).catch(() => false), false);
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'new editor');
-  await cdp.evaluate(`(() => { const textarea = document.querySelector('[data-editor-textarea]'); if (!(textarea instanceof HTMLTextAreaElement)) return false; const value = '# First save\\n\\n正文'; const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set; setter?.call(textarea, value); textarea.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+  await waitFor(cdp, `Boolean(__sourceControl())`, 'new editor');
+  await cdp.evaluate(`(() => { const textarea = __sourceControl(); if (!((__sourceControlElement() instanceof HTMLElement))) return false; const value = '# First save\\n\\n正文'; const setter = __setSourceControlValue; setter?.call(textarea, value); textarea.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
   await mainCdp.evaluate(`process.mainModule.require('electron').dialog.showSaveDialog = async () => ({ canceled: false, filePath: ${JSON.stringify(created)} })`);
   await click(cdp, '[data-workspace-save]');
   await waitFor(cdp, `document.querySelector('.file-name')?.textContent === 'new.md' && document.querySelector('[data-editor-status]')?.textContent.includes('已保存')`, 'first save as');

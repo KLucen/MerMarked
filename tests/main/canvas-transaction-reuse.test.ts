@@ -4,7 +4,7 @@ import { mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promise
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { reconcileCanvasState } from '../../src/core/canvas-state.ts';
+import { CanvasSourceCache, reconcileCanvasState } from '../../src/core/canvas-state.ts';
 import { migrateCanvasStateV1ToV2, serializeCanvasStateJson } from '../../src/core/canvas-state-v2.ts';
 import { serializeAnnotationYaml } from '../../src/core/annotations.ts';
 import { inspectDocumentTransaction, listDocumentTransactions, prepareAndCommitDocumentTransaction, recoverDocumentTransaction } from '../../src/main/document-transaction.ts';
@@ -79,6 +79,30 @@ test('current-basis forged anchors are rejected before journal or target writes'
       await assert.rejects(prepareAndCommitDocumentTransaction({ documentPath, before, after: { ...after, canvas: Buffer.from(serializeCanvasStateJson(forged)) } }));
       assert.deepEqual(await readdir(directory), names);
       assert.deepEqual(await unchangedFiles(documentPath), original);
+      assert.deepEqual(await readFile(documentPath + '.mermarkd.json'), before.canvas);
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }
+});
+
+test('warm cross-save source cache rechecks candidate anchors and disk versions for both schemas', async () => {
+  for (const v2 of [false, true]) {
+    const { directory, documentPath, before, after, moved } = await fixture(v2);
+    const cache = new CanvasSourceCache();
+    try {
+      const original = await unchangedFiles(documentPath);
+      assert.equal((await prepareAndCommitDocumentTransaction({ documentPath, before, after }, {}, cache)).status, 'committed');
+      const names = await readdir(directory);
+      const forged = { ...moved, cards: moved.cards.map(card => ({ ...card, anchor: { ...card.anchor, bodySha256: '0'.repeat(64) } })) } as typeof moved;
+      await assert.rejects(prepareAndCommitDocumentTransaction({ documentPath, before: after,
+        after: { ...after, canvas: Buffer.from(serializeCanvasStateJson(forged)) } }, {}, cache));
+      assert.deepEqual(await readdir(directory), names, 'invalid warm candidate creates no journal');
+      const returned = await prepareAndCommitDocumentTransaction({ documentPath, before: after, after: before }, {}, cache);
+      assert.equal(returned.status, 'committed');
+      assert.deepEqual(await unchangedFiles(documentPath), original);
+      await writeFile(documentPath, 'external source');
+      const conflict = await prepareAndCommitDocumentTransaction({ documentPath, before, after }, {}, cache);
+      assert.equal(conflict.status, 'conflict');
+      assert.equal(await readFile(documentPath, 'utf8'), 'external source');
       assert.deepEqual(await readFile(documentPath + '.mermarkd.json'), before.canvas);
     } finally { await rm(directory, { recursive: true, force: true }); }
   }

@@ -1,6 +1,7 @@
 import { openWorkspaceStatus } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -305,7 +306,7 @@ const initialDigests = {
   canvas: digest(await readFile(canvasPath)),
 };
 const port = 9700 + Math.floor(Math.random() * 200);
-const child = spawn(executable, [`--remote-debugging-port=${port}`], {
+const child = await spawn(executable, [`--remote-debugging-port=${port}`], {
   cwd: root,
   env: { ...process.env, APPDATA: appData, LOCALAPPDATA: localAppData },
   stdio: 'ignore',

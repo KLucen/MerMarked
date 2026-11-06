@@ -1,0 +1,8263 @@
+{
+  "formatVersion": 1,
+  "prefix": "perf3-exit-au2",
+  "recordedAt": "2026-11-06T01:26:07.098Z",
+  "cohorts": {
+    "canvas": {
+      "startedAt": "2026-11-06T01:16:48.659Z",
+      "finishedAt": "2026-11-06T01:20:40.660Z",
+      "status": "complete",
+      "runs": 20
+    },
+    "loaded": {
+      "startedAt": "2026-11-06T01:20:40.754Z",
+      "finishedAt": "2026-11-06T01:23:25.319Z",
+      "status": "complete",
+      "runs": 20
+    },
+    "pending": {
+      "startedAt": "2026-11-06T01:24:18.386Z",
+      "finishedAt": "2026-11-06T01:25:08.756Z",
+      "status": "complete",
+      "runs": 5
+    },
+    "memory": {
+      "startedAt": "2026-11-06T01:25:08.854Z",
+      "finishedAt": "2026-11-06T01:26:07.098Z",
+      "status": "complete",
+      "runs": 4
+    }
+  },
+  "environment": {
+    "platform": "win32",
+    "node": "v24.20.0",
+    "cpu": "Intel(R) Core(TM) i9-14900HX",
+    "logicalProcessors": 32,
+    "totalMemoryBytes": 16873545728
+  },
+  "packages": {
+    "before": {
+      "asarSha256": "25427ce0b8246603674d75b4ec940af1e2db0a5346993fb1aee0febce7efffb2"
+    },
+    "after": {
+      "asarSha256": "500a83bc53d1bf5e2555b2abe8c5f54733858e8367cd661b4b628e4167239d3b"
+    }
+  },
+  "scripts": {
+    "perf3e-canvas-packaged.mjs": "42f6bae3ddc7de10f2fd761b4fda80e72569529e16fcdb4195e6f3cdac3897bc",
+    "perf3d-responsiveness-packaged.mjs": "b9e71e0c48c6a3e5eba463d4a1875cad6a4f37a5a2b5323c29e9bbad6c4cbae5",
+    "packaged-window.mjs": "406ad14eef264fc1ce39a2f29bb4195df31330c74c98ad3534741ba24709507c",
+    "../prototypes/source-controls.ts": "36ec869d9ce77b909116ccb209ac7c13f635b06cd55212f405bf2a29cb58a2e7"
+  },
+  "frameWindowDefinition": "Original full automation window retained; separate normal-interaction window begins at first actual input (spanning intervals clipped at input), or measurement start for actions without input.",
+  "budgetStatus": "met-for-recorded-actions",
+  "failures": [],
+  "preparationFrameWarnings": [
+    {
+      "cohort": "canvas",
+      "mib": 1,
+      "name": "open-reader",
+      "round": 1,
+      "maxFrameGapMs": 137,
+      "preInputMaxFrameGapMs": 137,
+      "interactionMaxFrameGapMs": 50
+    },
+    {
+      "cohort": "canvas",
+      "mib": 1,
+      "name": "open-reader",
+      "round": 5,
+      "maxFrameGapMs": 137,
+      "preInputMaxFrameGapMs": 137,
+      "interactionMaxFrameGapMs": 50
+    }
+  ],
+  "groups": [
+    {
+      "cohort": "canvas",
+      "mib": 1,
+      "role": "before",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 806,
+            "worst": 823,
+            "values": [
+              810,
+              806,
+              823,
+              632,
+              805
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 686,
+            "worst": 701,
+            "values": [
+              690,
+              683,
+              701,
+              463,
+              686
+            ]
+          },
+          "inputToFeedbackPaintMs": {
+            "count": 5,
+            "median": 51,
+            "worst": 97,
+            "values": [
+              97,
+              49,
+              51,
+              48,
+              51
+            ]
+          },
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 113,
+            "worst": 117,
+            "values": [
+              108,
+              113,
+              117,
+              104,
+              113
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 113,
+            "worst": 117,
+            "values": [
+              108,
+              113,
+              117,
+              104,
+              113
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 63,
+            "worst": 67,
+            "values": [
+              62,
+              64,
+              63,
+              67,
+              62
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 31,
+            "worst": 32,
+            "values": [
+              31,
+              31,
+              32,
+              32,
+              31
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 553.6999999999999,
+            "worst": 559.4000000000001,
+            "values": [
+              553.2,
+              552.2,
+              553.6999999999999,
+              555.9000000000001,
+              559.4000000000001
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 464.29999999999995,
+            "worst": 469.70000000000005,
+            "values": [
+              463.8,
+              461.8,
+              464.29999999999995,
+              465,
+              469.70000000000005
+            ]
+          }
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              45,
+              46,
+              46,
+              46
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 42,
+            "worst": 42,
+            "values": [
+              41,
+              41,
+              42,
+              42,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 42,
+            "worst": 42,
+            "values": [
+              41,
+              41,
+              42,
+              42,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 32,
+            "worst": 32,
+            "values": [
+              31,
+              32,
+              32,
+              32,
+              31
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 552.4,
+            "worst": 558.3000000000001,
+            "values": [
+              552.2,
+              551.1,
+              552.4,
+              555.1,
+              558.3000000000001
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 462.9,
+            "worst": 468.5,
+            "values": [
+              462.59999999999997,
+              460.7,
+              462.9,
+              464.30000000000007,
+              468.5
+            ]
+          }
+        },
+        {
+          "name": "repeat-open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 696,
+            "worst": 699,
+            "values": [
+              699,
+              696,
+              698,
+              691,
+              695
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 651,
+            "worst": 659,
+            "values": [
+              652,
+              648,
+              651,
+              659,
+              651
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 79,
+            "values": [
+              71,
+              75,
+              71,
+              79,
+              71
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 79,
+            "values": [
+              71,
+              75,
+              71,
+              79,
+              71
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 18,
+            "worst": 18,
+            "values": [
+              18,
+              18,
+              18,
+              4,
+              14
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 42,
+            "worst": 42,
+            "values": [
+              42,
+              42,
+              42,
+              22,
+              41
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 640.3,
+            "worst": 674.3,
+            "values": [
+              639.4,
+              639.2,
+              640.3,
+              674.3,
+              648.9
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 556.6999999999999,
+            "worst": 588.2,
+            "values": [
+              549.6,
+              554.6,
+              556.6999999999999,
+              588.2,
+              569.6
+            ]
+          }
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 699,
+            "worst": 707,
+            "values": [
+              699,
+              707,
+              705,
+              690,
+              699
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 646,
+            "worst": 649,
+            "values": [
+              647,
+              649,
+              646,
+              634,
+              639
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 125,
+            "worst": 129,
+            "values": [
+              129,
+              125,
+              125,
+              117,
+              125
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 125,
+            "worst": 129,
+            "values": [
+              129,
+              125,
+              125,
+              117,
+              125
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 42,
+            "values": [
+              42,
+              40,
+              42,
+              40,
+              41
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 31,
+            "worst": 35,
+            "values": [
+              31,
+              31,
+              31,
+              35,
+              31
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 710.8000000000001,
+            "worst": 745,
+            "values": [
+              716.2,
+              710.8000000000001,
+              709.3,
+              745,
+              707.8
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 628.6,
+            "worst": 661,
+            "values": [
+              628.6,
+              630.2,
+              621.4,
+              661,
+              621.2
+            ]
+          }
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 81,
+            "worst": 82,
+            "values": [
+              82,
+              79,
+              77,
+              82,
+              81
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 11,
+            "worst": 12,
+            "values": [
+              12,
+              11,
+              11,
+              11,
+              11
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 61,
+            "worst": 61,
+            "values": [
+              61,
+              58,
+              57,
+              61,
+              61
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 61,
+            "worst": 61,
+            "values": [
+              61,
+              58,
+              57,
+              61,
+              61
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 32,
+            "worst": 35,
+            "values": [
+              32,
+              32,
+              32,
+              35,
+              32
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 704.2,
+            "worst": 748.2,
+            "values": [
+              704.2,
+              701.8,
+              698.4,
+              748.2,
+              707.1
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 610.9,
+            "worst": 662.4,
+            "values": [
+              610.9,
+              608.5,
+              605.4,
+              662.4,
+              613
+            ]
+          }
+        },
+        {
+          "name": "canvas-search",
+          "elapsedMs": {
+            "count": 5,
+            "median": 85,
+            "worst": 142,
+            "values": [
+              84,
+              84,
+              85,
+              142,
+              87
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 32,
+            "worst": 80,
+            "values": [
+              75,
+              31,
+              32,
+              80,
+              32
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 42,
+            "worst": 46,
+            "values": [
+              42,
+              42,
+              42,
+              46,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 42,
+            "worst": 46,
+            "values": [
+              42,
+              42,
+              42,
+              46,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 36,
+            "worst": 39,
+            "values": [
+              36,
+              36,
+              36,
+              39,
+              36
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 717.5,
+            "worst": 763.8000000000001,
+            "values": [
+              717.5,
+              714.0999999999999,
+              712.7,
+              763.8000000000001,
+              721.6
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 630.6999999999999,
+            "worst": 678.3,
+            "values": [
+              628.7,
+              630.6999999999999,
+              629.7,
+              678.3,
+              636.7
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-1",
+          "elapsedMs": {
+            "count": 5,
+            "median": 829,
+            "worst": 868,
+            "values": [
+              829,
+              831,
+              826,
+              826,
+              868
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 63,
+            "worst": 67,
+            "values": [
+              67,
+              67,
+              63,
+              63,
+              63
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 63,
+            "worst": 67,
+            "values": [
+              67,
+              67,
+              63,
+              63,
+              63
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 2,
+            "values": [
+              0,
+              0,
+              2,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 52,
+            "worst": 52,
+            "values": [
+              52,
+              52,
+              52,
+              51,
+              52
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 754.8,
+            "worst": 806.7,
+            "values": [
+              752.9000000000001,
+              754.8,
+              750.5,
+              806.7,
+              761.6
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 649.3,
+            "worst": 694.5,
+            "values": [
+              643.9000000000001,
+              649.3,
+              645.8,
+              694.5,
+              655.8
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-2",
+          "elapsedMs": {
+            "count": 5,
+            "median": 763,
+            "worst": 781,
+            "values": [
+              767,
+              781,
+              756,
+              763,
+              758
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 58,
+            "worst": 67,
+            "values": [
+              58,
+              58,
+              63,
+              67,
+              58
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 58,
+            "worst": 67,
+            "values": [
+              58,
+              58,
+              63,
+              67,
+              58
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              0,
+              0,
+              0,
+              1,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 71,
+            "worst": 71,
+            "values": [
+              71,
+              71,
+              71,
+              62,
+              71
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 769,
+            "worst": 836.2,
+            "values": [
+              769,
+              766.7,
+              763.8,
+              836.2,
+              774
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 660.4000000000001,
+            "worst": 724,
+            "values": [
+              660.4000000000001,
+              660.4,
+              658.1,
+              724,
+              666.5
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-3",
+          "elapsedMs": {
+            "count": 5,
+            "median": 765,
+            "worst": 768,
+            "values": [
+              765,
+              760,
+              768,
+              766,
+              758
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 58,
+            "worst": 63,
+            "values": [
+              63,
+              58,
+              58,
+              63,
+              58
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 58,
+            "worst": 63,
+            "values": [
+              63,
+              58,
+              58,
+              63,
+              58
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              0,
+              1,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 65,
+            "worst": 66,
+            "values": [
+              66,
+              65,
+              65,
+              46,
+              66
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 785.8,
+            "worst": 859.3,
+            "values": [
+              785.8,
+              783.0999999999999,
+              783.9,
+              859.3,
+              790
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 678.0999999999999,
+            "worst": 747.5,
+            "values": [
+              677.8,
+              676.5,
+              678.0999999999999,
+              747.5,
+              684.7
+            ]
+          }
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 176,
+            "worst": 178,
+            "values": [
+              173,
+              176,
+              178,
+              158,
+              176
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 123,
+            "worst": 125,
+            "values": [
+              121,
+              123,
+              125,
+              100,
+              123
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 108,
+            "worst": 109,
+            "values": [
+              104,
+              108,
+              109,
+              96,
+              108
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 108,
+            "worst": 109,
+            "values": [
+              104,
+              108,
+              109,
+              96,
+              108
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 22,
+            "worst": 42,
+            "values": [
+              22,
+              22,
+              22,
+              42,
+              22
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 867.7,
+            "worst": 873.5,
+            "values": [
+              870.8,
+              867.7,
+              867.7,
+              867.5,
+              873.5
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 750.8,
+            "worst": 757,
+            "values": [
+              754,
+              750.8,
+              750.7,
+              743,
+              757
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "canvas",
+      "mib": 1,
+      "role": "after",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1167,
+            "worst": 1245,
+            "values": [
+              1245,
+              1137,
+              1167,
+              1166,
+              1243
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1053,
+            "worst": 1087,
+            "values": [
+              1053,
+              1087,
+              1050,
+              1047,
+              1054
+            ]
+          },
+          "inputToFeedbackPaintMs": {
+            "count": 5,
+            "median": 47,
+            "worst": 48,
+            "values": [
+              44,
+              45,
+              48,
+              47,
+              48
+            ]
+          },
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 64,
+            "worst": 137,
+            "values": [
+              137,
+              54,
+              62,
+              64,
+              137
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 54,
+            "values": [
+              50,
+              54,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 64,
+            "worst": 137,
+            "values": [
+              137,
+              44,
+              62,
+              64,
+              137
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 23,
+            "worst": 29,
+            "values": [
+              28,
+              23,
+              22,
+              23,
+              29
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 563.9,
+            "worst": 565.2,
+            "values": [
+              565.2,
+              557.8,
+              563.9,
+              559.5,
+              565.1
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 472,
+            "worst": 474.8999999999999,
+            "values": [
+              472,
+              465.9,
+              473.90000000000003,
+              474.8999999999999,
+              469.6
+            ]
+          }
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 45,
+            "worst": 92,
+            "values": [
+              41,
+              92,
+              45,
+              45,
+              91
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 50,
+            "values": [
+              37,
+              46,
+              41,
+              41,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 50,
+            "values": [
+              37,
+              46,
+              41,
+              41,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 23,
+            "worst": 29,
+            "values": [
+              28,
+              23,
+              22,
+              23,
+              29
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 565.8,
+            "worst": 567,
+            "values": [
+              567,
+              560.2,
+              565.8,
+              560.4,
+              566.8
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 475.29999999999995,
+            "worst": 476.90000000000003,
+            "values": [
+              475.29999999999995,
+              471.29999999999995,
+              476.90000000000003,
+              475.99999999999994,
+              474.99999999999994
+            ]
+          }
+        },
+        {
+          "name": "repeat-open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1170,
+            "worst": 1173,
+            "values": [
+              1170,
+              1173,
+              1119,
+              1120,
+              1172
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1148,
+            "worst": 1150,
+            "values": [
+              1148,
+              1150,
+              1097,
+              1097,
+              1150
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 16,
+            "worst": 18,
+            "values": [
+              16,
+              18,
+              16,
+              17,
+              16
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 43,
+            "worst": 43,
+            "values": [
+              43,
+              42,
+              42,
+              43,
+              43
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 614.0999999999999,
+            "worst": 623.0999999999999,
+            "values": [
+              619.4,
+              604.7,
+              607.3,
+              623.0999999999999,
+              614.0999999999999
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 522.3,
+            "worst": 544.3999999999999,
+            "values": [
+              534.7,
+              521.5999999999999,
+              522.3,
+              544.3999999999999,
+              516.7
+            ]
+          }
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 371,
+            "worst": 416,
+            "values": [
+              367,
+              371,
+              416,
+              416,
+              366
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 272,
+            "worst": 275,
+            "values": [
+              271,
+              275,
+              272,
+              272,
+              273
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 75,
+            "worst": 79,
+            "values": [
+              75,
+              79,
+              75,
+              75,
+              71
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 75,
+            "worst": 79,
+            "values": [
+              75,
+              79,
+              75,
+              75,
+              71
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              46,
+              46,
+              50,
+              50,
+              50
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 37,
+            "worst": 42,
+            "values": [
+              36,
+              42,
+              37,
+              37,
+              36
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 643.4,
+            "worst": 645.7,
+            "values": [
+              645.6,
+              634.3,
+              632.3,
+              643.4,
+              645.7
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 548.9,
+            "worst": 554.1999999999999,
+            "values": [
+              551.4000000000001,
+              543.2,
+              548,
+              554.1999999999999,
+              548.9
+            ]
+          }
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 66,
+            "worst": 70,
+            "values": [
+              70,
+              66,
+              64,
+              69,
+              65
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 11,
+            "worst": 11,
+            "values": [
+              10,
+              11,
+              11,
+              11,
+              11
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 44,
+            "values": [
+              41,
+              40,
+              44,
+              44,
+              40
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 44,
+            "values": [
+              41,
+              40,
+              44,
+              44,
+              40
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 38,
+            "worst": 42,
+            "values": [
+              36,
+              42,
+              38,
+              38,
+              36
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 648,
+            "worst": 655.7,
+            "values": [
+              655.7,
+              637.5,
+              636.2,
+              648,
+              651.6
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 554.3,
+            "worst": 561.4,
+            "values": [
+              561.4,
+              523.1,
+              551.2,
+              558.0999999999999,
+              554.3
+            ]
+          }
+        },
+        {
+          "name": "canvas-search",
+          "elapsedMs": {
+            "count": 5,
+            "median": 113,
+            "worst": 149,
+            "values": [
+              105,
+              113,
+              113,
+              115,
+              149
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 96,
+            "worst": 99,
+            "values": [
+              99,
+              96,
+              98,
+              96,
+              44
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 9,
+            "worst": 11,
+            "values": [
+              4,
+              9,
+              9,
+              11,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 40,
+            "worst": 44,
+            "values": [
+              38,
+              44,
+              40,
+              40,
+              38
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 661.9,
+            "worst": 668.5,
+            "values": [
+              668.5,
+              654.1,
+              652.3,
+              661.9,
+              667.2
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 557.1999999999999,
+            "worst": 565.7,
+            "values": [
+              557.1999999999999,
+              542.9,
+              560.6,
+              565.7,
+              553.6999999999999
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-1",
+          "elapsedMs": {
+            "count": 5,
+            "median": 723,
+            "worst": 769,
+            "values": [
+              769,
+              723,
+              768,
+              710,
+              723
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 38,
+            "worst": 42,
+            "values": [
+              29,
+              42,
+              38,
+              38,
+              35
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 722.0999999999999,
+            "worst": 728.9,
+            "values": [
+              728.9,
+              712.8,
+              709.5,
+              722.0999999999999,
+              723.7
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 605,
+            "worst": 610.5999999999999,
+            "values": [
+              610.5999999999999,
+              596,
+              594.1999999999999,
+              609.9,
+              605
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-2",
+          "elapsedMs": {
+            "count": 5,
+            "median": 433,
+            "worst": 443,
+            "values": [
+              432,
+              433,
+              428,
+              443,
+              441
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 39,
+            "worst": 52,
+            "values": [
+              52,
+              39,
+              34,
+              40,
+              34
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 730.8,
+            "worst": 734.1,
+            "values": [
+              730.8,
+              734.1,
+              729,
+              733.3,
+              727.1
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 612.5999999999999,
+            "worst": 620.7,
+            "values": [
+              612.4,
+              615.8,
+              612.5999999999999,
+              620.7,
+              608.5
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-3",
+          "elapsedMs": {
+            "count": 5,
+            "median": 429,
+            "worst": 435,
+            "values": [
+              435,
+              418,
+              429,
+              431,
+              421
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 40,
+            "worst": 52,
+            "values": [
+              52,
+              40,
+              36,
+              41,
+              35
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 742.1999999999999,
+            "worst": 749.3,
+            "values": [
+              735.1000000000001,
+              749.3,
+              742.1999999999999,
+              743.8,
+              730
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 625.7,
+            "worst": 631.8,
+            "values": [
+              617.3,
+              631.8,
+              625.7,
+              630.7,
+              611.4
+            ]
+          }
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 93,
+            "worst": 138,
+            "values": [
+              138,
+              83,
+              138,
+              93,
+              85
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 73,
+            "worst": 85,
+            "values": [
+              42,
+              73,
+              44,
+              85,
+              75
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 50,
+            "values": [
+              46,
+              33,
+              46,
+              50,
+              38
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 50,
+            "values": [
+              46,
+              33,
+              46,
+              50,
+              38
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 45,
+            "worst": 50,
+            "values": [
+              39,
+              49,
+              45,
+              50,
+              45
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 771,
+            "worst": 779.2,
+            "values": [
+              750.8,
+              779.2,
+              773,
+              771,
+              748.1
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 649.4,
+            "worst": 658.4,
+            "values": [
+              631.5,
+              658.4,
+              656.2,
+              649.4,
+              627.5
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "canvas",
+      "mib": 5,
+      "role": "before",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1599,
+            "worst": 1612,
+            "values": [
+              1599,
+              1597,
+              1612,
+              1596,
+              1604
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1496,
+            "worst": 1509,
+            "values": [
+              1503,
+              1496,
+              1509,
+              1477,
+              1437
+            ]
+          },
+          "inputToFeedbackPaintMs": {
+            "count": 5,
+            "median": 49,
+            "worst": 49,
+            "values": [
+              49,
+              49,
+              48,
+              49,
+              48
+            ]
+          },
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 330,
+            "worst": 367,
+            "values": [
+              367,
+              329,
+              342,
+              330,
+              325
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 330,
+            "worst": 367,
+            "values": [
+              367,
+              329,
+              342,
+              330,
+              325
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 63,
+            "worst": 64,
+            "values": [
+              61,
+              63,
+              61,
+              63,
+              64
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 75,
+            "worst": 79,
+            "values": [
+              58,
+              55,
+              75,
+              78,
+              79
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 866,
+            "worst": 918.6,
+            "values": [
+              852.9,
+              830,
+              918.6,
+              916.5,
+              866
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 789,
+            "worst": 835.7,
+            "values": [
+              789,
+              743.6,
+              835.7,
+              832.5,
+              780.3
+            ]
+          }
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 32,
+            "worst": 46,
+            "values": [
+              46,
+              31,
+              44,
+              31,
+              32
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 27,
+            "worst": 42,
+            "values": [
+              42,
+              26,
+              39,
+              27,
+              27
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 27,
+            "worst": 42,
+            "values": [
+              42,
+              26,
+              39,
+              27,
+              27
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 75,
+            "worst": 79,
+            "values": [
+              58,
+              55,
+              75,
+              78,
+              79
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 867.3,
+            "worst": 918.5,
+            "values": [
+              852.1,
+              829.5,
+              917.4000000000001,
+              918.5,
+              867.3
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 788.3,
+            "worst": 834.5999999999999,
+            "values": [
+              788.3,
+              741.8,
+              834.4,
+              834.5999999999999,
+              782.0999999999999
+            ]
+          }
+        },
+        {
+          "name": "repeat-open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1515,
+            "worst": 1592,
+            "values": [
+              1513,
+              1592,
+              1515,
+              1521,
+              1494
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1481,
+            "worst": 1532,
+            "values": [
+              1482,
+              1532,
+              1481,
+              1472,
+              1463
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 300,
+            "worst": 325,
+            "values": [
+              325,
+              321,
+              300,
+              292,
+              300
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 300,
+            "worst": 325,
+            "values": [
+              325,
+              321,
+              300,
+              292,
+              300
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 17,
+            "worst": 22,
+            "values": [
+              18,
+              4,
+              22,
+              17,
+              17
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 107,
+            "worst": 110,
+            "values": [
+              101,
+              108,
+              107,
+              89,
+              110
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1059.6,
+            "worst": 1101.5,
+            "values": [
+              1028,
+              1059.6,
+              1080.5,
+              1101.5,
+              1034.3
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 980.5,
+            "worst": 1027.4,
+            "values": [
+              974.8,
+              969.9,
+              1027.4,
+              1017.2,
+              980.5
+            ]
+          }
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 2167,
+            "worst": 2203,
+            "values": [
+              2137,
+              2150,
+              2173,
+              2167,
+              2203
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 2136,
+            "worst": 2170,
+            "values": [
+              2110,
+              2138,
+              2136,
+              2121,
+              2170
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 138,
+            "worst": 142,
+            "values": [
+              133,
+              142,
+              138,
+              138,
+              142
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 138,
+            "worst": 142,
+            "values": [
+              133,
+              142,
+              138,
+              138,
+              142
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 21,
+            "worst": 38,
+            "values": [
+              20,
+              4,
+              32,
+              38,
+              21
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 92,
+            "worst": 115,
+            "values": [
+              115,
+              85,
+              92,
+              103,
+              86
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1087.5,
+            "worst": 1138.4,
+            "values": [
+              1098.5,
+              1087.5,
+              1001,
+              1138.4,
+              950.5
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 988.9,
+            "worst": 1045.1,
+            "values": [
+              1036.5,
+              988.9,
+              899.9,
+              1045.1,
+              847.2
+            ]
+          }
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 82,
+            "worst": 90,
+            "values": [
+              90,
+              82,
+              68,
+              89,
+              69
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 11,
+            "worst": 12,
+            "values": [
+              12,
+              11,
+              11,
+              11,
+              10
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 61,
+            "worst": 69,
+            "values": [
+              67,
+              61,
+              47,
+              69,
+              48
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 61,
+            "worst": 69,
+            "values": [
+              67,
+              61,
+              47,
+              69,
+              48
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 93,
+            "worst": 115,
+            "values": [
+              115,
+              86,
+              93,
+              104,
+              87
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1011,
+            "worst": 1145.5,
+            "values": [
+              1106.5,
+              960,
+              1011,
+              1145.5,
+              955.0999999999999
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 908.1,
+            "worst": 1050.8,
+            "values": [
+              1043.1999999999998,
+              853.8,
+              908.1,
+              1050.8,
+              849.4
+            ]
+          }
+        },
+        {
+          "name": "canvas-search",
+          "elapsedMs": {
+            "count": 5,
+            "median": 85,
+            "worst": 143,
+            "values": [
+              86,
+              143,
+              85,
+              85,
+              85
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 77,
+            "worst": 78,
+            "values": [
+              77,
+              78,
+              77,
+              32,
+              32
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 42,
+            "worst": 46,
+            "values": [
+              42,
+              46,
+              42,
+              42,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 42,
+            "worst": 46,
+            "values": [
+              42,
+              46,
+              42,
+              42,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 97,
+            "worst": 119,
+            "values": [
+              119,
+              90,
+              97,
+              107,
+              91
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1027.3,
+            "worst": 1166.1999999999998,
+            "values": [
+              1124.8,
+              976.6,
+              1027.3,
+              1166.1999999999998,
+              972.9
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 933.5999999999999,
+            "worst": 1077.1,
+            "values": [
+              1066,
+              885.8,
+              933.5999999999999,
+              1077.1,
+              878
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-1",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1707,
+            "worst": 1735,
+            "values": [
+              1663,
+              1735,
+              1707,
+              1713,
+              1676
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 96,
+            "values": [
+              71,
+              71,
+              54,
+              75,
+              96
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 96,
+            "values": [
+              71,
+              71,
+              54,
+              75,
+              96
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 112,
+            "worst": 136,
+            "values": [
+              136,
+              86,
+              118,
+              93,
+              112
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1055.4,
+            "worst": 1213.6999999999998,
+            "values": [
+              1213.6999999999998,
+              1036.1,
+              1063.1,
+              1055.4,
+              1042.9
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 950.8,
+            "worst": 1149.6,
+            "values": [
+              1149.6,
+              939.1,
+              967.5,
+              950.8,
+              947
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-2",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1579,
+            "worst": 1596,
+            "values": [
+              1579,
+              1570,
+              1583,
+              1596,
+              1577
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 83,
+            "values": [
+              83,
+              67,
+              71,
+              71,
+              71
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 83,
+            "values": [
+              83,
+              67,
+              71,
+              71,
+              71
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 106,
+            "worst": 108,
+            "values": [
+              108,
+              102,
+              106,
+              106,
+              101
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1048.4,
+            "worst": 1061.1,
+            "values": [
+              1061.1,
+              1043.7,
+              1048.4,
+              1057.9,
+              1034.6999999999998
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 950,
+            "worst": 952.8,
+            "values": [
+              950,
+              945.0999999999999,
+              950.8000000000001,
+              952.8,
+              930.4
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-3",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1564,
+            "worst": 1605,
+            "values": [
+              1556,
+              1561,
+              1605,
+              1587,
+              1564
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 71,
+            "values": [
+              67,
+              67,
+              71,
+              71,
+              71
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 71,
+            "worst": 71,
+            "values": [
+              67,
+              67,
+              71,
+              71,
+              71
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 102,
+            "worst": 116,
+            "values": [
+              102,
+              108,
+              100,
+              116,
+              94
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1053.1999999999998,
+            "worst": 1066.1,
+            "values": [
+              1066.1,
+              1045.2,
+              1053.1999999999998,
+              1063.8000000000002,
+              1045.7
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 943.5,
+            "worst": 953.8,
+            "values": [
+              951.5999999999999,
+              937.4,
+              943.5,
+              953.8,
+              937.2
+            ]
+          }
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 398,
+            "worst": 406,
+            "values": [
+              406,
+              401,
+              394,
+              398,
+              383
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 352,
+            "worst": 357,
+            "values": [
+              357,
+              355,
+              348,
+              352,
+              336
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 333,
+            "worst": 337,
+            "values": [
+              337,
+              333,
+              321,
+              333,
+              317
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 333,
+            "worst": 337,
+            "values": [
+              337,
+              333,
+              321,
+              333,
+              317
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 76,
+            "worst": 76,
+            "values": [
+              76,
+              76,
+              62,
+              76,
+              62
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1122.7,
+            "worst": 1176.9,
+            "values": [
+              1176.9,
+              1137.3000000000002,
+              1122.7,
+              1105.4,
+              1100.4
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 1007.5,
+            "worst": 1060.6,
+            "values": [
+              1060.6,
+              1021.4,
+              1007.5,
+              993.5999999999999,
+              985.6
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "canvas",
+      "mib": 5,
+      "role": "after",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 2048,
+            "worst": 2250,
+            "values": [
+              2008,
+              2020,
+              2250,
+              2124,
+              2048
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1977,
+            "worst": 2182,
+            "values": [
+              1959,
+              1970,
+              2182,
+              2054,
+              1977
+            ]
+          },
+          "inputToFeedbackPaintMs": {
+            "count": 5,
+            "median": 48,
+            "worst": 48,
+            "values": [
+              46,
+              46,
+              48,
+              48,
+              48
+            ]
+          },
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 62,
+            "worst": 63,
+            "values": [
+              63,
+              50,
+              61,
+              62,
+              63
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 63,
+            "values": [
+              63,
+              50,
+              50,
+              50,
+              63
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 61,
+            "worst": 63,
+            "values": [
+              41,
+              41,
+              61,
+              62,
+              63
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 92,
+            "worst": 94,
+            "values": [
+              93,
+              90,
+              89,
+              92,
+              94
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 837.2,
+            "worst": 893.8,
+            "values": [
+              836.8,
+              837.1,
+              837.2,
+              860.2,
+              893.8
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 751.3,
+            "worst": 831.4,
+            "values": [
+              751.1,
+              751.3,
+              749.3,
+              772.7,
+              831.4
+            ]
+          }
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 43,
+            "worst": 45,
+            "values": [
+              43,
+              44,
+              39,
+              45,
+              42
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 39,
+            "worst": 40,
+            "values": [
+              39,
+              40,
+              35,
+              40,
+              37
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 39,
+            "worst": 40,
+            "values": [
+              39,
+              40,
+              35,
+              40,
+              37
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 92,
+            "worst": 95,
+            "values": [
+              93,
+              90,
+              89,
+              92,
+              95
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 839.4,
+            "worst": 895.5999999999999,
+            "values": [
+              838.5,
+              839.4,
+              838.8,
+              861.7,
+              895.5999999999999
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 753.0999999999999,
+            "worst": 832.7,
+            "values": [
+              752.4000000000001,
+              753.0999999999999,
+              750.5,
+              773.9,
+              832.7
+            ]
+          }
+        },
+        {
+          "name": "repeat-open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1961,
+            "worst": 1975,
+            "values": [
+              1975,
+              1961,
+              1966,
+              1939,
+              1959
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1936,
+            "worst": 1949,
+            "values": [
+              1949,
+              1936,
+              1941,
+              1913,
+              1936
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 54,
+            "values": [
+              50,
+              54,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 54,
+            "values": [
+              50,
+              54,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 18,
+            "worst": 19,
+            "values": [
+              19,
+              18,
+              19,
+              18,
+              17
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 130,
+            "worst": 131,
+            "values": [
+              104,
+              130,
+              129,
+              131,
+              130
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1026.8000000000002,
+            "worst": 1030.4,
+            "values": [
+              976.8,
+              1026.1,
+              1026.8000000000002,
+              1028.6,
+              1030.4
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 938.7,
+            "worst": 967.5,
+            "values": [
+              895.5999999999999,
+              967.5,
+              938.7,
+              938,
+              960.0999999999999
+            ]
+          }
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 314,
+            "worst": 319,
+            "values": [
+              315,
+              314,
+              319,
+              313,
+              314
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 272,
+            "worst": 273,
+            "values": [
+              272,
+              272,
+              273,
+              270,
+              271
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 75,
+            "worst": 79,
+            "values": [
+              75,
+              75,
+              79,
+              75,
+              75
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 75,
+            "worst": 79,
+            "values": [
+              75,
+              75,
+              79,
+              75,
+              75
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 36,
+            "worst": 38,
+            "values": [
+              36,
+              36,
+              36,
+              38,
+              38
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 125,
+            "worst": 143,
+            "values": [
+              116,
+              125,
+              125,
+              143,
+              142
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1049,
+            "worst": 1053.8,
+            "values": [
+              993.4,
+              1048.2,
+              1049,
+              1051.9,
+              1053.8
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 959.4000000000001,
+            "worst": 979.6,
+            "values": [
+              886.7,
+              963.3,
+              958.5,
+              959.4000000000001,
+              979.6
+            ]
+          }
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 66,
+            "worst": 246,
+            "values": [
+              66,
+              66,
+              66,
+              246,
+              68
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 12,
+            "worst": 98,
+            "values": [
+              11,
+              12,
+              12,
+              98,
+              13
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 50,
+            "values": [
+              41,
+              41,
+              41,
+              50,
+              43
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 50,
+            "values": [
+              4,
+              4,
+              4,
+              50,
+              4
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 50,
+            "values": [
+              41,
+              41,
+              41,
+              50,
+              43
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 125,
+            "worst": 143,
+            "values": [
+              116,
+              125,
+              125,
+              143,
+              126
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1054.6,
+            "worst": 1065.3,
+            "values": [
+              999.4,
+              1053.6,
+              1054.6,
+              1065.3,
+              1059.8
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 967.8000000000001,
+            "worst": 984.3999999999999,
+            "values": [
+              891.7,
+              967.9,
+              962.9,
+              967.8000000000001,
+              984.3999999999999
+            ]
+          }
+        },
+        {
+          "name": "canvas-search",
+          "elapsedMs": {
+            "count": 5,
+            "median": 114,
+            "worst": 162,
+            "values": [
+              114,
+              113,
+              160,
+              113,
+              162
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 96,
+            "worst": 98,
+            "values": [
+              95,
+              98,
+              96,
+              98,
+              96
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 9,
+            "worst": 11,
+            "values": [
+              10,
+              9,
+              9,
+              9,
+              11
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 127,
+            "worst": 128,
+            "values": [
+              118,
+              127,
+              127,
+              128,
+              128
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1076.5,
+            "worst": 1079.6,
+            "values": [
+              1019.0999999999999,
+              1072.4,
+              1076.5,
+              1076.8,
+              1079.6
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 991.4,
+            "worst": 996.5,
+            "values": [
+              914.9,
+              991.4,
+              992.3000000000001,
+              988.2,
+              996.5
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-1",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1520,
+            "worst": 1556,
+            "values": [
+              1496,
+              1542,
+              1556,
+              1501,
+              1520
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              0,
+              0,
+              0,
+              1,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 79,
+            "worst": 129,
+            "values": [
+              79,
+              128,
+              78,
+              78,
+              129
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1155.9,
+            "worst": 1177.8,
+            "values": [
+              1095.8,
+              1173.6,
+              1112.2,
+              1155.9,
+              1177.8
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 1058.4,
+            "worst": 1082.1,
+            "values": [
+              979.4,
+              1081.5,
+              996.2,
+              1058.4,
+              1082.1
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-2",
+          "elapsedMs": {
+            "count": 5,
+            "median": 516,
+            "worst": 526,
+            "values": [
+              508,
+              513,
+              525,
+              526,
+              516
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              0,
+              1,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 102,
+            "worst": 130,
+            "values": [
+              102,
+              129,
+              100,
+              101,
+              130
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1101.9,
+            "worst": 1189.1,
+            "values": [
+              1095.7,
+              1186.7,
+              1101.9,
+              1100.3,
+              1189.1
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 983.4,
+            "worst": 1095.1,
+            "values": [
+              976.6,
+              1095.1,
+              983.4,
+              976.7,
+              1092.8
+            ]
+          }
+        },
+        {
+          "name": "canvas-drag-3",
+          "elapsedMs": {
+            "count": 5,
+            "median": 503,
+            "worst": 513,
+            "values": [
+              513,
+              503,
+              498,
+              490,
+              509
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              38,
+              46,
+              42,
+              46,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              38,
+              46,
+              42,
+              46,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              1,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 102,
+            "worst": 152,
+            "values": [
+              102,
+              131,
+              100,
+              99,
+              152
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1103.3999999999999,
+            "worst": 1202.5,
+            "values": [
+              1095.9,
+              1197.9,
+              1103.3999999999999,
+              1101.5,
+              1202.5
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 983.9,
+            "worst": 1104.6999999999998,
+            "values": [
+              976.3,
+              1104.6999999999998,
+              983.9,
+              977.6999999999999,
+              1104.6999999999998
+            ]
+          }
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 106,
+            "worst": 142,
+            "values": [
+              99,
+              101,
+              107,
+              142,
+              106
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 48,
+            "worst": 50,
+            "values": [
+              47,
+              48,
+              50,
+              37,
+              49
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 50,
+            "values": [
+              42,
+              37,
+              46,
+              50,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 50,
+            "values": [
+              42,
+              37,
+              46,
+              50,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 90,
+            "worst": 140,
+            "values": [
+              90,
+              140,
+              88,
+              90,
+              90
+            ]
+          },
+          "applicationWorkingSetMiB": {
+            "count": 5,
+            "median": 1113.3,
+            "worst": 1230.2,
+            "values": [
+              1109.3,
+              1230.2,
+              1113.3,
+              1111.2,
+              1118.9
+            ]
+          },
+          "applicationPrivateMiB": {
+            "count": 5,
+            "median": 993.4,
+            "worst": 1134.5,
+            "values": [
+              985.1999999999999,
+              1134.5,
+              993.4,
+              985.7,
+              997.3
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "cohort": "loaded",
+      "mib": 1,
+      "role": "before",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 829,
+            "worst": 912,
+            "values": [
+              912,
+              829,
+              840,
+              812,
+              812
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 703,
+            "worst": 718,
+            "values": [
+              718,
+              703,
+              714,
+              692,
+              689
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 117,
+            "worst": 137,
+            "values": [
+              137,
+              117,
+              121,
+              113,
+              113
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 117,
+            "worst": 121,
+            "values": [
+              117,
+              117,
+              121,
+              113,
+              113
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 65,
+            "worst": 137,
+            "values": [
+              137,
+              66,
+              65,
+              62,
+              64
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 31,
+            "worst": 31,
+            "values": [
+              31,
+              31,
+              31,
+              31,
+              31
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 50,
+            "values": [
+              45,
+              46,
+              45,
+              50,
+              46
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 45,
+            "values": [
+              41,
+              41,
+              41,
+              45,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 45,
+            "values": [
+              41,
+              41,
+              41,
+              45,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 31,
+            "worst": 31,
+            "values": [
+              31,
+              31,
+              31,
+              31,
+              31
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "open-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 172,
+            "worst": 222,
+            "values": [
+              222,
+              173,
+              148,
+              158,
+              172
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 22,
+            "worst": 23,
+            "values": [
+              23,
+              23,
+              22,
+              22,
+              22
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 17,
+            "worst": 19,
+            "values": [
+              17,
+              19,
+              4,
+              8,
+              18
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 33,
+            "worst": 33,
+            "values": [
+              33,
+              33,
+              33,
+              33,
+              33
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 145,
+            "worst": 145,
+            "values": [
+              144,
+              145,
+              145,
+              144,
+              145
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 94,
+            "worst": 94,
+            "values": [
+              93,
+              94,
+              94,
+              94,
+              94
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 24,
+            "worst": 24,
+            "values": [
+              24,
+              24,
+              24,
+              24,
+              24
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-repeat",
+          "elapsedMs": {
+            "count": 5,
+            "median": 145,
+            "worst": 146,
+            "values": [
+              97,
+              145,
+              145,
+              146,
+              97
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 96,
+            "worst": 97,
+            "values": [
+              96,
+              96,
+              97,
+              97,
+              96
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 28,
+            "worst": 28,
+            "values": [
+              28,
+              28,
+              28,
+              28,
+              28
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-missing",
+          "elapsedMs": {
+            "count": 5,
+            "median": 145,
+            "worst": 146,
+            "values": [
+              145,
+              145,
+              146,
+              144,
+              146
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 94,
+            "worst": 95,
+            "values": [
+              93,
+              95,
+              95,
+              94,
+              94
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 34,
+            "worst": 34,
+            "values": [
+              32,
+              34,
+              34,
+              34,
+              32
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-many",
+          "elapsedMs": {
+            "count": 5,
+            "median": 139,
+            "worst": 140,
+            "values": [
+              138,
+              139,
+              139,
+              140,
+              140
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 90,
+            "worst": 92,
+            "values": [
+              90,
+              90,
+              90,
+              92,
+              92
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 26,
+            "worst": 26,
+            "values": [
+              26,
+              26,
+              26,
+              26,
+              26
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-rapid",
+          "elapsedMs": {
+            "count": 5,
+            "median": 146,
+            "worst": 146,
+            "values": [
+              95,
+              145,
+              146,
+              146,
+              146
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 95,
+            "worst": 95,
+            "values": [
+              94,
+              94,
+              95,
+              95,
+              95
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 32,
+            "worst": 32,
+            "values": [
+              31,
+              32,
+              32,
+              31,
+              32
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-source",
+          "elapsedMs": {
+            "count": 5,
+            "median": 341,
+            "worst": 390,
+            "values": [
+              342,
+              341,
+              340,
+              341,
+              390
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 97,
+            "worst": 136,
+            "values": [
+              103,
+              97,
+              96,
+              91,
+              136
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 100,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              100
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 100,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              100
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 27,
+            "worst": 27,
+            "values": [
+              27,
+              27,
+              27,
+              27,
+              27
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "source-input-next-frame",
+          "elapsedMs": {
+            "count": 5,
+            "median": 96,
+            "worst": 97,
+            "values": [
+              97,
+              97,
+              96,
+              95,
+              91
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 27,
+            "worst": 31,
+            "values": [
+              27,
+              26,
+              27,
+              31,
+              28
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 34,
+            "worst": 34,
+            "values": [
+              33,
+              34,
+              34,
+              34,
+              34
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 786,
+            "worst": 812,
+            "values": [
+              786,
+              812,
+              775,
+              780,
+              804
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 722,
+            "worst": 751,
+            "values": [
+              721,
+              751,
+              717,
+              722,
+              744
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 208,
+            "worst": 217,
+            "values": [
+              208,
+              213,
+              204,
+              204,
+              217
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 208,
+            "worst": 217,
+            "values": [
+              208,
+              213,
+              204,
+              204,
+              217
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 33,
+            "worst": 35,
+            "values": [
+              28,
+              35,
+              32,
+              33,
+              34
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 48,
+            "worst": 57,
+            "values": [
+              48,
+              48,
+              48,
+              48,
+              57
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 119,
+            "worst": 128,
+            "values": [
+              114,
+              119,
+              121,
+              118,
+              128
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 28,
+            "worst": 77,
+            "values": [
+              27,
+              27,
+              28,
+              77,
+              75
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 46,
+            "values": [
+              46,
+              46,
+              46,
+              46,
+              46
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 25,
+            "worst": 25,
+            "values": [
+              25,
+              25,
+              21,
+              21,
+              25
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 55,
+            "worst": 63,
+            "values": [
+              55,
+              55,
+              55,
+              55,
+              63
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 272,
+            "worst": 274,
+            "values": [
+              274,
+              271,
+              273,
+              272,
+              270
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 126,
+            "worst": 130,
+            "values": [
+              130,
+              121,
+              126,
+              123,
+              127
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 104,
+            "worst": 104,
+            "values": [
+              104,
+              104,
+              104,
+              104,
+              100
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 104,
+            "worst": 104,
+            "values": [
+              104,
+              104,
+              104,
+              104,
+              100
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 48,
+            "worst": 57,
+            "values": [
+              47,
+              48,
+              48,
+              48,
+              57
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        }
+      ],
+      "sourceEventToFrameMs": {
+        "count": 5,
+        "median": 26.799999997019768,
+        "worst": 30.599999994039536,
+        "values": [
+          26.799999997019768,
+          26.100000001490116,
+          26.5,
+          30.599999994039536,
+          27.5
+        ]
+      }
+    },
+    {
+      "cohort": "loaded",
+      "mib": 1,
+      "role": "after",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1127,
+            "worst": 1213,
+            "values": [
+              1096,
+              1127,
+              1213,
+              1089,
+              1173
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1056,
+            "worst": 1101,
+            "values": [
+              1045,
+              1056,
+              1093,
+              1041,
+              1101
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 64,
+            "worst": 65,
+            "values": [
+              50,
+              64,
+              65,
+              50,
+              65
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 64,
+            "worst": 65,
+            "values": [
+              45,
+              64,
+              65,
+              42,
+              65
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 28,
+            "worst": 29,
+            "values": [
+              29,
+              28,
+              28,
+              29,
+              28
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 91,
+            "worst": 93,
+            "values": [
+              93,
+              91,
+              47,
+              93,
+              46
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 50,
+            "values": [
+              46,
+              50,
+              43,
+              46,
+              42
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 46,
+            "worst": 50,
+            "values": [
+              46,
+              50,
+              43,
+              46,
+              42
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 29,
+            "worst": 29,
+            "values": [
+              29,
+              28,
+              28,
+              29,
+              29
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "open-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 170,
+            "worst": 172,
+            "values": [
+              172,
+              170,
+              171,
+              162,
+              165
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 21,
+            "worst": 22,
+            "values": [
+              20,
+              22,
+              20,
+              21,
+              21
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 17,
+            "worst": 18,
+            "values": [
+              18,
+              17,
+              18,
+              7,
+              14
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 30,
+            "worst": 30,
+            "values": [
+              30,
+              30,
+              30,
+              30,
+              30
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 146,
+            "worst": 146,
+            "values": [
+              146,
+              146,
+              145,
+              146,
+              146
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 94,
+            "worst": 94,
+            "values": [
+              94,
+              94,
+              93,
+              94,
+              93
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 33,
+            "worst": 33,
+            "values": [
+              33,
+              33,
+              33,
+              33,
+              33
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-repeat",
+          "elapsedMs": {
+            "count": 5,
+            "median": 143,
+            "worst": 144,
+            "values": [
+              142,
+              144,
+              143,
+              143,
+              143
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 94,
+            "worst": 94,
+            "values": [
+              93,
+              94,
+              94,
+              94,
+              94
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 29,
+            "worst": 29,
+            "values": [
+              29,
+              29,
+              28,
+              29,
+              29
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-missing",
+          "elapsedMs": {
+            "count": 5,
+            "median": 146,
+            "worst": 147,
+            "values": [
+              146,
+              144,
+              147,
+              147,
+              146
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 95,
+            "worst": 96,
+            "values": [
+              95,
+              93,
+              96,
+              96,
+              95
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 34,
+            "worst": 34,
+            "values": [
+              34,
+              34,
+              34,
+              34,
+              34
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-many",
+          "elapsedMs": {
+            "count": 5,
+            "median": 140,
+            "worst": 140,
+            "values": [
+              140,
+              140,
+              140,
+              140,
+              140
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 91,
+            "worst": 92,
+            "values": [
+              91,
+              91,
+              91,
+              92,
+              91
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 38,
+            "worst": 38,
+            "values": [
+              38,
+              38,
+              38,
+              38,
+              38
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-rapid",
+          "elapsedMs": {
+            "count": 5,
+            "median": 146,
+            "worst": 146,
+            "values": [
+              144,
+              146,
+              95,
+              146,
+              146
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 95,
+            "worst": 95,
+            "values": [
+              93,
+              95,
+              94,
+              95,
+              95
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 23,
+            "worst": 25,
+            "values": [
+              23,
+              22,
+              22,
+              23,
+              25
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-source",
+          "elapsedMs": {
+            "count": 5,
+            "median": 244,
+            "worst": 291,
+            "values": [
+              290,
+              243,
+              244,
+              291,
+              244
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 91,
+            "worst": 91,
+            "values": [
+              90,
+              91,
+              90,
+              91,
+              91
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 31,
+            "worst": 33,
+            "values": [
+              31,
+              30,
+              29,
+              31,
+              33
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "source-input-next-frame",
+          "elapsedMs": {
+            "count": 5,
+            "median": 49,
+            "worst": 85,
+            "values": [
+              83,
+              49,
+              43,
+              85,
+              45
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 46,
+            "values": [
+              39,
+              46,
+              41,
+              33,
+              45
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 38,
+            "worst": 46,
+            "values": [
+              38,
+              37,
+              38,
+              46,
+              37
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 38,
+            "worst": 46,
+            "values": [
+              38,
+              36,
+              38,
+              46,
+              37
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              1
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 42,
+            "worst": 44,
+            "values": [
+              42,
+              42,
+              41,
+              42,
+              44
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 285,
+            "worst": 299,
+            "values": [
+              285,
+              297,
+              265,
+              267,
+              299
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 208,
+            "worst": 221,
+            "values": [
+              205,
+              209,
+              206,
+              221,
+              208
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 34,
+            "worst": 44,
+            "values": [
+              34,
+              43,
+              4,
+              13,
+              44
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 38,
+            "worst": 44,
+            "values": [
+              38,
+              44,
+              38,
+              44,
+              38
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 26,
+            "worst": 33,
+            "values": [
+              33,
+              27,
+              22,
+              26,
+              23
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 11,
+            "worst": 11,
+            "values": [
+              10,
+              11,
+              11,
+              11,
+              11
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 5,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              5
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 5,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              5
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 38,
+            "worst": 45,
+            "values": [
+              38,
+              44,
+              38,
+              45,
+              38
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 154,
+            "worst": 167,
+            "values": [
+              167,
+              148,
+              156,
+              154,
+              154
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 92,
+            "worst": 100,
+            "values": [
+              100,
+              92,
+              60,
+              58,
+              97
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 54,
+            "values": [
+              54,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 54,
+            "values": [
+              54,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 13,
+            "values": [
+              13,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 46,
+            "worst": 52,
+            "values": [
+              46,
+              51,
+              45,
+              52,
+              45
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        }
+      ],
+      "sourceEventToFrameMs": {
+        "count": 5,
+        "median": 40.600000001490116,
+        "worst": 45.70000000298023,
+        "values": [
+          38.900000005960464,
+          45.70000000298023,
+          40.600000001490116,
+          33.19999999552965,
+          44.5
+        ]
+      }
+    },
+    {
+      "cohort": "loaded",
+      "mib": 5,
+      "role": "before",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 1598,
+            "worst": 1651,
+            "values": [
+              1606,
+              1651,
+              1530,
+              1598,
+              1591
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1489,
+            "worst": 1548,
+            "values": [
+              1513,
+              1548,
+              1432,
+              1481,
+              1489
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 333,
+            "worst": 342,
+            "values": [
+              338,
+              342,
+              329,
+              333,
+              329
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 333,
+            "worst": 342,
+            "values": [
+              338,
+              342,
+              329,
+              333,
+              329
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 62,
+            "worst": 64,
+            "values": [
+              61,
+              62,
+              43,
+              64,
+              62
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 78,
+            "worst": 79,
+            "values": [
+              57,
+              79,
+              79,
+              78,
+              57
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 35,
+            "worst": 48,
+            "values": [
+              39,
+              48,
+              34,
+              35,
+              33
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 30,
+            "worst": 44,
+            "values": [
+              34,
+              44,
+              30,
+              30,
+              30
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 30,
+            "worst": 44,
+            "values": [
+              34,
+              44,
+              30,
+              30,
+              30
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 78,
+            "worst": 79,
+            "values": [
+              57,
+              79,
+              79,
+              78,
+              57
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "open-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 170,
+            "worst": 217,
+            "values": [
+              171,
+              217,
+              146,
+              164,
+              170
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 26,
+            "worst": 46,
+            "values": [
+              27,
+              46,
+              25,
+              26,
+              25
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 17,
+            "worst": 19,
+            "values": [
+              19,
+              17,
+              4,
+              13,
+              19
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 80,
+            "worst": 81,
+            "values": [
+              59,
+              81,
+              80,
+              80,
+              59
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 144,
+            "worst": 204,
+            "values": [
+              204,
+              144,
+              144,
+              143,
+              145
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 93,
+            "worst": 94,
+            "values": [
+              92,
+              93,
+              93,
+              92,
+              94
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 83,
+            "worst": 84,
+            "values": [
+              62,
+              84,
+              83,
+              83,
+              62
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-repeat",
+          "elapsedMs": {
+            "count": 5,
+            "median": 195,
+            "worst": 195,
+            "values": [
+              135,
+              129,
+              195,
+              195,
+              195
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 98,
+            "worst": 98,
+            "values": [
+              84,
+              79,
+              98,
+              98,
+              98
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 88,
+            "worst": 88,
+            "values": [
+              65,
+              88,
+              88,
+              88,
+              67
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-missing",
+          "elapsedMs": {
+            "count": 5,
+            "median": 139,
+            "worst": 139,
+            "values": [
+              138,
+              139,
+              139,
+              139,
+              139
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 88,
+            "worst": 89,
+            "values": [
+              88,
+              88,
+              89,
+              87,
+              89
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 72,
+            "worst": 93,
+            "values": [
+              70,
+              93,
+              93,
+              71,
+              72
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-many",
+          "elapsedMs": {
+            "count": 5,
+            "median": 136,
+            "worst": 188,
+            "values": [
+              137,
+              136,
+              188,
+              136,
+              136
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 89,
+            "worst": 91,
+            "values": [
+              90,
+              89,
+              91,
+              89,
+              89
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 74,
+            "worst": 76,
+            "values": [
+              74,
+              73,
+              74,
+              75,
+              76
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-rapid",
+          "elapsedMs": {
+            "count": 5,
+            "median": 145,
+            "worst": 198,
+            "values": [
+              144,
+              145,
+              188,
+              144,
+              198
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 96,
+            "worst": 97,
+            "values": [
+              96,
+              97,
+              87,
+              96,
+              97
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 81,
+            "worst": 84,
+            "values": [
+              81,
+              80,
+              79,
+              81,
+              84
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-source",
+          "elapsedMs": {
+            "count": 5,
+            "median": 491,
+            "worst": 539,
+            "values": [
+              490,
+              492,
+              539,
+              491,
+              491
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 287,
+            "worst": 303,
+            "values": [
+              287,
+              294,
+              303,
+              287,
+              287
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 250,
+            "worst": 250,
+            "values": [
+              250,
+              250,
+              250,
+              250,
+              250
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 250,
+            "worst": 250,
+            "values": [
+              250,
+              250,
+              250,
+              250,
+              250
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 87,
+            "worst": 89,
+            "values": [
+              89,
+              87,
+              87,
+              89,
+              67
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "source-input-next-frame",
+          "elapsedMs": {
+            "count": 5,
+            "median": 209,
+            "worst": 213,
+            "values": [
+              213,
+              205,
+              213,
+              209,
+              209
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 82,
+            "worst": 84,
+            "values": [
+              83,
+              81,
+              84,
+              81,
+              82
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 67,
+            "worst": 71,
+            "values": [
+              71,
+              67,
+              71,
+              67,
+              67
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 67,
+            "worst": 71,
+            "values": [
+              71,
+              67,
+              71,
+              67,
+              67
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 118,
+            "worst": 119,
+            "values": [
+              119,
+              118,
+              118,
+              119,
+              98
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 2212,
+            "worst": 2226,
+            "values": [
+              2219,
+              2200,
+              2155,
+              2212,
+              2226
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 2201,
+            "worst": 2214,
+            "values": [
+              2204,
+              2188,
+              2143,
+              2201,
+              2214
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 158,
+            "worst": 163,
+            "values": [
+              163,
+              158,
+              142,
+              154,
+              158
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 158,
+            "worst": 163,
+            "values": [
+              163,
+              158,
+              142,
+              154,
+              158
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 145,
+            "worst": 147,
+            "values": [
+              145,
+              147,
+              125,
+              147,
+              145
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 72,
+            "worst": 77,
+            "values": [
+              69,
+              74,
+              77,
+              69,
+              72
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 11,
+            "worst": 11,
+            "values": [
+              11,
+              11,
+              11,
+              10,
+              11
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 52,
+            "worst": 57,
+            "values": [
+              48,
+              53,
+              57,
+              48,
+              52
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 52,
+            "worst": 57,
+            "values": [
+              48,
+              53,
+              57,
+              48,
+              52
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 146,
+            "worst": 148,
+            "values": [
+              146,
+              148,
+              126,
+              147,
+              145
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 498,
+            "worst": 522,
+            "values": [
+              498,
+              482,
+              505,
+              483,
+              522
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 343,
+            "worst": 358,
+            "values": [
+              351,
+              340,
+              358,
+              341,
+              343
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 321,
+            "worst": 333,
+            "values": [
+              325,
+              317,
+              333,
+              312,
+              321
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 321,
+            "worst": 333,
+            "values": [
+              325,
+              317,
+              333,
+              312,
+              321
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 140,
+            "worst": 143,
+            "values": [
+              140,
+              143,
+              104,
+              142,
+              104
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        }
+      ],
+      "sourceEventToFrameMs": {
+        "count": 5,
+        "median": 81.79999999701977,
+        "worst": 83.60000000149012,
+        "values": [
+          83.29999999701977,
+          81,
+          83.60000000149012,
+          80.60000000149012,
+          81.79999999701977
+        ]
+      }
+    },
+    {
+      "cohort": "loaded",
+      "mib": 5,
+      "role": "after",
+      "measurements": [
+        {
+          "name": "open-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 2040,
+            "worst": 2081,
+            "values": [
+              2034,
+              2040,
+              2081,
+              2040,
+              2012
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 1970,
+            "worst": 2011,
+            "values": [
+              1963,
+              1970,
+              2011,
+              1971,
+              1942
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 61,
+            "worst": 63,
+            "values": [
+              63,
+              61,
+              61,
+              61,
+              62
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 58,
+            "worst": 58,
+            "values": [
+              58,
+              58,
+              58,
+              58,
+              54
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 61,
+            "worst": 63,
+            "values": [
+              63,
+              61,
+              61,
+              61,
+              62
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 91,
+            "worst": 95,
+            "values": [
+              91,
+              91,
+              94,
+              95,
+              90
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "annotations-ready",
+          "elapsedMs": {
+            "count": 5,
+            "median": 45,
+            "worst": 46,
+            "values": [
+              45,
+              46,
+              45,
+              45,
+              46
+            ]
+          },
+          "inputToReadyPaintMs": null,
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 41,
+            "values": [
+              41,
+              41,
+              41,
+              41,
+              41
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 41,
+            "worst": 41,
+            "values": [
+              41,
+              41,
+              41,
+              41,
+              41
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 91,
+            "worst": 95,
+            "values": [
+              91,
+              91,
+              94,
+              95,
+              90
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "open-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 170,
+            "worst": 220,
+            "values": [
+              170,
+              208,
+              169,
+              220,
+              158
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 25,
+            "worst": 47,
+            "values": [
+              24,
+              46,
+              23,
+              47,
+              25
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 13,
+            "worst": 18,
+            "values": [
+              17,
+              7,
+              13,
+              18,
+              6
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 93,
+            "worst": 96,
+            "values": [
+              93,
+              93,
+              96,
+              96,
+              92
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find",
+          "elapsedMs": {
+            "count": 5,
+            "median": 145,
+            "worst": 145,
+            "values": [
+              142,
+              145,
+              145,
+              143,
+              145
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 94,
+            "worst": 94,
+            "values": [
+              92,
+              94,
+              94,
+              92,
+              94
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 96,
+            "worst": 99,
+            "values": [
+              96,
+              96,
+              98,
+              99,
+              95
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-repeat",
+          "elapsedMs": {
+            "count": 5,
+            "median": 146,
+            "worst": 147,
+            "values": [
+              146,
+              147,
+              145,
+              145,
+              146
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 95,
+            "worst": 96,
+            "values": [
+              95,
+              96,
+              94,
+              94,
+              95
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 99,
+            "worst": 102,
+            "values": [
+              99,
+              99,
+              101,
+              102,
+              97
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-missing",
+          "elapsedMs": {
+            "count": 5,
+            "median": 147,
+            "worst": 148,
+            "values": [
+              146,
+              96,
+              148,
+              148,
+              147
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 95,
+            "worst": 96,
+            "values": [
+              94,
+              95,
+              96,
+              95,
+              95
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 102,
+            "worst": 103,
+            "values": [
+              103,
+              102,
+              84,
+              85,
+              102
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-many",
+          "elapsedMs": {
+            "count": 5,
+            "median": 140,
+            "worst": 141,
+            "values": [
+              141,
+              141,
+              138,
+              140,
+              132
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 93,
+            "worst": 94,
+            "values": [
+              94,
+              94,
+              90,
+              93,
+              84
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 87,
+            "worst": 105,
+            "values": [
+              82,
+              83,
+              87,
+              88,
+              105
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "reader-find-rapid",
+          "elapsedMs": {
+            "count": 5,
+            "median": 145,
+            "worst": 146,
+            "values": [
+              144,
+              146,
+              145,
+              144,
+              145
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 94,
+            "worst": 95,
+            "values": [
+              93,
+              95,
+              94,
+              93,
+              94
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 0,
+            "values": [
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 91,
+            "worst": 93,
+            "values": [
+              87,
+              88,
+              92,
+              93,
+              91
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-source",
+          "elapsedMs": {
+            "count": 5,
+            "median": 291,
+            "worst": 292,
+            "values": [
+              291,
+              291,
+              292,
+              291,
+              291
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 90,
+            "worst": 91,
+            "values": [
+              91,
+              91,
+              90,
+              90,
+              90
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              50
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 98,
+            "worst": 100,
+            "values": [
+              94,
+              96,
+              99,
+              100,
+              98
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "source-input-next-frame",
+          "elapsedMs": {
+            "count": 5,
+            "median": 143,
+            "worst": 145,
+            "values": [
+              143,
+              144,
+              143,
+              145,
+              143
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 55,
+            "worst": 58,
+            "values": [
+              54,
+              55,
+              58,
+              56,
+              53
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              46,
+              46,
+              50
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 50,
+            "values": [
+              50,
+              50,
+              46,
+              46,
+              50
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 0,
+            "worst": 1,
+            "values": [
+              0,
+              0,
+              1,
+              0,
+              0
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 102,
+            "worst": 137,
+            "values": [
+              102,
+              102,
+              102,
+              102,
+              137
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "switch-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 261,
+            "worst": 263,
+            "values": [
+              261,
+              240,
+              245,
+              261,
+              263
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 204,
+            "worst": 249,
+            "values": [
+              204,
+              189,
+              188,
+              210,
+              249
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 71,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              71
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 71,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              71
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 143,
+            "worst": 181,
+            "values": [
+              150,
+              143,
+              143,
+              127,
+              181
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "fit-200-cards",
+          "elapsedMs": {
+            "count": 5,
+            "median": 21,
+            "worst": 27,
+            "values": [
+              21,
+              21,
+              21,
+              27,
+              21
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 11,
+            "worst": 12,
+            "values": [
+              11,
+              11,
+              11,
+              12,
+              12
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 4,
+            "worst": 4,
+            "values": [
+              4,
+              4,
+              4,
+              4,
+              4
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 144,
+            "worst": 182,
+            "values": [
+              150,
+              144,
+              144,
+              128,
+              182
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        },
+        {
+          "name": "return-reader",
+          "elapsedMs": {
+            "count": 5,
+            "median": 189,
+            "worst": 260,
+            "values": [
+              260,
+              161,
+              154,
+              189,
+              216
+            ]
+          },
+          "inputToReadyPaintMs": {
+            "count": 5,
+            "median": 75,
+            "worst": 151,
+            "values": [
+              97,
+              75,
+              69,
+              66,
+              151
+            ]
+          },
+          "inputToFeedbackPaintMs": null,
+          "maxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 88,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              88
+            ]
+          },
+          "interactionMaxFrameGapMs": {
+            "count": 5,
+            "median": 50,
+            "worst": 88,
+            "values": [
+              50,
+              50,
+              50,
+              50,
+              88
+            ]
+          },
+          "preInputMaxFrameGapMs": {
+            "count": 5,
+            "median": 10,
+            "worst": 13,
+            "values": [
+              13,
+              10,
+              4,
+              10,
+              11
+            ]
+          },
+          "usedHeapMiB": {
+            "count": 5,
+            "median": 151,
+            "worst": 200,
+            "values": [
+              157,
+              151,
+              151,
+              134,
+              200
+            ]
+          },
+          "applicationWorkingSetMiB": null,
+          "applicationPrivateMiB": null
+        }
+      ],
+      "sourceEventToFrameMs": {
+        "count": 5,
+        "median": 55.19999999552965,
+        "worst": 57.599999994039536,
+        "values": [
+          53.599999994039536,
+          55.19999999552965,
+          57.599999994039536,
+          55.69999999552965,
+          53.399999998509884
+        ]
+      }
+    }
+  ],
+  "pending": [
+    {
+      "label": "pending-5m-1",
+      "inputToReadyPaintMs": 7,
+      "maxFrameGapMs": 9,
+      "interactionMaxFrameGapMs": 9
+    },
+    {
+      "label": "pending-5m-2",
+      "inputToReadyPaintMs": 7,
+      "maxFrameGapMs": 12,
+      "interactionMaxFrameGapMs": 12
+    },
+    {
+      "label": "pending-5m-3",
+      "inputToReadyPaintMs": 7,
+      "maxFrameGapMs": 8,
+      "interactionMaxFrameGapMs": 8
+    },
+    {
+      "label": "pending-5m-4",
+      "inputToReadyPaintMs": 7,
+      "maxFrameGapMs": 13,
+      "interactionMaxFrameGapMs": 13
+    },
+    {
+      "label": "pending-5m-5",
+      "inputToReadyPaintMs": 7,
+      "maxFrameGapMs": 13,
+      "interactionMaxFrameGapMs": 13
+    }
+  ],
+  "memory": [
+    {
+      "role": "before",
+      "mib": 1,
+      "retainedHeap": [
+        {
+          "stage": "cards-1",
+          "usedHeapMiB": 29.5,
+          "applicationWorkingSetMiB": 644.5,
+          "applicationPrivateMiB": 521.4
+        },
+        {
+          "stage": "reader-1",
+          "usedHeapMiB": 19,
+          "applicationWorkingSetMiB": 651.1,
+          "applicationPrivateMiB": 524.2
+        },
+        {
+          "stage": "cards-2",
+          "usedHeapMiB": 24.8,
+          "applicationWorkingSetMiB": 663.5,
+          "applicationPrivateMiB": 536.7
+        },
+        {
+          "stage": "reader-2",
+          "usedHeapMiB": 19,
+          "applicationWorkingSetMiB": 662.7,
+          "applicationPrivateMiB": 536.3
+        },
+        {
+          "stage": "cards-3",
+          "usedHeapMiB": 24.9,
+          "applicationWorkingSetMiB": 673.8,
+          "applicationPrivateMiB": 545.9
+        },
+        {
+          "stage": "reader-3",
+          "usedHeapMiB": 19.1,
+          "applicationWorkingSetMiB": 675.2,
+          "applicationPrivateMiB": 548
+        }
+      ]
+    },
+    {
+      "role": "after",
+      "mib": 1,
+      "retainedHeap": [
+        {
+          "stage": "cards-1",
+          "usedHeapMiB": 26.8,
+          "applicationWorkingSetMiB": 648.3,
+          "applicationPrivateMiB": 528.2
+        },
+        {
+          "stage": "reader-1",
+          "usedHeapMiB": 23,
+          "applicationWorkingSetMiB": 628.9,
+          "applicationPrivateMiB": 507.8
+        },
+        {
+          "stage": "cards-2",
+          "usedHeapMiB": 25.7,
+          "applicationWorkingSetMiB": 634.2,
+          "applicationPrivateMiB": 511.7
+        },
+        {
+          "stage": "reader-2",
+          "usedHeapMiB": 23.1,
+          "applicationWorkingSetMiB": 628.7,
+          "applicationPrivateMiB": 506.1
+        },
+        {
+          "stage": "cards-3",
+          "usedHeapMiB": 25.7,
+          "applicationWorkingSetMiB": 635.5,
+          "applicationPrivateMiB": 513.5
+        },
+        {
+          "stage": "reader-3",
+          "usedHeapMiB": 23.2,
+          "applicationWorkingSetMiB": 630,
+          "applicationPrivateMiB": 507.4
+        }
+      ]
+    },
+    {
+      "role": "after",
+      "mib": 5,
+      "retainedHeap": [
+        {
+          "stage": "cards-1",
+          "usedHeapMiB": 67,
+          "applicationWorkingSetMiB": 912.8,
+          "applicationPrivateMiB": 796.3
+        },
+        {
+          "stage": "reader-1",
+          "usedHeapMiB": 63.2,
+          "applicationWorkingSetMiB": 884.9,
+          "applicationPrivateMiB": 764.7
+        },
+        {
+          "stage": "cards-2",
+          "usedHeapMiB": 65.9,
+          "applicationWorkingSetMiB": 868.4,
+          "applicationPrivateMiB": 738.5
+        },
+        {
+          "stage": "reader-2",
+          "usedHeapMiB": 63.3,
+          "applicationWorkingSetMiB": 866.3,
+          "applicationPrivateMiB": 735.9
+        },
+        {
+          "stage": "cards-3",
+          "usedHeapMiB": 65.9,
+          "applicationWorkingSetMiB": 870.1,
+          "applicationPrivateMiB": 740.5
+        },
+        {
+          "stage": "reader-3",
+          "usedHeapMiB": 63.4,
+          "applicationWorkingSetMiB": 868.3,
+          "applicationPrivateMiB": 738.4
+        }
+      ]
+    },
+    {
+      "role": "before",
+      "mib": 5,
+      "retainedHeap": [
+        {
+          "stage": "cards-1",
+          "usedHeapMiB": 72.7,
+          "applicationWorkingSetMiB": 828.1,
+          "applicationPrivateMiB": 706.4
+        },
+        {
+          "stage": "reader-1",
+          "usedHeapMiB": 51,
+          "applicationWorkingSetMiB": 922.3,
+          "applicationPrivateMiB": 806
+        },
+        {
+          "stage": "cards-2",
+          "usedHeapMiB": 64.8,
+          "applicationWorkingSetMiB": 887,
+          "applicationPrivateMiB": 773.2
+        },
+        {
+          "stage": "reader-2",
+          "usedHeapMiB": 51,
+          "applicationWorkingSetMiB": 975.2,
+          "applicationPrivateMiB": 860.6
+        },
+        {
+          "stage": "cards-3",
+          "usedHeapMiB": 64.9,
+          "applicationWorkingSetMiB": 872.8,
+          "applicationPrivateMiB": 758.3
+        },
+        {
+          "stage": "reader-3",
+          "usedHeapMiB": 51.2,
+          "applicationWorkingSetMiB": 960.6,
+          "applicationPrivateMiB": 845.2
+        }
+      ]
+    }
+  ]
+}

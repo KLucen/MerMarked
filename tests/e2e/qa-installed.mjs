@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -154,7 +155,7 @@ try {
     const inspectorPort = port + 400;
     const userData = path.join(workspace, `user-data-${label}`);
     const startedAt = performance.now();
-    const child = spawn(executable, [`--force-device-scale-factor=${scale}`, `--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
+    const child = await spawn(executable, [`--force-device-scale-factor=${scale}`, `--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
     let cdp;
     let mainCdp;
     try {
@@ -168,7 +169,7 @@ try {
       await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 800, deviceScaleFactor: scale, mobile: false });
       assert.equal(await cdp.evaluate('document.documentElement.scrollWidth <= innerWidth'), true, `root overflow at ${scale}`);
       await click(cdp, '[data-mode="editor"]');
-      await waitFor(cdp, 'Boolean(document.querySelector("[data-editor-textarea]"))', 'editor');
+      await waitFor(cdp, 'Boolean(__sourceControl())', 'editor');
       assert.equal(await controlsFitViewport(cdp), true, `editor controls clipped at ${scale}`);
       await click(cdp, '[data-mode="cards"]');
       await waitFor(cdp, 'document.querySelectorAll(".react-flow__node").length >= 3', 'cards');

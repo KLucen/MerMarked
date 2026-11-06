@@ -65,10 +65,11 @@ export interface ReconciledCanvas {
   readonly unresolvedLinkIds: readonly string[];
 }
 
-interface Descriptor {
+export interface CanvasDisplayDescriptor {
   readonly sectionIndex: number | null;
   readonly anchor: CanvasAnchor;
 }
+type Descriptor = CanvasDisplayDescriptor;
 
 /** One exact source, with no retained parser AST or cross-document registry. */
 export interface CanvasSourceSnapshot {
@@ -95,6 +96,16 @@ export function createCanvasSourceSnapshot(source: string): CanvasSourceSnapshot
   const snapshot = Object.freeze({ source, tree });
   sourceSnapshots.set(snapshot, new Map());
   return snapshot;
+}
+
+/** Owned by one document session. At most one exact source, never save results. */
+export class CanvasSourceCache {
+  private snapshot: CanvasSourceSnapshot | undefined;
+  get(source: string): CanvasSourceSnapshot {
+    if (this.snapshot?.source !== source) this.snapshot = createCanvasSourceSnapshot(source);
+    return this.snapshot;
+  }
+  clear(): void { this.snapshot = undefined; }
 }
 
 function invalid(): never { throw new Error('画布 JSON 格式或版本无效，未修改文件。'); }
@@ -288,8 +299,32 @@ export async function reconcileCanvasState(
     source: { sha256: source.sha256, encoding: 'utf-8' as const, coordinateSystem: 'utf8-byte' as const },
     cards: [], links: [], viewport: { x: 0, y: 0, zoom: 1 } };
   const { entries } = await descriptors(source, snapshot);
-  const candidates = current.cards.map((card) => entries.flatMap((entry, index) =>
-    key(card.anchor, card.anchor.basisSha256 === sourceHash) === key(entry.anchor, card.anchor.basisSha256 === sourceHash) ? [index] : []));
+  return reconcileDisplayDescriptors(current, sourceHash, entries, makeId);
+}
+
+/** Display projections are not source proofs. Persistence always uses reconcileCanvasState. */
+export async function canvasDisplayDescriptors(source: AnnotationRelocationSource, tree: SectionTree): Promise<readonly CanvasDisplayDescriptor[]> {
+  return buildDescriptors(source, tree);
+}
+
+export function reconcileDisplayDescriptors(current: CanvasState, sourceHash: string, entries: readonly CanvasDisplayDescriptor[],
+  makeId: () => string = () => globalThis.crypto.randomUUID()): ReconciledCanvas {
+  current = validateCanvasState(current);
+  // Build both identity indexes once. Duplicate descriptors remain ambiguous;
+  // multiple cards proposing one descriptor are still rejected below.
+  const exactEntries = new Map<string, number[]>();
+  const relocatedEntries = new Map<string, number[]>();
+  entries.forEach((entry, index) => {
+    for (const [map, exact] of [[exactEntries, true], [relocatedEntries, false]] as const) {
+      const identity = key(entry.anchor, exact);
+      const indexes = map.get(identity);
+      if (indexes) indexes.push(index); else map.set(identity, [index]);
+    }
+  });
+  const candidates = current.cards.map(card => {
+    const exact = card.anchor.basisSha256 === sourceHash;
+    return (exact ? exactEntries : relocatedEntries).get(key(card.anchor, exact)) ?? [];
+  });
   const proposed = new Map<number, string[]>();
   current.cards.forEach((card, index) => {
     if (candidates[index].length !== 1) return;

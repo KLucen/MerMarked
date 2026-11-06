@@ -6,7 +6,8 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
 import remarkFrontmatter from 'remark-frontmatter';
-import { canvasCardContent, createCanvasCardContentCache } from '../../src/core/canvas-card-content.ts';
+import { canvasCardContent, canvasContentsFromSnapshot, createCanvasCardContentCache } from '../../src/core/canvas-card-content.ts';
+import { parseMarkdownSnapshot } from '../../src/core/markdown-snapshot.ts';
 import { buildCanvasSceneV2 } from '../../src/core/canvas-scene-v2.ts';
 import { reconcileCanvasStateV2 } from '../../src/core/canvas-state-v2.ts';
 import { extractSections, type SectionTree } from '../../src/core/sections.ts';
@@ -32,11 +33,35 @@ test('cached card content preserves standalone chapter semantics and Unicode exc
     '标题\n====\n\n' + 'a'.repeat(159) + '😀' + 'é👨‍👩‍👧‍👦'.repeat(10_000)]) {
     const tree = extractSections(content);
     const cache = createCanvasCardContentCache(content, tree);
+    const shared = new Map(canvasContentsFromSnapshot(parseMarkdownSnapshot(content), tree));
     for (const index of [...(tree.virtualCard ? [null] : []), ...tree.sections.map(section => section.index)]) {
       assert.deepEqual(canvasCardContent(content, tree, index), legacy(content, tree, index));
+      assert.deepEqual(shared.get(index), legacy(content, tree, index));
       assert.deepEqual(cache.get(index), legacy(content, tree, index));
       assert.equal(cache.get(index), cache.get(index));
       assert.ok(Object.isFrozen(cache.get(index)));
+    }
+  }
+});
+
+test('shared parser card text keeps fragment reference, HTML, frontmatter and block boundaries', () => {
+  const fragments = [
+    '[link][ref]\n\n![image][ref]\n\n[ref]: /here\n',
+    '[link][ref]\n\nText[^note]\n',
+    '[^note]: footnote\n\n[ref]: /there\n',
+    '> [inside][ref]\n\n- [list][ref]\n',
+    '<div>\n# raw heading\n</div>\n\nA <b>bold</b> tail\n',
+    '---\nx: y\n---\n',
+    '```md\n# fenced\n```\n\n    # indented\n',
+    'line  \nbreak\n\n- [x] task\n\n|a|b|\n|-|-|\n|中|😀|\n',
+    'plain😀é\n\nanother paragraph\n',
+  ];
+  for (const first of fragments) for (const second of fragments) for (const bom of ['', '\uFEFF']) {
+    const content = bom + '---\ntitle: metadata\n---\n\nPreamble\n\n# A\n\n' + first + '\n# B\n\n' + second;
+    const snapshot = parseMarkdownSnapshot(content);
+    const tree = extractSections(content);
+    for (const [index, card] of canvasContentsFromSnapshot(snapshot, tree)) {
+      assert.deepEqual(card, legacy(content, tree, index), `fragment projection ${JSON.stringify(content)}`);
     }
   }
 });

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { prepareCanvas, preparedCanvasContent } from '../../src/core/canvas-preparation.ts';
+import { prepareCanvas, prepareCanvasFromReading, prepareCanvasFromProjection, preparedCanvasContent } from '../../src/core/canvas-preparation.ts';
+import { parseMarkdownSnapshot } from '../../src/core/markdown-snapshot.ts';
 import { canvasCardContent, createCanvasCardContentCache } from '../../src/core/canvas-card-content.ts';
 import { reconcileCanvasStateV2 } from '../../src/core/canvas-state-v2.ts';
 import { buildCanvasSceneV2 } from '../../src/core/canvas-scene-v2.ts';
@@ -21,6 +22,11 @@ test('background preparation preserves anchors, ambiguity, text and scene across
       const expected = await reconcileCanvasStateV2(previous, input, ids('new'));
       const prepared = structuredClone(await prepareCanvas(source, bom, previous, ids('new')));
       assert.deepEqual(prepared.reconciled, expected);
+      const shared = prepareCanvasFromProjection(structuredClone(await prepareCanvasFromReading(parseMarkdownSnapshot(source), bom)), previous, ids('new'));
+      assert.deepEqual(shared.reconciled, prepared.reconciled, 'shared reading projection preserves the independent canvas path');
+      assert.deepEqual(shared.tree, prepared.tree);
+      const sharedContent = preparedCanvasContent(source, shared);
+      for (const [index, content] of prepared.contents) assert.deepEqual(sharedContent.get(index), content);
       assert.deepEqual(prepared.tree, extractSections(source));
       const cache = preparedCanvasContent(source, prepared);
       for (const binding of expected.bindings) assert.deepEqual(cache.get(binding.sectionIndex), canvasCardContent(source, prepared.tree, binding.sectionIndex));

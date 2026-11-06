@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { openWorkspaceTask } from './workspace-controls.mjs';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -188,8 +189,8 @@ async function insertEditorText(cdp, marker, inserted) {
   // Let mode-entry focus and section positioning finish before placing the test caret.
   await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   const focused = await cdp.evaluate(`(() => {
-    const textarea = document.querySelector('[data-editor-textarea]');
-    if (!(textarea instanceof HTMLTextAreaElement)) return false;
+    const textarea = __sourceControl();
+    if (!((__sourceControlElement() instanceof HTMLElement))) return false;
     const offset = textarea.value.indexOf(${JSON.stringify(marker)});
     if (offset < 0) return false;
     textarea.focus();
@@ -287,7 +288,7 @@ await writeFile(thirdSidecar, annotationText(thirdContent, thirdBytes, 0, '重�
 await writeFile(thirdCanvas, Buffer.from('{"schemaVersion":1,"sentinel":"reader-canvas"}\n'));
 
 const port = 10_100 + Math.floor(Math.random() * 200);
-const child = spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], {
+const child = await spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], {
   cwd: root,
   env: { ...process.env, APPDATA: appData, LOCALAPPDATA: localAppData },
   stdio: 'ignore',
@@ -312,27 +313,32 @@ try {
     entries: (await readdir(workspace)).sort(),
   };
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'source editor');
+  await waitFor(cdp, `(()=>{const e=__sourceControl();return Boolean(e &&
+    !e.closest('[hidden],[inert]') && getComputedStyle(e.element ?? e).visibility==='visible');})()`, 'source editor ready');
   const sourceContract = await cdp.evaluate(`(() => {
-    const textarea = document.querySelector('[data-editor-textarea]');
+    const textarea = __sourceControl();
     const status = document.querySelector('[data-editor-status]')?.textContent ?? '';
     return {
       value: textarea?.value,
-      hasReader: Boolean(document.querySelector('.markdown-body')),
+      hasReader: Boolean(document.querySelector('.markdown-body')?.getClientRects().length) &&
+        getComputedStyle(document.querySelector('.markdown-body')).visibility !== 'hidden',
+      cachedReaderInert: !document.querySelector('.markdown-body') ||
+        Boolean(document.querySelector('.markdown-body').closest('[hidden][inert]')),
       status,
       dirty: document.querySelector('.app-shell')?.getAttribute('data-dirty'),
     };
   })()`);
   assert.equal(sourceContract.value, firstContent.replace(/\r\n/g, '\n'));
   assert.equal(sourceContract.hasReader, false);
+  assert.equal(sourceContract.cachedReaderInert, true);
   assert.equal(sourceContract.dirty, 'false');
   assert.match(sourceContract.status, /UTF-8 BOM/);
   assert.match(sourceContract.status, /CRLF/);
   assert.match(sourceContract.status, /末尾无换行/);
 
   const contextMenuReady = await cdp.evaluate(`(() => {
-    const textarea = document.querySelector('[data-editor-textarea]');
-    if (!(textarea instanceof HTMLTextAreaElement)) return false;
+    const textarea = __sourceControl();
+    if (!((__sourceControlElement() instanceof HTMLElement))) return false;
     const start = textarea.value.indexOf('ANCHOR_TEXT');
     textarea.focus();
     textarea.setSelectionRange(start, start + 'ANCHOR_TEXT'.length);
@@ -342,8 +348,8 @@ try {
   assert.equal(contextMenuReady, true, 'source context-menu selection');
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-context-menu]'))`, 'source context menu');
   const sourceMenuKeyboard = await cdp.evaluate(`(() => {
-    const textarea = document.querySelector('[data-editor-textarea]');
-    if (!(textarea instanceof HTMLTextAreaElement)) return false;
+    const textarea = __sourceControl();
+    if (!((__sourceControlElement() instanceof HTMLElement))) return false;
     textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
     textarea.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'F10', shiftKey: true }));
     return true;
@@ -356,20 +362,20 @@ try {
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
   await waitFor(cdp, `!document.querySelector('[data-editor-context-menu]')`, 'source context menu keyboard close');
   await cdp.evaluate(`(() => {
-    const textarea = document.querySelector('[data-editor-textarea]');
-    if (!(textarea instanceof HTMLTextAreaElement)) return;
+    const textarea = __sourceControl();
+    if (!((__sourceControlElement() instanceof HTMLElement))) return;
     const start = textarea.value.indexOf('ANCHOR_TEXT');
     textarea.focus(); textarea.setSelectionRange(start, start + 'ANCHOR_TEXT'.length);
     textarea.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 160, clientY: 160 }));
   })()`);
   await waitFor(cdp, `Boolean(document.querySelector('[data-editor-context-menu]'))`, 'source context menu reopened');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-editor-context-menu] button')).find((button) => button.textContent === '加粗')?.click()`);
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('**ANCHOR_TEXT**')`, 'source bold command');
+  await waitFor(cdp, `__sourceControl()?.value.includes('**ANCHOR_TEXT**')`, 'source bold command');
   await pressShortcut(cdp, 'z');
-  await waitFor(cdp, `!document.querySelector('[data-editor-textarea]')?.value.includes('**ANCHOR_TEXT**')`, 'source bold undo');
+  await waitFor(cdp, `!__sourceControl()?.value.includes('**ANCHOR_TEXT**')`, 'source bold undo');
 
   await click(cdp, '[data-mode="reader"]');
-  await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader after clean mode switch');
+  await waitFor(cdp, `document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader after clean mode switch');
   const readerMenuReady = await cdp.evaluate(`(() => {
     const article = document.querySelector('.markdown-body');
     if (!(article instanceof HTMLElement)) return false;
@@ -413,7 +419,7 @@ try {
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))`);
   await waitFor(cdp, `!document.querySelector('[data-reader-context-menu]')`, 'reader context menu keyboard close');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'editor after clean mode switch');
+  await waitFor(cdp, `Boolean(__sourceControl())`, 'editor after clean mode switch');
   assertSnapshotUnchanged(noWriteBefore.markdown, await snapshot(firstPath), 'clean mode switch Markdown');
   assertSnapshotUnchanged(noWriteBefore.annotations, await snapshot(firstSidecar), 'clean mode switch annotations');
   assertSnapshotUnchanged(noWriteBefore.canvas, await snapshot(firstCanvas), 'clean mode switch canvas');
@@ -437,32 +443,32 @@ try {
   await setInput(cdp, '[data-editor-replace-input]', 'REPLACED_TARGET');
   await waitFor(cdp, `document.querySelector('[data-editor-search] output')?.textContent?.includes('/ 2')`, 'two source matches');
   await click(cdp, '[data-editor-replace-all]');
-  await waitFor(cdp, `(document.querySelector('[data-editor-textarea]')?.value.match(/REPLACED_TARGET/g) ?? []).length === 2`,
+  await waitFor(cdp, `(__sourceControl()?.value.match(/REPLACED_TARGET/g) ?? []).length === 2`,
     'replace all');
-  await waitFor(cdp, `document.activeElement === document.querySelector('[data-editor-textarea]')`,
+  await waitFor(cdp, `document.activeElement === __sourceControlElement()`,
     'editor focus after replace all');
   await pressShortcut(cdp, 'z');
-  await waitFor(cdp, `(document.querySelector('[data-editor-textarea]')?.value.match(/FIND_TARGET/g) ?? []).length === 2`,
+  await waitFor(cdp, `(__sourceControl()?.value.match(/FIND_TARGET/g) ?? []).length === 2`,
     'single-step replace-all undo');
-  await waitFor(cdp, `document.activeElement === document.querySelector('[data-editor-textarea]')`,
+  await waitFor(cdp, `document.activeElement === __sourceControlElement()`,
     'editor focus after replace-all undo');
   await pressShortcut(cdp, 'y');
-  await waitFor(cdp, `(document.querySelector('[data-editor-textarea]')?.value.match(/REPLACED_TARGET/g) ?? []).length === 2`,
+  await waitFor(cdp, `(__sourceControl()?.value.match(/REPLACED_TARGET/g) ?? []).length === 2`,
     'replace-all redo');
 
   await insertEditorText(cdp, 'ASCII_CURSOR', 'X');
   await new Promise((resolve) => setTimeout(resolve, 160));
   const cursorProbe = await cdp.evaluate(`({
     status: document.querySelector('[data-editor-status]')?.textContent ?? '',
-    value: document.querySelector('[data-editor-textarea]')?.value ?? '',
-    start: document.querySelector('[data-editor-textarea]')?.selectionStart,
-    end: document.querySelector('[data-editor-textarea]')?.selectionEnd,
+    value: __sourceControl()?.value ?? '',
+    start: __sourceControl()?.selectionStart,
+    end: __sourceControl()?.selectionEnd,
   })`);
   assert.match(cursorProbe.status, /行\s*\d+，列\s*2/,
     `unexpected source cursor status: ${JSON.stringify(cursorProbe)}`);
   await pressShortcut(cdp, 'z');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('ASCII_CURSOR') &&
-    !document.querySelector('[data-editor-textarea]')?.value.includes('XASCII_CURSOR')`, 'cursor probe undo');
+  await waitFor(cdp, `__sourceControl()?.value.includes('ASCII_CURSOR') &&
+    !__sourceControl()?.value.includes('XASCII_CURSOR')`, 'cursor probe undo');
 
   await click(cdp, '[data-mode="reader"]');
   await waitFor(cdp, `Boolean(document.querySelector('[data-dirty-preview]')) &&
@@ -484,7 +490,7 @@ try {
   assertSnapshotUnchanged(noWriteBefore.annotations, await snapshot(firstSidecar), 'dirty direct annotation mutation');
 
   await click(cdp, '[data-mode="editor"]');
-  const firstCandidate = await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.value`);
+  const firstCandidate = await cdp.evaluate(`__sourceControl()?.value`);
   await pressShortcut(cdp, 's');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'successful source save');
   const expectedFirstBytes = sourceBytes(firstCandidate.replace(/\n/g, '\r\n'), true);
@@ -506,6 +512,8 @@ try {
 
   await dropFile(cdp, thirdPath);
   await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' &&
+    document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' &&
+    !document.querySelector('.markdown-body')?.closest('[hidden],[inert]') &&
     Boolean(document.querySelector('[data-reader-editable="true"]'))`, 'reader editable plain block');
   const thirdBefore = {
     markdown: await snapshot(thirdPath),
@@ -516,6 +524,7 @@ try {
     const block = document.querySelector('[data-reader-editable="true"]');
     if (!(block instanceof HTMLElement)) return false;
     block.focus();
+    if (document.activeElement !== block) return false;
     block.textContent = '阅读中已修改';
     block.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: '阅读中已修改' }));
     block.blur();
@@ -523,43 +532,49 @@ try {
   })()`);
   assert.equal(readerEditResult, true, 'reader contenteditable input');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true' &&
+    document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' &&
     document.querySelector('.markdown-body')?.textContent.includes('阅读中已修改')`, 'reader edit dirty preview');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('阅读中已修改')`, 'reader edit in source buffer');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('阅读中已修改')`, 'reader edit in source buffer');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false' &&
-    document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与 [旧文字](https://example.test)。')`, 'reader edit shared undo');
+    __sourceControl()?.value.includes('这是 **重点** 与 [旧文字](https://example.test)。')`, 'reader edit shared undo');
   await pressShortcut(cdp, 'y');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true' &&
-    document.querySelector('[data-editor-textarea]')?.value.includes('阅读中已修改')`, 'reader edit shared redo');
+    __sourceControl()?.value.includes('阅读中已修改')`, 'reader edit shared redo');
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader edit return to baseline');
 
   await click(cdp, '[data-mode="reader"]');
-  await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader inline edit');
+  await waitFor(cdp, `document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader inline edit');
   const inlineEditResult = await cdp.evaluate(`(() => {
     const block = [...document.querySelectorAll('[data-reader-editable="true"]')]
       .find((element) => element.textContent?.includes('重点'));
     if (!(block instanceof HTMLElement)) return false;
     block.focus();
+    if (document.activeElement !== block) return false;
     block.textContent = '这是 核心 与 旧文字。';
     block.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: '核心' }));
     block.blur();
     return true;
   })()`);
   assert.equal(inlineEditResult, true, 'reader inline contenteditable input');
-  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader inline edit dirty');
+  await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true' &&
+    document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' &&
+    document.querySelector('.markdown-body')?.textContent.includes('这是 核心 与 旧文字。')`, 'reader inline edit dirty');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('**核心**') &&
-    document.querySelector('[data-editor-textarea]')?.value.includes('[旧文字](https://example.test)')`, 'reader inline source mapping');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('**核心**') &&
+    __sourceControl()?.value.includes('[旧文字](https://example.test)')`, 'reader inline source mapping');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader inline undo');
   await click(cdp, '[data-mode="reader"]');
-  await waitFor(cdp, `Boolean(document.querySelector('.markdown-body'))`, 'reader inline format commands');
+  await waitFor(cdp, `document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader inline format commands');
 
   const selectReaderInlineText = async (text, clientY = 180) => {
+    await waitFor(cdp, `document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' &&
+      !document.querySelector('.markdown-body')?.closest('[hidden],[inert]')`, 'visible current reader before inline selection');
     const selected = await cdp.evaluate(`(() => {
       const article = document.querySelector('.markdown-body');
       if (!(article instanceof HTMLElement)) return false;
@@ -591,49 +606,49 @@ try {
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '加粗')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader bold format dirty');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('****重点****')`, 'reader bold source format');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('****重点****')`, 'reader bold source format');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false' &&
-    document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与')`, 'reader bold undo');
+    __sourceControl()?.value.includes('这是 **重点** 与')`, 'reader bold undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader format mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader format mode');
   await selectReaderInlineText('重点');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '斜体')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader italic format dirty');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('***重点***')`, 'reader italic source format');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('***重点***')`, 'reader italic source format');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader italic undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader quote mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader quote mode');
   await selectReaderInlineText('重点');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '引用')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader quote format dirty');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('> 这是 **重点** 与')`, 'reader quote source format');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('> 这是 **重点** 与')`, 'reader quote source format');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader quote undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader text commands mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader text commands mode');
   await selectReaderInlineText('重点');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '剪切正文')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader cut dirty');
   assert.equal(await cdp.evaluate(`navigator.clipboard.readText()`), '重点', 'reader cut clipboard');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('这是 **** 与')`, 'reader cut source');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('这是 **** 与')`, 'reader cut source');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false' &&
-    document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与')`, 'reader cut undo');
+    __sourceControl()?.value.includes('这是 **重点** 与')`, 'reader cut undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader delete mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader delete mode');
   const bottomY = await cdp.evaluate('window.innerHeight - 4');
   await selectReaderInlineText('重点', bottomY);
   const menuBounds = await cdp.evaluate(`(() => {
@@ -647,39 +662,39 @@ try {
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '删除正文')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader delete dirty');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('这是 **** 与')`, 'reader delete source');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('这是 **** 与')`, 'reader delete source');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false'`, 'reader delete undo');
 
   await dropFile(cdp, thirdPath);
-  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && Boolean(document.querySelector('.markdown-body'))`, 'reader paste mode');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'b5-reader-edit.md' && document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'reader paste mode');
   await selectReaderInlineText('重点');
   assert.equal(await cdp.evaluate(`navigator.clipboard.writeText('替换').then(() => true)`), true, 'reader paste clipboard setup');
   await cdp.evaluate(`Array.from(document.querySelectorAll('[data-reader-context-menu] button')).find((button) => button.textContent === '粘贴正文')?.click()`);
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'reader paste dirty');
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value.includes('这是 **替换** 与')`, 'reader paste source');
-  await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.focus()`);
+  await waitFor(cdp, `__sourceControl()?.value.includes('这是 **替换** 与')`, 'reader paste source');
+  await cdp.evaluate(`__sourceControl()?.focus()`);
   await pressShortcut(cdp, 'z');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'false' &&
-    document.querySelector('[data-editor-textarea]')?.value.includes('这是 **重点** 与')`, 'reader paste undo');
+    __sourceControl()?.value.includes('这是 **重点** 与')`, 'reader paste undo');
   assertSnapshotUnchanged(thirdBefore.markdown, await snapshot(thirdPath), 'reader commands Markdown');
   assertSnapshotUnchanged(thirdBefore.annotations, await snapshot(thirdSidecar), 'reader commands annotations');
   assertSnapshotUnchanged(thirdBefore.canvas, await snapshot(thirdCanvas), 'reader commands canvas');
 
   await dropFile(cdp, secondPath);
   await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'a7-3b-conflict.md' &&
-    Boolean(document.querySelector('.markdown-body'))`, 'conflict reader document');
+    document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready'`, 'conflict reader document');
   const secondBefore = {
     annotations: await snapshot(secondSidecar),
     canvas: await snapshot(secondCanvas),
   };
   await click(cdp, '[data-mode="editor"]');
-  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'conflict source editor');
+  await waitFor(cdp, `Boolean(__sourceControl())`, 'conflict source editor');
   await insertEditorText(cdp, 'CANDIDATE_MARKER', 'LOCAL_');
   await waitFor(cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`, 'conflict dirty buffer');
-  const conflictCandidate = await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.value`);
+  const conflictCandidate = await cdp.evaluate(`__sourceControl()?.value`);
   const explicitCheckpoint = await cdp.evaluate(`(async () => {
     const editor = await window.mermarkd.openMarkdownEditor();
     return window.mermarkd.persistMarkdownEditorDraft({
@@ -699,7 +714,7 @@ try {
   await waitFor(cdp, `(document.querySelector('.notice.alert')?.textContent ?? '').includes('外部修改') ||
     (document.querySelector('[data-editor-status]')?.textContent ?? '').includes('外部修改')`, 'external save conflict');
   assert.deepEqual(await readFile(secondPath), externalBytes);
-  assert.equal(await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.value`), conflictCandidate);
+  assert.equal(await cdp.evaluate(`__sourceControl()?.value`), conflictCandidate);
   assert.equal(await cdp.evaluate(`document.querySelector('.app-shell')?.getAttribute('data-dirty')`), 'true');
   assertSnapshotUnchanged(secondBefore.annotations, await snapshot(secondSidecar), 'conflict annotations');
   assertSnapshotUnchanged(secondBefore.canvas, await snapshot(secondCanvas), 'conflict canvas');
@@ -711,7 +726,7 @@ try {
   await new Promise((resolve) => setTimeout(resolve, 250));
   assert.equal(await cdp.evaluate(`document.querySelector('.workspace-current-name')?.textContent`), 'a7-3b-conflict.md',
     'dirty drop must not replace the current document');
-  assert.equal(await cdp.evaluate(`document.querySelector('[data-editor-textarea]')?.value`), conflictCandidate);
+  assert.equal(await cdp.evaluate(`__sourceControl()?.value`), conflictCandidate);
 
   const pendingFiles = (await walkFiles(workspace)).filter((file) => file.includes('.markdown.pending.'));
   assert.ok(pendingFiles.length >= 1, 'conflict must retain a Markdown recovery draft');

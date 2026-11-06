@@ -2,11 +2,11 @@ import { preflightCanvasExport } from '../core/canvas-export-preflight';
 import { CanvasStructurePreview } from './canvas-structure-preview';
 import { WorkspaceTaskPanel } from './workspace-panels';
 import { useCanvasToolbarMenus } from './use-canvas-toolbar-menus';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow } from '@xyflow/react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow, useViewport } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
 import { ArrowDownToLine, ArrowUpToLine, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
-import { preparedCanvasContent } from '../core/canvas-preparation';
+import { preparedCanvasContent, prepareCanvasFromProjection, type PreparedCanvas } from '../core/canvas-preparation';
 import type { CanvasCardContentCache } from '../core/canvas-card-content';
 import type { SectionTree } from '../core/sections';
 import { CanvasPreparationTask } from './canvas-preparation-task';
@@ -45,24 +45,38 @@ interface CardData extends Record<string, unknown> {
   detachStatus?: 'candidate' | 'ready';
   readOnly: boolean;
   sectionIndex: number | null;
-  fold: () => void;
-  edit: () => void;
+  fold: (id: string) => void;
+  edit: (index: number | null) => void;
   properties: () => void;
   hiddenLinks: number;
-  measure: (height: number) => void;
+  measure: (id: string, height: number) => void;
 }
 type ChapterNode = Node<CardData, 'chapter'>;
 
-function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
+function sameCardData(left: CardData, right: CardData): boolean {
+  const keys = Object.keys(right);
+  return Object.keys(left).length === keys.length && keys.every(key => {
+    if (key === 'contentPosition') return left.contentPosition.x === right.contentPosition.x && left.contentPosition.y === right.contentPosition.y;
+    if (key === 'size') return left.size.width === right.size.width && left.size.height === right.size.height;
+    return left[key] === right[key];
+  });
+}
+
+const ChapterCard = memo(function ChapterCard({ id, data, selected }: NodeProps<ChapterNode>) {
   const body = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const element = body.current;
     if (!element) return;
-    const measure = () => data.measure(Math.ceil(element.offsetHeight + 16));
-    const actualObserver = new ResizeObserver(measure);
-    actualObserver.observe(element); measure();
+    // ResizeObserver already supplies the actual, untransformed border box.
+    // Reading offsetHeight immediately after each batch forced another layout
+    // during React's effects. Wait for the initial observation as well as resizes.
+    const actualObserver = new ResizeObserver(entries => {
+      const height = entries[0]?.borderBoxSize[0]?.blockSize;
+      if (height !== undefined && height > 0) data.measure(id, Math.round(height) + 16);
+    });
+    actualObserver.observe(element, { box: 'border-box' });
     return () => actualObserver.disconnect();
-  }, [data.measure]);
+  }, [id, data.measure]);
   const chapterClass = ['canvas-chapter', data.childCount > 0 && !data.descendantsCollapsed && 'canvas-chapter-group', selected && 'selected', data.nestStatus && `nest-${data.nestStatus}`,
     data.detachStatus && `detach-${data.detachStatus}`].filter(Boolean).join(' ');
   return <div className={chapterClass}>
@@ -70,13 +84,13 @@ function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
     <div ref={body} className="canvas-card-body" style={{ left: data.contentPosition.x, top: data.contentPosition.y,
       width: data.size.width, height: data.size.height }}><div className="canvas-card-header">
       <div className="canvas-card-heading"><strong title={data.pathLabel}>{data.title}</strong></div>
-      <div className="canvas-card-actions nodrag" hidden={!selected}>
-        <button type="button" title="编辑本节" aria-label="编辑本节" onClick={data.edit}><FilePenLine size={15} /></button>
+      {selected && <div className="canvas-card-actions nodrag">
+        <button type="button" title="编辑本节" aria-label="编辑本节" onClick={() => data.edit(data.sectionIndex)}><FilePenLine size={15} /></button>
         <button type="button" title="卡片操作" aria-label="卡片操作" onClick={data.properties}><MoreHorizontal size={15} /></button>
-      </div>
+      </div>}
     </div>
     {data.bodyDisplay !== 'hidden' && <p className={data.bodyDisplay === 'full' ? 'canvas-card-summary canvas-card-full' : 'canvas-card-summary'}>{(data.bodyDisplay === 'full' ? data.fullText : data.summary) || '暂无正文'}</p>}
-    {data.childCount > 0 && <button type="button" className="canvas-card-count nodrag" disabled={data.readOnly} onClick={data.fold}
+    {data.childCount > 0 && <button type="button" className="canvas-card-count nodrag" disabled={data.readOnly} onClick={() => data.fold(id)}
       aria-label={data.descendantsCollapsed ? '展开子章节' : '收起子章节'}>
       {data.descendantsCollapsed ? <ArrowDownToLine size={13} /> : <ArrowUpToLine size={13} />}
       {data.hiddenDescendants ? data.hiddenDescendants + ' 个章节已收起' : data.childCount + ' 个子章节'}
@@ -91,9 +105,22 @@ function ChapterCard({ data, selected }: NodeProps<ChapterNode>) {
     </div>
     <Handle type="source" position={Position.Right} isConnectable={!data.readOnly} />
   </div>;
-}
+}, (previous, next) => previous.id === next.id && previous.selected === next.selected &&
+  previous.data.contentPosition.x === next.data.contentPosition.x && previous.data.contentPosition.y === next.data.contentPosition.y &&
+  previous.data.size.width === next.data.size.width && previous.data.size.height === next.data.size.height &&
+  Object.keys(previous.data).length === Object.keys(next.data).length &&
+  Object.keys(previous.data).every(key => key === 'contentPosition' || key === 'size' || Object.is(previous.data[key], next.data[key])));
 
 const nodeTypes: NodeTypes = { chapter: ChapterCard };
+const CANVAS_NODE_BATCH = 40;
+
+function CanvasBackground() {
+  const { zoom } = useViewport();
+  // Keep the original world grid at normal zoom. At overview scales retain
+  // only coarser grid lines, rather than rasterizing a dense few-pixel pattern.
+  const gap = Math.max(32, 2 ** Math.ceil(Math.log2(16 / zoom)));
+  return <Background variant={BackgroundVariant.Lines} color="#e3e8ed" gap={gap} />;
+}
 const emptyTree: SectionTree = { sourceLength: 0, preambleRange: { start: 0, end: 0 }, rootIndexes: [], sections: [], virtualCard: null };
 
 function domRectForNode(id: string) {
@@ -112,6 +139,7 @@ function pointerForEvent(event: unknown): { x: number; y: number } | null {
 }
 
 export interface CanvasViewProps {
+  readonly preparedSource?: PreparedCanvas;
   readonly document: OpenedMarkdownDocument;
   readonly dirty: boolean;
   readonly activeSection: number | null;
@@ -131,7 +159,7 @@ export interface CanvasViewProps {
   readonly onStatusChange?: (path: string, sha256: string, status: PartStatus) => void;
 }
 
-function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onStructurePreview, onStatusChange, structurePreview, structureBusy, onConfirmStructure, onCancelStructure, onOpenProperties, canUndoSource, canRedoSource, onUndoSource, onRedoSource }: CanvasViewProps) {
+function CanvasEditor({ document, preparedSource, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onStructurePreview, onStatusChange, structurePreview, structureBusy, onConfirmStructure, onCancelStructure, onOpenProperties, canUndoSource, canRedoSource, onUndoSource, onRedoSource }: CanvasViewProps) {
   const flow = useReactFlow<ChapterNode>();
   const toolbar = useRef<HTMLDivElement>(null);
   useCanvasToolbarMenus(toolbar);
@@ -140,6 +168,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const [unresolvedIds, setUnresolvedIds] = useState<readonly string[]>([]);
   const [unresolvedLinkIds, setUnresolvedLinkIds] = useState<readonly string[]>([]);
   const [nodes, setNodes] = useState<ChapterNode[]>([]);
+  const [nodeLimit, setNodeLimit] = useState(CANVAS_NODE_BATCH);
   const [sidecarHash, setSidecarHash] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [layoutPending, setLayoutPending] = useState(true);
@@ -167,6 +196,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const generation = useRef(0);
   const saveInFlight = useRef(false);
   const initialLayout = useRef(false);
+  const pendingInitialViewport = useRef<{ generation: number; viewport: CanvasStateV2['viewport']; valid: boolean } | null>(null);
   const sourceVersion = useRef<1 | 2>(1);
   const dragStart = useRef<{ nodeId: string; sectionIndex: number | null; position: { x: number; y: number }; screenRect?: { x: number; y: number; width: number; height: number }; pointer?: { x: number; y: number }; parentId?: string } | null>(null);
   const nestDwell = useRef<OverlapDwellState | null>(null);
@@ -180,7 +210,17 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const cardContent = projection?.path === document.path && projection.source === document.content &&
     projection.bom === document.bomByteLength && projection.dirty === dirty && projection.revision === loadRevision ? projection.content : null;
   const tree = cardContent?.tree ?? emptyTree;
-  const readOnly = !cardContent || dirty || Boolean(document.recoveryPending) || busy || layoutPending || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
+  const scene = useMemo(() => model && cardContent ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights, cardContent) : null, [bindings, document.content, minimumHeights, model, tree, cardContent]);
+  const nodesReady = Boolean(scene && nodes.length === scene.cards.length);
+  const nodeReadOnly = !cardContent || dirty || Boolean(document.recoveryPending) || busy || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
+  const readOnly = nodeReadOnly || !nodesReady || layoutPending;
+
+  useEffect(() => {
+    if (!scene || nodeLimit >= scene.cards.length) return;
+    // Yield between bounded commits so input and actual size feedback can run.
+    const timer = setTimeout(() => setNodeLimit(limit => limit + CANVAS_NODE_BATCH), 0);
+    return () => clearTimeout(timer);
+  }, [nodeLimit, scene?.cards.length]);
 
   useEffect(() => {
     const status: PartStatus = readError ? { text: '未能载入或保存，请检查画布提示', tone: 'error' }
@@ -197,14 +237,16 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   useEffect(() => {
     const current = ++generation.current;
     const task = new CanvasPreparationTask(() => new Worker(new URL('./canvas-preparation.worker.ts', import.meta.url), { type: 'module' }));
-    setProjection(null); setBindings([]); setNodes([]); initialLayout.current = false;
+    setProjection(null); setBindings([]); setNodes([]); setNodeLimit(CANVAS_NODE_BATCH); initialLayout.current = false;
+    pendingInitialViewport.current = null;
     setModel(null); setLayoutPending(true); setReadError(null); setLoadWarning(null); setBusy(false); setMessage('正在加载画布…'); setHistory([]); setFuture([]); setMinimumHeights({}); setSelectedLink(null); setSelectedCardId(null);
     void (async () => {
       const loadedResult = await window.mermarkd.loadCanvasV2();
       if (generation.current !== current) return;
       const sidecarInvalid = loadedResult.status === 'invalid';
       const loaded = sidecarInvalid ? { ...loadedResult, model: null, sidecarSha256: null, sourceVersion: null } : loadedResult;
-      const prepared = await task.run(document.content, document.bomByteLength, loaded.model);
+      const prepared = preparedSource ? prepareCanvasFromProjection(preparedSource, loaded.model)
+        : await task.run(document.content, document.bomByteLength, loaded.model);
       if (generation.current !== current) return;
       if (!prepared) throw Error('Canvas preparation failed.');
       const { tree, reconciled } = prepared;
@@ -227,25 +269,18 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       if (loaded.model && needsArrangement && (sourceChanged || hasNewCards || rootAtCorner)) loadWarningText ??= '检测到卡片位置未初始化或文档结构已变化，已自动整理当前章节。';
       if (generation.current !== current) return;
       sourceVersion.current = loaded.sourceVersion ?? 1;
+      if (loaded.model && !needsArrangement) pendingInitialViewport.current = {
+        generation: current, viewport: loaded.model.viewport, valid: viewportValid,
+      };
       setProjection({ path: document.path, source: document.content, bom: document.bomByteLength, dirty, revision: loadRevision, content: cardContent });
       initialLayout.current = needsArrangement;
       setModel(initial); setBindings(reconciled.bindings); setUnresolvedIds(reconciled.unresolvedCardIds);
       setUnresolvedLinkIds(reconciled.unresolvedLinkIds); setSidecarHash(loaded.sidecarSha256); setLoadWarning(loadWarningText);
       setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : needsArrangement ? '正在整理画布布局…' : loaded.model === null ? '初始布局 · 尚未创建画布文件' : loaded.sourceVersion === 1 ? '旧版画布已迁移到内存 v2' : '画布 v2 已载入');
       setFrom(reconciled.bindings[0]?.id ?? ''); setTo(reconciled.bindings[1]?.id ?? reconciled.bindings[0]?.id ?? '');
-      requestAnimationFrame(() => {
-        if (generation.current !== current || !loaded.model || needsArrangement) return;
-        const done = viewportValid ? flow.setViewport(loaded.model.viewport) : flow.fitView({ padding: 0.15 });
-        void done.then(() => {
-          if (generation.current !== current) return;
-          const viewport = flow.getViewport();
-          setModel((previous) => previous ? { ...previous, viewport } : previous);
-          setLayoutPending(false);
-        });
-      });
     })().catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('画布无法载入，原文件未修改；请重新载入或检查 Markdown。'); setMessage('画布未载入'); } });
-    return () => { generation.current += 1; task.cancel(); };
-  }, [document.path, document.content, document.bomByteLength, dirty, loadRevision]);
+    return () => { generation.current += 1; pendingInitialViewport.current = null; task.cancel(); };
+  }, [document.path, document.content, document.bomByteLength, dirty, loadRevision, preparedSource]);
 
   useEffect(() => {
     if (!cardContent || !initialLayout.current || !model || bindings.some((binding) => !minimumHeights[binding.id])) return;
@@ -289,7 +324,14 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   const measured = useCallback((id: string, height: number) => {
     setMinimumHeights((previous) => previous[id] === height ? previous : { ...previous, [id]: height });
   }, []);
-  const scene = useMemo(() => model && cardContent ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights, cardContent) : null, [bindings, document.content, minimumHeights, model, tree, cardContent]);
+  const currentActions = useRef({ model, persist, onEditSection, onOpenProperties });
+  currentActions.current = { model, persist, onEditSection, onOpenProperties };
+  const foldCard = useCallback((id: string) => {
+    const { model, persist } = currentActions.current;
+    if (model) void persist({ ...model, cards: model.cards.map(card => card.id === id ? { ...card, descendantsCollapsed: !card.descendantsCollapsed } : card) });
+  }, []);
+  const editCard = useCallback((index: number | null) => currentActions.current.onEditSection(index), []);
+  const openProperties = useCallback(() => currentActions.current.onOpenProperties(), []);
   useEffect(() => {
     if (activeSection !== null) {
       setSelectedCardId(bindings.find(binding => binding.sectionIndex === activeSection)?.id ?? null);
@@ -360,29 +402,69 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
     setDetachCandidate(nextDetach);
   }, [bindings, flow, scene, tree]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!model || !scene || !cardContent) { setNodes([]); return; }
-    setNodes(scene.cards.map((card): ChapterNode => {
-      const titlePath: string[] = [];
-      let pathIndex = card.sectionIndex;
-      while (pathIndex !== null && pathIndex !== undefined) {
-        const pathSection = tree.sections[pathIndex];
-        if (!pathSection) break;
-        titlePath.unshift(pathSection.title);
-        pathIndex = pathSection.parentIndex;
-      }
-      return { id: card.id, type: 'chapter', parentId: card.parentId, position: card.position,
-        hidden: card.hidden, selected: card.id === selectedCardId && !selectedLink,
-        draggable: !readOnly, connectable: !readOnly, style: { width: card.width, height: card.height },
-        data: { ...cardContent.get(card.sectionIndex), pathLabel: titlePath.join(' / ') || (card.sectionIndex === null ? '文档' : '未命名章节'), sectionIndex: card.sectionIndex, hiddenDescendants: card.hiddenDescendants,
-          bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, size: card.size ?? CANVAS_DEFAULT_CARD_SIZE, descendantsCollapsed: card.descendantsCollapsed, readOnly,
-          fold: () => { void persist({ ...model, cards: model.cards.map((item) => item.id === card.id ? { ...item, descendantsCollapsed: !item.descendantsCollapsed } : item) }); },
-          edit: () => onEditSection(card.sectionIndex),
-          properties: onOpenProperties,
-          hiddenLinks: scene.links.filter(link => link.hiddenEndpoint && (link.from === card.id || link.to === card.id)).length,
-          measure: (height) => measured(card.id, height) } };
-    }));
-  }, [selectedCardId, selectedLink, cardContent, measured, model, onEditSection, onOpenProperties, persist, readOnly, scene, tree]);
+    setNodes(previous => {
+      const mounted = new Map(previous.map(node => [node.id, node]));
+      const projected = scene.cards.slice(0, nodeLimit).map((card): ChapterNode => {
+        const existing = mounted.get(card.id);
+        // React Flow clears its measured bounds when a controlled node omits
+        // them. Keep actual measurements across selection/viewport/batch updates
+        // only while the explicit outer dimensions are unchanged. Resizing a
+        // group still drops them and waits for the new DOM measurement.
+        const measuredBounds = existing?.style?.width === card.width && existing.style.height === card.height
+          ? existing.measured : undefined;
+        const titlePath: string[] = [];
+        let pathIndex = card.sectionIndex;
+        while (pathIndex !== null && pathIndex !== undefined) {
+          const pathSection = tree.sections[pathIndex];
+          if (!pathSection) break;
+          titlePath.unshift(pathSection.title);
+          pathIndex = pathSection.parentIndex;
+        }
+        const data: CardData = { ...cardContent.get(card.sectionIndex), pathLabel: titlePath.join(' / ') || (card.sectionIndex === null ? '文档' : '未命名章节'), sectionIndex: card.sectionIndex, hiddenDescendants: card.hiddenDescendants,
+            bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, size: card.size ?? CANVAS_DEFAULT_CARD_SIZE, descendantsCollapsed: card.descendantsCollapsed, readOnly: nodeReadOnly,
+            fold: foldCard,
+            edit: editCard,
+            properties: openProperties,
+            hiddenLinks: scene.links.filter(link => link.hiddenEndpoint && (link.from === card.id || link.to === card.id)).length,
+            measure: measured };
+        const next: ChapterNode = { id: card.id, type: 'chapter', parentId: card.parentId, position: card.position,
+          measured: measuredBounds,
+          hidden: card.hidden, selected: card.id === selectedCardId && !selectedLink,
+          draggable: !nodeReadOnly, connectable: !nodeReadOnly, style: { width: card.width, height: card.height },
+          // A later batch changes the node list, not the earlier cards' content.
+          // Preserve data identity so their memoized bodies do not render again.
+          data: existing && sameCardData(existing.data, data) ? existing.data : data };
+        if (existing && existing.type === next.type && existing.parentId === next.parentId &&
+          existing.position.x === next.position.x && existing.position.y === next.position.y &&
+          existing.measured === next.measured && existing.hidden === next.hidden && existing.selected === next.selected &&
+          existing.draggable === next.draggable && existing.connectable === next.connectable &&
+          existing.style?.width === next.style?.width && existing.style?.height === next.style?.height && existing.data === next.data) return existing;
+        return next;
+      });
+      return projected.length === previous.length && projected.every((node, index) => node === previous[index]) ? previous : projected;
+    });
+  }, [selectedCardId, selectedLink, cardContent, measured, model, nodeLimit, editCard, openProperties, foldCard, nodeReadOnly, scene, tree]);
+
+  useLayoutEffect(() => {
+    const pending = pendingInitialViewport.current;
+    if (!pending || pending.generation !== generation.current || !scene || nodes.length !== scene.cards.length) return;
+    // React Flow reports actual measurements through onNodesChange. Consume
+    // that update directly instead of polling one frame later. A new scene
+    // may still be projecting its dimensions, so reject the previous geometry.
+    if (nodes.some((node, index) => node.id !== scene.cards[index].id ||
+      node.style?.width !== scene.cards[index].width || node.style.height !== scene.cards[index].height ||
+      (!node.hidden && (!node.measured?.width || !node.measured?.height || !minimumHeights[node.id])))) return;
+    pendingInitialViewport.current = null;
+    const done = pending.valid ? flow.setViewport(pending.viewport) : flow.fitView({ padding: 0.15 });
+    void done.then(() => {
+      if (generation.current !== pending.generation) return;
+      const viewport = flow.getViewport();
+      setModel(previous => previous ? { ...previous, viewport } : previous);
+      setLayoutPending(false);
+    });
+  }, [flow, minimumHeights, nodes, scene]);
 
   useEffect(() => {
     setNodes((previous) => previous.map((node) => ({ ...node, data: {
@@ -464,7 +546,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
   }, [busy, document.sourceSha256, exporting, exportPreflight, readError, readOnly, scene]);
 
   return <main className="canvas-mode" data-canvas-view="true"
-    data-canvas-preparation={readError ? 'error' : cardContent && !layoutPending ? 'ready' : 'pending'}>
+    data-canvas-preparation={readError ? 'error' : cardContent && nodesReady && !layoutPending ? 'ready' : 'pending'}>
     <div ref={toolbar} className="canvas-toolbar" role="toolbar" aria-label="画布工具">
       <div className="canvas-toolbar-group canvas-toolbar-primary" role="group" aria-label="视图导航">
         <button className="canvas-toolbar-labeled" title="适应全图" aria-label="适应全图" onClick={() => void flow.fitView({ padding: 0.15 })}><Focus size={17} /><span>适应</span></button>
@@ -529,7 +611,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
       <button type="button" data-canvas-source-redo="true" disabled={!canRedoSource || structureBusy || Boolean(structurePreview)} onClick={onRedoSource}>重做正文修改</button>
     </div>}
     <div className="canvas-workspace">
-      <div className="canvas-flow" data-canvas-flow="true">
+      <div className="canvas-flow" data-canvas-flow="true" inert={!nodesReady || layoutPending}>
         <ReactFlow<ChapterNode> nodes={cardContent ? nodes : []} edges={cardContent ? edges : []} nodeTypes={nodeTypes} minZoom={0.05} maxZoom={8}
           nodesDraggable={!readOnly} nodesConnectable={!readOnly} edgesReconnectable={false} deleteKeyCode={null}
           panOnDrag={[1, 2]} panActivationKeyCode="Space" selectionOnDrag
@@ -588,7 +670,7 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
           onPaneClick={() => { setSelectedLink(null); setSelectedCardId(null); }}
           onMoveEnd={(event, viewport) => { if (event && model && !readOnly) void persist({ ...model, viewport }); }}
           proOptions={{ hideAttribution: true }}>
-          <Background variant={BackgroundVariant.Lines} color="#e3e8ed" gap={32} />
+          <CanvasBackground />
         </ReactFlow>
       </div>
       <WorkspaceTaskPanel><section className="canvas-properties" aria-label="卡片与关系">
@@ -620,13 +702,13 @@ function CanvasEditor({ document, dirty, activeSection, focusRequest = 0, onSect
           </div> : <>
             {currentCard && currentModelCard ? <div data-canvas-card-inspector="true">
               <p className="canvas-inspector-path">{currentCard.data.pathLabel}</p>
-              <button onClick={currentCard.data.edit}><FilePenLine size={16} /> 编辑本节</button>
+              <button onClick={() => currentCard.data.edit(currentCard.data.sectionIndex)}><FilePenLine size={16} /> 编辑本节</button>
               <label>正文显示<select data-canvas-body-display="true" value={currentModelCard.bodyDisplay} disabled={readOnly}
                 onChange={event => model && void persist({ ...model, cards: model.cards.map(card => card.id === currentCard.id
                   ? { ...card, bodyDisplay: event.target.value as CanvasBodyDisplay } : card) })}>
                 <option value="hidden">只显示标题</option><option value="preview">正文摘要</option><option value="full">全部正文</option>
               </select></label>
-              {currentCard.data.childCount > 0 && <button disabled={readOnly} onClick={currentCard.data.fold}>
+              {currentCard.data.childCount > 0 && <button disabled={readOnly} onClick={() => currentCard.data.fold(currentCard.id)}>
                 {currentCard.data.descendantsCollapsed ? '展开子章节' : '收起子章节'}
               </button>}
               <details className="canvas-inspector-section" data-canvas-size-tools="true"><summary>卡片尺寸</summary>

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -20,7 +21,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -126,17 +127,17 @@ try {
   }
   await metrics(1200,800);
   await click('[data-mode="editor"]');
-  await wait('Boolean(document.querySelector("[data-editor-textarea]"))','source');
+  await wait('Boolean(__sourceControl())','source');
   await frame();
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").value'),content.replaceAll('\r\n','\n'));
+  assert.equal(await page.evaluate('__sourceControl().value'),content.replaceAll('\r\n','\n'));
   for(const width of [1200,420]) {
     await metrics(width,800);
-    assert.equal(await page.evaluate('getComputedStyle(document.querySelector("[data-editor-textarea]")).fontSize'),'13px');
+    assert.equal(await page.evaluate('getComputedStyle(__sourceControlElement()).fontSize'),'13px');
     assert.equal(await page.evaluate('getComputedStyle(document.querySelector(".source-editor-status")).fontSize'),'12px');
     await fits(); await screenshot('source-'+width);
   }
   await metrics(1200,800);
-  await click('[data-editor-textarea]');
+  await click('[data-source-editor], [data-editor-textarea]');
   await page.send('Input.insertText',{text:'待撤销'});
   await wait('document.querySelector(".app-shell").dataset.dirty==="true"','dirty status');
   await frame();
@@ -148,7 +149,7 @@ try {
   await contrast('.workspace-document-status.warning .workspace-popover-trigger','.topbar');
   await screenshot('source-dirty');
   await key('Escape','Escape',27);
-  await click('[data-editor-textarea]'); await key('z','KeyZ',90,2);
+  await click('[data-source-editor], [data-editor-textarea]'); await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','undo is clean');
   assert.deepEqual(await snapshot(),before,'source buffer and undo leave three content files untouched');
 
@@ -181,6 +182,7 @@ try {
   assert.equal(await page.evaluate(`document.querySelector('${exports}').open`),false,'tab outside dismisses');
   await main.evaluate('process.mainModule.require("electron").dialog.showSaveDialog=async()=>({canceled:true})');
   await details(exports);
+  await main.evaluate('process.mainModule.require("electron").dialog.showSaveDialog=async()=>({canceled:true})');
   await click('[data-canvas-export="png"]');
   await wait(`!document.querySelector('${exports}').open`, 'an action dismisses the export menu');
   assert.equal(await page.evaluate(`document.activeElement===document.querySelector('${exports} > summary')`),true,'action restores trigger');
