@@ -1962,3 +1962,5 @@ computer-use 原生工具未能列出唯一隔离 MerMarkd 窗口，因此实际
 阅读浮动提示与420/800源码控件截图已查看。最终本地 Setup 154,830,848字节，SHA-256 482FD17DA42DC01BB8FD02F5C95370AA4A5C6FAC79163FF1B2032A345F39AF0E；ASAR 417122D980DFD343BDF9C7730CF051CE91F916BF46E9A635856C74ABA1F7079A。未做新的PERF3完整40份采样，不称性能提升；干净安装/升级/卸载、物理DPI、公开发布仍未完成。
 
 UX7A 软件工程验收通过，准备上传并创建 PR。继续 UX7 实机输入验收后推进 UX8，P0未完成。
+
+GitHub：实现提交 `758ff3e` 已推送至 `origin/codex/ux7-editing-guidance`，创建 [PR #18](https://github.com/KLucen/MerMarked/pull/18)，目标 main，待审未合并，并已附加到当前任务。SSH dry-run 和推送成功；连接器仍需重新认证，沿用本机 GCM 已有认证调用官方 API，没有更改授权范围或全局网络配置。
