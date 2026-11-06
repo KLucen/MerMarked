@@ -571,7 +571,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
         </div>
       </details>
       <button className="canvas-toolbar-labeled canvas-toolbar-save" title="保存布局与当前视口" aria-label="保存布局与当前视口" data-canvas-save="true" disabled={!model || readOnly}
-        onClick={() => model && void persist({ ...model, viewport: flow.getViewport() })}><Save size={17} /><span>保存</span></button>
+        onClick={() => model && void persist({ ...model, viewport: flow.getViewport() })}><Save size={17} /><span>保存视图</span></button>
       <details className="canvas-toolbar-exports">
         <summary title="导出画布"><FileDown size={17} aria-hidden="true" /><span>导出</span></summary>
         <div className="canvas-toolbar-export-menu" role="group" aria-label="导出画布">

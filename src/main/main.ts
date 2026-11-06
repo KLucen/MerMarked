@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
@@ -1238,6 +1238,25 @@ async function recoveryPreviewFor(event: IpcMainInvokeEvent, documentPath: strin
 }
 
 function registerReaderIpc(): void {
+  ipcMain.handle('workspace:confirm-leave-document', async event => {
+    const session = sessionFor(event);
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    if (!session || !owner) return 'cancel';
+    const choice = await dialog.showMessageBox(owner, {
+      type: 'warning', title: '正文尚未保存', message: '保存正文后继续此次文档操作？',
+      detail: '保存只处理 Markdown 正文及其必要的锚点同步，不会提交尚未保存的批注表单。保存失败或取消首次保存时，保留当前文档和原操作。',
+      buttons: ['保存并继续', '放弃正文修改并继续', '取消'], defaultId: 0, cancelId: 2, noLink: true,
+    });
+    if (sessionFor(event) !== session) return 'cancel';
+    return choice.response === 0 ? 'save' : choice.response === 1 ? 'discard' : 'cancel';
+  });
+  ipcMain.handle('document:close', async event => {
+    if (!isMainFrame(event) || !BrowserWindow.fromWebContents(event.sender)) throw new Error('无法从当前窗口关闭文档。');
+    const session = sessionFor(event);
+    assertDocumentCanBeReplaced(session);
+    replaceDocumentSession(event.sender.id);
+    recoveryPreviews.delete(event.sender.id);
+  });
   ipcMain.handle('workspace:confirm-leave-inputs', async (event, kinds: unknown) => {
     if (!isMainFrame(event)) return 'cancel';
     const names: Record<string, string> = { 'new-note': '新批注', 'edit-note': '批注修改',
@@ -1973,6 +1992,17 @@ if (squirrelStartup) {
   app.quit();
 } else {
   void app.whenReady().then(() => {
+    if (process.platform === 'win32') {
+      // Ctrl+W belongs to the guarded document command. Electron's default
+      // window menu otherwise handles it before the renderer receives input.
+      Menu.setApplicationMenu(Menu.buildFromTemplate([
+        { role: 'fileMenu' }, { role: 'editMenu' }, { role: 'viewMenu' },
+        { role: 'windowMenu', submenu: [
+          { role: 'minimize' }, { role: 'zoom' },
+          { id: 'close-window', label: '关闭窗口', click: (_item, window) => window?.close() },
+        ] },
+      ]));
+    }
     registerReaderIpc();
     createWindow();
 

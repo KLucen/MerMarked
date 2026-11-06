@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { authorizeInputLeave, type LeaveInputSnapshot } from '../core/input-leave';
 
+function departureFocusOrigin(): HTMLElement | null {
+  const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  // Locking the workspace closes disclosure panels. Their action button will
+  // disappear, but its trigger remains a useful focus target after cancellation.
+  return active?.closest('.workspace-popover')?.querySelector<HTMLElement>('.workspace-popover-trigger') ?? active;
+}
+
 /** Permissions apply to one exact in-memory snapshot, never to a later draft. */
 export function useInputLeaveGuard(getSnapshot: () => LeaveInputSnapshot,
   onReturn: () => void, onBlocked: () => void) {
@@ -22,7 +29,7 @@ export function useInputLeaveGuard(getSnapshot: () => LeaveInputSnapshot,
   const run = useCallback(async (action: () => Promise<void>) => {
     if (occupied.current) return;
     if (latest.current.getSnapshot().busy) { latest.current.onBlocked(); return; }
-    origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    origin.current = departureFocusOrigin();
     occupied.current = true;
     setLocked(true);
     try { if (await authorize()) await action(); }
@@ -51,7 +58,7 @@ export function useInputLeaveGuard(getSnapshot: () => LeaveInputSnapshot,
       if (latest.current.getSnapshot().busy) {
         latest.current.onBlocked(); window.mermarkd.replyToCloseRequest(id, false); return;
       }
-      origin.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      origin.current = departureFocusOrigin();
       occupied.current = true;
       closeRequest.current = id;
       setLocked(true);

@@ -48,6 +48,8 @@ export interface AppShellProps {
   readonly taskLabel: string;
   readonly taskAvailable: boolean;
   readonly onNewDocument?: () => void;
+  readonly onCloseDocument?: () => void;
+  readonly departureNotice?: ReactNode;
   readonly onOpenRecent?: (path: string) => void;
   readonly onRemoveRecent?: (path: string) => void;
   readonly onSave?: () => void;
@@ -120,6 +122,8 @@ export function AppShell({
   taskLabel,
   taskAvailable,
   onNewDocument,
+  onCloseDocument,
+  departureNotice,
   onOpenRecent,
   onRemoveRecent,
   onSave,
@@ -338,11 +342,13 @@ export function AppShell({
         {onSave && <div className="workspace-save-actions" role="group" aria-label="文档保存操作">
           <button type="button" className="workspace-save-button" data-workspace-save="true" aria-label="保存正文" aria-keyshortcuts="Control+S" onClick={onSave} disabled={!canSave || (!dirty && !document.temporary) || saving}
             title="保存 Markdown（Ctrl+S）">
-            <Save size={15} aria-hidden="true" /><span>{saving ? '保存中…' : '保存'}</span>
+            <Save size={15} aria-hidden="true" /><span>{saving ? '保存中…' : '保存正文'}</span>
           </button>
         </div>}
         <WorkspacePopover key={`menu-${document.path}`} label="文档菜单" trigger={<MoreHorizontal size={18} aria-hidden="true" />}>
-          <button type="button" onClick={onOpen} disabled={opening || dirty}><FolderOpen size={15} aria-hidden="true" />打开文档 <kbd>Ctrl+O</kbd></button>
+          {onNewDocument && <button type="button" data-workspace-new="true" onClick={onNewDocument} disabled={opening} aria-keyshortcuts="Control+N"><FilePlus2 size={15} aria-hidden="true" />新建文档 <kbd>Ctrl+N</kbd></button>}
+          <button type="button" onClick={onOpen} disabled={opening}><FolderOpen size={15} aria-hidden="true" />打开文档 <kbd>Ctrl+O</kbd></button>
+          {onCloseDocument && <button type="button" data-workspace-close="true" onClick={onCloseDocument} disabled={opening} aria-keyshortcuts="Control+W"><X size={15} aria-hidden="true" />关闭文档 <kbd>Ctrl+W</kbd></button>}
           {onSaveAs && <button type="button" data-workspace-save-as="true" aria-keyshortcuts="Control+Shift+S" onClick={onSaveAs} disabled={saving}>选择保存位置…</button>}
           {onDiscardChanges && !discardConfirmation && <button type="button" data-workspace-discard="true"
             onClick={() => setDiscardConfirmation(true)} disabled={!dirty || saving} title="放弃未保存的 Markdown 修改">
@@ -373,7 +379,7 @@ export function AppShell({
           onDragOver={onDropTargetOver}
           onDragLeave={onDropTargetLeave}
           onDrop={onDropTargetDrop}>
-          <button type="button" className="workspace-icon-button" aria-label="打开文档" title="打开文档（Ctrl+O）" onClick={onOpen} disabled={opening || dirty}>
+          <button type="button" className="workspace-icon-button" aria-label="打开文档" title="打开文档（Ctrl+O）" onClick={onOpen} disabled={opening}>
             <FolderOpen size={17} aria-hidden="true" />
           </button>
         </div>
@@ -383,18 +389,9 @@ export function AppShell({
         onDragOver={onDropTargetOver}
         onDragLeave={onDropTargetLeave}
         onDrop={onDropTargetDrop}>
-        <span className="drop-hint" aria-hidden="true">{dropActive ? '松开打开 .md' : '拖入 .md'}</span>
-        <button className="open-button" type="button" onClick={onOpen} disabled={opening}
-          title="打开 Markdown">
-          <FolderOpen size={15} aria-hidden="true" />
-          <span>{opening ? '正在打开…' : '打开 Markdown'}</span>
-          <span className="shortcut" aria-hidden="true">Ctrl+O</span>
-        </button>
+        <span className="drop-hint" aria-hidden="true">{dropActive ? '松开打开 .md' : '拖入 .md 文件'}</span>
       </div>}
     </header>
-    {!document && <div className="startbar" aria-label="开始页操作"><span>本地优先的 Markdown 工作区</span>
-      {onNewDocument && <button type="button" className="startbar-new" onClick={onNewDocument} disabled={opening}><FilePlus2 size={14} aria-hidden="true" />新建 Markdown</button>}
-    </div>}
     {!document && onDocumentRecovery && <button type="button" className="start-recovery" data-open-document-recovery="true"
       onClick={onDocumentRecovery} disabled={opening}>检查保存恢复</button>}
     {activeMode === 'reader' && search.open && <div id="reader-searchbar" className="reader-searchbar" role="search"
@@ -426,6 +423,7 @@ export function AppShell({
       <button type="button" onClick={onDismissNotice} aria-label="关闭提示">×</button>
     </div>}
     </div>
+    {departureNotice}
     <div className="workspace-frame" data-left-open={leftSidebarOpen} data-right-open={rightSidebarOpen}>
     {modalSide && <button type="button" className="workspace-sidebar-backdrop" aria-label="关闭侧栏" tabIndex={-1}
       onClick={() => closeWorkspaceSidebar(modalSide)} />}
@@ -442,7 +440,7 @@ export function AppShell({
       <section className="workspace-panel-scroll workspace-sidebar-section" hidden={leftTab !== 'recent'} aria-label="最近文件">
         {recentDocuments.length === 0 ? <p className="workspace-sidebar-empty">还没有最近文档。</p> : <ul className="recent-document-list">
           {recentDocuments.map((item) => <li key={item.path} className={item.path === document?.path ? 'current' : undefined}>
-            <button type="button" onClick={() => onOpenRecent?.(item.path)} disabled={item.path === document?.path || dirty} title={item.path}>
+            <button type="button" onClick={() => onOpenRecent?.(item.path)} disabled={item.path === document?.path || opening} title={item.path}>
               <strong>{item.name}</strong><span>{item.path}</span></button>
             <button type="button" className="recent-remove" onClick={() => onRemoveRecent?.(item.path)} aria-label={'从最近文档移除 ' + item.name}><X size={13} /></button>
           </li>)}

@@ -1,5 +1,20 @@
 # MerMarkd 开发进度
 
+## 2026-11-06 · UX6B 文档流程与保存语义（已推送，PR #17 待审）
+
+基于已合并 PERF3 / [PR #16](https://github.com/KLucen/MerMarked/pull/16)，main `19e1402`，分支 `codex/ux6b-document-flow`。对应设计复核第 4 批，验收细节见 [UX6B_ACCEPTANCE.md](UX6B_ACCEPTANCE.md)，架构决定见 ADR-050。
+
+- 文档菜单补齐新建/关闭与 Ctrl+N/W；新建直接进入源码，等保护解锁与编辑器就绪后聚焦。关闭文档返回开始页并保留窗口；Windows 原生关闭窗口菜单不再抢占 Ctrl+W，保存恢复模态拦截文档快捷键。
+- 打开、新建、关闭、最近文件、拖入及重载共用离开协调。先处理未提交本地输入，再明确保存/放弃/取消正文；保存成功继续原操作。首存取消、冲突或保存失败保留正文与原意图，可重试或取消；许可绑定精确文档/缓冲区，过期回复不能替换新文档。
+- “保存正文”与“保存视图”明确文件对象；开始页合并重复操作，普通成功提示约五秒消退。批注表单不随正文保存自动提交，取消选择仍保留表单、标签与焦点。
+- 最终类型检查、315/315 单测、package、Squirrel make，以及 make 后 UX6B + 既有 25 套窗口回归全部通过。实际 Vite 强制冷优化后再跑完整 UX6B 流程通过，服务已停止。新专项覆盖首存取消/成功、磁盘冲突后重试、BOM/CRLF、便签与标签、组合原生输入、恢复模态、420/800 宽度、三文件 bytes/mtime 与缺失文件零创建。
+- 原生菜单探针发现 Ctrl+W 冲突并修复；首轮 Vite 新建焦点失效已按实际 inert/就绪时序修复。测试输入和选区准备、类型错误及初轮 Vite 失败日志保留，不以测试用 DOM Range 建立目标宣称真实拖选已验收。最终记录 `out/qa/ux6b-g-regression-manifest.json`、`ux6b-g-final-vite.log`。
+- 本地 Setup 154,828,800 字节，SHA-256 `87E002622646C77DE720375C36059505330E03485E618EF85ED2E68DD0EB1FB2`；make 后 ASAR `1092369AF0F7FA64E55B8440D0A9C286CB7F9716DF1BADCF2C87422E8EA8792D`。三项用户原有修改 SHA-256 保持不变，排除提交。
+
+实现提交 `895816e` 已推送至 `origin/codex/ux6b-document-flow`，已创建 [PR #17](https://github.com/KLucen/MerMarked/pull/17)，目标 main，待审未合并。SSH dry-run 和推送成功；连接器仍要求重新认证，沿用本机 Git 凭据管理器已有 KLucen 认证调用官方 API 完成创建，没有更改授权范围或全局网络配置。
+
+本批 UX6B 工程退出条件通过，下一批为 **UX7 可预期的编辑**，随后 UX8 → QA1。未重做 PERF3 全部 40 份性能采样，不据此宣称性能提升；真实中文 IME、物理多屏 DPI、干净安装/升级/卸载及公开发布仍待独立验收，P0 未完成。
+
 ## 2026-11-06 · PERF3 工程退出条件通过（已推送，PR #16 待审）
 
 验收与限制见 [PERF3_EXIT_ACCEPTANCE.md](PERF3_EXIT_ACCEPTANCE.md)，每次值及采样口径见 [PERF3_EXIT_METRICS.json](PERF3_EXIT_METRICS.json)。基于已合并 PR #15 / `1617312`，本批按用户要求持续至退出，不再按探索切片分别上传。

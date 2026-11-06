@@ -4,6 +4,7 @@ import type { CanvasStateV2 } from '../core/canvas-state-v2';
 import type { CanvasSceneCard, CanvasSceneLink } from '../core/canvas-scene';
 import type { MarkdownSourceFormat } from '../core/markdown-source';
 import type { LocalInputKind, LeaveInputsChoice } from '../core/input-leave';
+import type { DocumentDepartureChoice } from '../core/document-departure';
 import type { SectionTransformOperation, SectionTransformRejection } from '../core/section-transform';
 
 export type { AnnotationColor } from '../core/annotations';
@@ -319,6 +320,8 @@ export interface MerMarkdApi {
   onCloseRequestFinished(listener: (id: string) => void): () => void;
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
   newMarkdown(): Promise<OpenedMarkdownDocument | null>;
+  closeMarkdown(): Promise<void>;
+  confirmLeaveDocument(): Promise<DocumentDepartureChoice>;
   openRecentMarkdown(path: string): Promise<OpenedMarkdownDocument>;
   listRecentDocuments(): Promise<readonly RecentMarkdownDocument[]>;
   removeRecentDocument(path: string): Promise<void>;
