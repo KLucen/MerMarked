@@ -1885,3 +1885,43 @@ PERF3 本机工程门槛通过，准备同步 GitHub；下一批 UX6B。P0、真
 GitHub 交付：实现提交 `14682019564fe5d720d582115a3d090d72db5154`，分支 `codex/perf3-exit`，已推送并创建 [PR #16](https://github.com/KLucen/MerMarked/pull/16)，目标 main、非草稿，已附加当前任务。首轮 SSH 443 在传输中断开；沿用官方目标、保留 host-key 校验，经 dry-run 成功后以单命令超时/keepalive 重试正常推送成功。原失败和重试日志分别为 `perf3-exit-av-push.log`、`perf3-exit-av-push-retry.log`。
 
 连接器返回 requires reauthentication，浏览器登录状态也不可用；它不是已证实的仓库写权限不足。核对本机 Git 凭据管理器已有账户并通过官方 API 验证为 KLucen 后，创建 PR 成功；无新增权限、凭据、全局 Git/代理设置，认证内容未写入产物或输出。PR receipt `out/qa/perf3-exit-pr-created.json` 仅含 URL、编号、分支与公开提交 SHA。三项用户原有文件仍未纳入提交。
+
+## 2026-11-06 · UX6B 文档流程与保存语义
+
+### 目标与设计
+
+基于已合并 PERF3 / PR #16（main `19e1402`）建立 `codex/ux6b-document-flow`，完成设计复核第 4 批。正文未保存时不再要求用户中断打开意图自行保存；复用 UX6A 本地输入保护，明确保存/放弃/取消正文后继续原文档操作。失败保留正文和可重试的原意图，不提前清空便签表单。
+
+新增纯核心 document-departure，用逻辑文档键、editor epoch/revision、完整正文和 dirty 绑定许可；首存可更换编辑 epoch，不能更换逻辑文档或保存不同正文。主进程新增固定选择确认与无路径参数的关闭文档 IPC，关闭仍独立核验 dirty 和在途写入，不写三类文件。决定见 ADR-050，验收见 UX6B_ACCEPTANCE.md。
+
+文档菜单补齐新建/关闭，Ctrl+N/W，新建聚焦完整源码，关闭保留窗口。Windows 显式原生菜单移除默认窗口关闭的 Ctrl+W 覆盖，窗口关闭点击继续原 close guard。恢复模态阻断文档快捷键。正文/视图保存文案明确，开始页仅一组主操作，普通成功提示五秒消退。
+
+### 修改范围
+
+- src/core/document-departure.ts；主进程、preload 与 reader-api 窄合同。
+- main.tsx 文档意图、失败继续、同步控制器快照、新建焦点；app-shell、canvas-view、离开焦点恢复及 document-recovery-view。
+- tests/document-departure.test.mjs 四项；新增 UX6B 打包专项及 npm 命令，无依赖或 lockfile 变化。
+- PROGRESS、DECISIONS、设计复核路线和 UX6B_ACCEPTANCE；三项用户原有修改校验不变并排除提交。
+
+### 验证和命令
+
+- npm.cmd run typecheck：最终通过，out/qa/ux6b-g-final-typecheck.log。
+- npm.cmd test：315/315，ux6b-final-unit.log。Node 关于现有模块类型的提示保留。
+- npm.cmd run package / make：G 均通过。继续使用既有 MERMARKD_ELECTRON_ZIP_DIR，本机 Electron 44.4.1 ZIP SHA-256 34BC07977D6C43B6514B956A5F2E3292255DAA3838A49E6110F3FE19FFAFB83F。
+- make 后逐一运行 UX6B、A6、A7.1/2/3b/4/5、A8.2/3/4/5、B1、UX1–5、PERF1、UX6A、PERF2、PERF3A/B/C/D/E/G：26/26 进程退出码为 0；ux6b-g-regression-manifest.json 与各独立日志。
+- Vite --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort --force，MERMARKD_QA_RENDERER_URL 指向实际开发服务，完整 UX6B 再次通过；ux6b-g-final-vite.log。服务和测试窗口已停止。
+- node --check 新专项、排除三项用户文件的 diff --check、用户三文件 SHA-256 核对通过。
+
+专项覆盖首存取消/成功与原意图续接、真正磁盘冲突后重试、BOM/CRLF/无尾换行、新便签和标签、已有便签编辑取消、未 blur 原生阅读输入与源码 dirty 并存、恢复模态、菜单取消焦点、状态五秒消退、420/800 宽度与三文件 bytes/mtime/原先不存在的状态。源码多行走真实剪贴板 Ctrl+V，测试结束恢复原剪贴板文本；便签选区目标用明确 test-only DOM Range 建立，后续表单与原生输入实际操作，不声明本专项验证了鼠标拖选。
+
+### 原失败和修复
+
+B 首轮阅读键盘选区未就绪；C 源码追加落在开头，补焦点与精确全文末尾 caret 断言；D 真实拖选仍未可靠建立目标，改为上述 test-only Range。原 b/c/d 日志保留，不用测试修正证明产品拖选成功。
+
+原生菜单探针发现默认 Close 的 CommandOrControl+W 冲突。E 的 accelerator:null 构造类型检查失败，最终无 role/accelerator 的显式 window.close 菜单项解决，保留原生编辑菜单。F 全部回归通过。首轮真实 Vite 又发现新建焦点请求在 inert 期间消耗，G 改为等待逻辑文档、解锁与编辑器就绪；独立审查发现新增 N/W 可穿过恢复模态，补原拦截及开始页/已打开文档窗口证明。G make 后全部 26 套及冷优化 Vite 完整通过。
+
+### 产物和限制
+
+已查看首存取消、冲突、420/800 菜单与源码及返回开始页截图。本地 Setup 154,828,800 字节，SHA-256 87E002622646C77DE720375C36059505330E03485E618EF85ED2E68DD0EB1FB2；make 后 ASAR 1092369AF0F7FA64E55B8440D0A9C286CB7F9716DF1BADCF2C87422E8EA8792D。生成安装包不等于干净安装验收，未公开发布。
+
+UX6B 工程退出条件通过，准备推送和创建 PR。下一批 UX7，随后 UX8 与 QA1。未重做 PERF3 完整40份性能采样，不声明新性能收益；真实 IME、物理多屏 DPI、干净安装/升级/卸载仍独立未完成，P0 未完成。

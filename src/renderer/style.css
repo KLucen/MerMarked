@@ -13,6 +13,9 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 /* Retain text layout at the workspace width while the inert reader is inactive. */
 .reading-layout[hidden] { display: block !important; visibility: hidden; content-visibility: hidden; height: 0; flex: 0 0 0; overflow: hidden; pointer-events: none; }
 .workspace-editor-content[hidden] { display: block !important; visibility: hidden; content-visibility: hidden; height: 0; flex: 0 0 0; overflow: hidden; pointer-events: none; }
+.document-operation-notice { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 10px 20px; color: var(--warning); background: var(--warning-soft); font-size: var(--text-control); }
+.document-operation-notice span { flex: 1 1 260px; }
+.document-operation-notice button { border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--text); padding: 6px 10px; cursor: pointer; }
 .topbar { align-items: center; background: var(--surface); border-bottom: 1px solid var(--divider); display: flex; gap: var(--space-6); height: 72px; max-width: 100%; min-width: 0; padding: 0 28px; position: relative; z-index: 2; }
 .brand { align-items: center; display: flex; flex: 0 0 auto; gap: 10px; }
 .brand-mark { align-items: center; background: var(--accent); border-radius: var(--radius-panel); color: var(--on-accent); display: inline-flex; font-size: 19px; font-weight: 800; height: 32px; justify-content: center; width: 32px; }

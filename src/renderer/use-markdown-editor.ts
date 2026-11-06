@@ -34,7 +34,8 @@ interface MarkdownEditorController {
   undo(): MarkdownEditSelection | null;
   redo(): MarkdownEditSelection | null;
   save(): Promise<MarkdownEditorSaveResult | null>;
-  discardChanges(): Promise<void>;
+  discardChanges(): Promise<boolean>;
+  current(): MarkdownEditorView | null;
   restoreDraft(id: string): Promise<void>;
   discardDraft(id: string): Promise<void>;
   discardSourceBackup(id: string): Promise<void>;
@@ -427,7 +428,7 @@ export function useMarkdownEditor(
 
   const discardChanges = useCallback(async () => {
     const current = editorRef.current;
-    if (!current || busy) return;
+    if (!current || busy) return false;
     clearDraftTimer();
     setBusy(true);
     try {
@@ -439,10 +440,12 @@ export function useMarkdownEditor(
       publishSession(createMarkdownEditSession(markdownToEditorText(result.editor.content)));
       setError(null);
       onStatus('已放弃未保存编辑，并从磁盘重新载入 Markdown。');
+      return true;
     } catch (caught) {
       const message = errorMessage(caught, '无法放弃并重新载入 Markdown。');
       setError(message);
       onStatus(message, true);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -495,6 +498,7 @@ export function useMarkdownEditor(
 
   return {
     editor,
+    current: () => editorRef.current,
     editSession,
     canUndo: Boolean(editSession?.past.length),
     canRedo: Boolean(editSession?.future.length),

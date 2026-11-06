@@ -7,6 +7,7 @@ import type { Root as ReadingRenderTree } from 'hast';
 import { useSourceOutline } from './use-source-outline';
 import { useReadingAnalysis } from './use-reading-analysis';
 import { useInputLeaveGuard } from './use-input-leave-guard';
+import { authorizeDocumentDeparture } from '../core/document-departure';
 import { readerComponents, ReaderComponentsProvider, type ReaderComponentState } from './reader-components';
 import { Clock3, FilePlus2, FolderOpen, X } from 'lucide-react';
 import { markdownToEditorText } from '../core/editor-text';
@@ -50,6 +51,11 @@ import './style.css';
 
 type SelectionProbeResult = ReturnType<typeof resolveSelection>;
 type SuccessfulSelectionProbe = Extract<SelectionProbeResult, { ok: true }>;
+type DocumentIntent = { readonly documentKey: number } & (
+  { readonly kind: 'open' | 'new' | 'close' | 'reload' } |
+  { readonly kind: 'recent'; readonly path: string } | { readonly kind: 'drop'; readonly file: File }
+);
+const documentIntentLabels = { open: '打开文档', new: '新建文档', close: '关闭文档', reload: '重新载入', recent: '打开最近文档', drop: '打开拖入的文档' };
 
 /** Give opening feedback a paint opportunity before a fast IPC reply replaces it. */
 function paintOpeningFeedback(): Promise<void> {
@@ -248,10 +254,10 @@ function StartPage({
       <h1 id="start-page-title">从一份 Markdown 开始</h1>
       <p>在同一个安静的工作区里阅读、编辑和整理章节结构。</p>
       <div className="start-actions">
-        <button className="welcome-open" type="button" data-start-open="true" onClick={onOpen} disabled={opening}>
+        <button className="welcome-open" type="button" data-start-open="true" onClick={onOpen} disabled={opening} aria-keyshortcuts="Control+O" title="打开 Markdown（Ctrl+O）">
           <FolderOpen size={16} aria-hidden="true" />{opening ? '正在打开…' : '打开 Markdown'}
         </button>
-        <button className="start-secondary-action" type="button" data-start-new="true" onClick={onNew} disabled={opening}>
+        <button className="start-secondary-action" type="button" data-start-new="true" onClick={onNew} disabled={opening} aria-keyshortcuts="Control+N" title="新建文档（Ctrl+N）">
           <FilePlus2 size={16} aria-hidden="true" />新建文档
         </button>
       </div>
@@ -291,8 +297,15 @@ function App() {
   const [outlineFocusRequest, setOutlineFocusRequest] = useState(0);
   const [editorFocusRequest, setEditorFocusRequest] = useState(0);
   const [editorFocusOffset, setEditorFocusOffset] = useState<number | null>(null);
+  const newDocumentFocus = useRef<number | null>(null);
   const [opening, setOpening] = useState(false);
+  const [pendingDocumentIntent, setPendingDocumentIntent] = useState<DocumentIntent | null>(null);
   const [notice, setNotice] = useState<AppNotice | null>(null);
+  useEffect(() => {
+    if (notice?.kind !== 'status') return;
+    const timer = setTimeout(() => setNotice(current => current === notice ? null : current), 5000);
+    return () => clearTimeout(timer);
+  }, [notice]);
   const [activeSection, setActiveSection] = useState<number | null>(null);
   const [selectionProbe, setSelectionProbe] = useState<SelectionProbeResult | null>(null);
   const [readerContextMenu, setReaderContextMenu] = useState<ReaderContextMenuState | null>(null);
@@ -529,11 +542,13 @@ function App() {
   if (editNoteChanged) localInputKinds.push('edit-note');
   if (readerDraftDirty) localInputKinds.push('reader-block');
   if (unappliedInput !== undefined) localInputKinds.push('unapplied-input');
-  const localInputKey = JSON.stringify([noteDocumentKey.current, editorController.editor?.epoch, editorController.editor?.revision, activeMode,
+  const localDraftKey = JSON.stringify([noteDocumentKey.current,
     newNoteChanged ? [noteDraft, noteTagChoice, newTagName, noteComposer?.intent.blockStart,
       noteComposer?.intent.visibleStart, noteComposer?.intent.visibleEnd] : null,
     editNoteChanged ? [editingNoteId, editNoteDraft, editTagChoice, editNewTagName] : null,
     readerDraftDirty, unappliedInput]);
+  const localDraftKeyRef = useRef(localDraftKey); localDraftKeyRef.current = localDraftKey;
+  const localInputKey = JSON.stringify([editorController.editor?.epoch, editorController.editor?.revision, activeMode, localDraftKey]);
   const leaveGuard = useInputLeaveGuard(() => ({ key: localInputKey, kinds: localInputKinds,
     busy: readerInputActivity.current.composing > 0 || readerInputActivity.current.committing > 0 ||
       mutationInFlight.current || editorController.busy || editorController.opening || opening }),
@@ -677,9 +692,11 @@ function App() {
       item.sourceOffset <= current.cursor.offset ? Number(item.key) : section, null));
   }, [activeMode, editorController.editor?.epoch, editorSections, outline.status]);
 
-  const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument) => {
+  const showOpenedDocument = useCallback((opened: OpenedMarkdownDocument | null) => {
     canvasStructureRequest.current += 1;
     noteDocumentKey.current += 1;
+    newDocumentFocus.current = null;
+    setPendingDocumentIntent(null);
     setReaderEditFeedback(null);
     setNoteReselecting(false);
     setNoteSaveError(null);
@@ -714,8 +731,8 @@ function App() {
     setSummaryCopying(false);
     window.scrollTo({ top: 0 });
     void refreshRecentDocuments();
-    pendingInitialAnnotations.current = epoch;
-    setAnnotationLoading(true);
+    pendingInitialAnnotations.current = opened ? epoch : null;
+    setAnnotationLoading(Boolean(opened));
     setAnnotationError(null);
   }, [clearReaderSearchPaint, clearReaderSelection, editorController.reset, panels.reset, refreshRecentDocuments]);
 
@@ -820,132 +837,97 @@ function App() {
   }, [activeMode, annotationView, dirtyPreview, readerDraftDirty, openedDocument?.path,
     openedDocument?.sourceSha256, selectedAnnotationId, selectionMap, readingReady]);
 
-  const openMarkdownUnchecked = useCallback(async () => {
-    if (dirtyPreview) {
-      setMessage('请先保存或放弃当前编辑，再打开另一份 Markdown。', 'alert');
-      return;
-    }
+  const performDocumentIntent = useCallback(async (intent: DocumentIntent): Promise<'complete' | 'cancelled' | 'failed'> => {
     flushSync(() => setOpening(true));
     setMessage(null);
     try {
       await paintOpeningFeedback();
-      const opened = await window.mermarkd.openMarkdown();
-      if (opened) showOpenedDocument(opened);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '打开文档失败，请重试。', 'alert');
-    } finally {
-      setOpening(false);
-    }
-  }, [dirtyPreview, setMessage, showOpenedDocument]);
-
-  const newMarkdownUnchecked = useCallback(async () => {
-    if (dirtyPreview) {
-      setMessage('请先保存或放弃当前编辑，再新建 Markdown。', 'alert');
-      return;
-    }
-    flushSync(() => setOpening(true));
-    setMessage(null);
-    try {
-      await paintOpeningFeedback();
-      const opened = await window.mermarkd.newMarkdown();
-      if (opened) {
-        showOpenedDocument(opened);
-        setMessage('已创建未命名 Markdown；首次保存时选择文件位置。');
+      if (intent.kind === 'close') {
+        await window.mermarkd.closeMarkdown();
+        showOpenedDocument(null);
+        return 'complete';
       }
+      const opened = intent.kind === 'new' ? await window.mermarkd.newMarkdown()
+        : intent.kind === 'open' ? await window.mermarkd.openMarkdown()
+        : intent.kind === 'recent' ? await window.mermarkd.openRecentMarkdown(intent.path)
+        : intent.kind === 'drop' ? await window.mermarkd.openDroppedMarkdown(intent.file)
+        : await window.mermarkd.reloadMarkdown();
+      if (!opened) return 'cancelled';
+      showOpenedDocument(opened);
+      if (intent.kind === 'new') {
+        newDocumentFocus.current = noteDocumentKey.current;
+        setActiveMode('editor');
+      }
+      return 'complete';
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : '新建 Markdown 失败，请重试。', 'alert');
-    } finally {
-      setOpening(false);
-    }
-  }, [dirtyPreview, setMessage, showOpenedDocument]);
+      setMessage(error instanceof Error ? error.message : documentIntentLabels[intent.kind] + '失败，请重试。', 'alert');
+      if (intent.kind === 'recent') void refreshRecentDocuments();
+      return 'failed';
+    } finally { setOpening(false); }
+  }, [refreshRecentDocuments, setMessage, showOpenedDocument]);
 
-  const openRecentMarkdownUnchecked = useCallback(async (documentPath: string) => {
-    if (dirtyPreview) {
-      setMessage('请先保存或放弃当前编辑，再打开最近文档。', 'alert');
+  const runDocumentIntent = useCallback((intent: DocumentIntent, retrySave = false) => leaveGuard.run(async () => {
+    if (intent.documentKey !== noteDocumentKey.current) return;
+    const drafts = localDraftKeyRef.current;
+    const authorization = await authorizeDocumentDeparture(() => {
+      const editor = currentEditorController.current.current();
+      return { documentKey: noteDocumentKey.current, epoch: editor?.epoch ?? null, revision: editor?.revision ?? 0,
+        content: editor?.content ?? '', dirty: Boolean(editor?.dirty) };
+    }, () => retrySave ? Promise.resolve('save') : window.mermarkd.confirmLeaveDocument(), async choice => {
+      if (choice === 'save') return (await currentEditorController.current.save())?.status === 'saved';
+      return currentEditorController.current.discardChanges();
+    }).catch(() => {
+      if (intent.documentKey === noteDocumentKey.current) setMessage('无法完成此次文档操作，请检查当前内容后重试。', 'alert');
+      return 'failed' as const;
+    });
+    if (intent.documentKey !== noteDocumentKey.current) return;
+    if (authorization === 'cancel') { setPendingDocumentIntent(null); return; }
+    if (authorization !== 'allow' || drafts !== localDraftKeyRef.current) {
+      setPendingDocumentIntent(intent);
+      if (authorization === 'stale' || drafts !== localDraftKeyRef.current) setMessage('输入已变化，本次文档操作未继续。请检查后重试。', 'alert');
       return;
     }
-    flushSync(() => setOpening(true));
-    setMessage(null);
-    try {
-      await paintOpeningFeedback();
-      const opened = await window.mermarkd.openRecentMarkdown(documentPath);
-      showOpenedDocument(opened);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '最近文档无法打开，可能已被移动或删除。', 'alert');
-      void refreshRecentDocuments();
-    } finally {
-      setOpening(false);
-    }
-  }, [dirtyPreview, refreshRecentDocuments, setMessage, showOpenedDocument]);
+    setPendingDocumentIntent(null);
+    const result = await performDocumentIntent(intent);
+    if (result === 'failed' && intent.documentKey === noteDocumentKey.current) setPendingDocumentIntent(intent);
+  }), [leaveGuard.run, performDocumentIntent, setMessage]);
+
+  const openMarkdown = useCallback(() => runDocumentIntent({ kind: 'open', documentKey: noteDocumentKey.current }), [runDocumentIntent]);
+  const newMarkdown = useCallback(() => runDocumentIntent({ kind: 'new', documentKey: noteDocumentKey.current }), [runDocumentIntent]);
+  const closeMarkdown = useCallback(() => openedDocument
+    ? runDocumentIntent({ kind: 'close', documentKey: noteDocumentKey.current }) : Promise.resolve(), [openedDocument, runDocumentIntent]);
+  const openRecentMarkdown = useCallback((path: string) => runDocumentIntent({ kind: 'recent', path, documentKey: noteDocumentKey.current }), [runDocumentIntent]);
+  const openDroppedMarkdown = useCallback((file: File) => runDocumentIntent({ kind: 'drop', file, documentKey: noteDocumentKey.current }), [runDocumentIntent]);
+  const reloadMarkdown = useCallback(() => runDocumentIntent({ kind: 'reload', documentKey: noteDocumentKey.current }), [runDocumentIntent]);
+
+  useEffect(() => {
+    // A focus request consumed while the leave guard makes the workspace inert
+    // cannot focus the new editor. Wait for its buffer and the unlocked shell.
+    if (leaveGuard.locked || opening || activeMode !== 'editor' || !editorController.editor ||
+      newDocumentFocus.current !== noteDocumentKey.current) return;
+    newDocumentFocus.current = null;
+    setEditorFocusOffset(0);
+    setEditorFocusRequest(request => request + 1);
+  }, [leaveGuard.locked, opening, activeMode, editorController.editor]);
 
   const removeRecentMarkdown = useCallback(async (documentPath: string) => {
-    try {
-      await window.mermarkd.removeRecentDocument(documentPath);
-      await refreshRecentDocuments();
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '无法移除最近文档记录。', 'alert');
-    }
+    try { await window.mermarkd.removeRecentDocument(documentPath); await refreshRecentDocuments(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : '无法移除最近文档记录。', 'alert'); }
   }, [refreshRecentDocuments, setMessage]);
-
-  const openDroppedMarkdownUnchecked = useCallback(async (file: File) => {
-    if (opening || dirtyPreview) {
-      if (dirtyPreview) setMessage('请先保存或放弃当前编辑，再拖入另一份 Markdown。', 'alert');
-      return;
-    }
-    flushSync(() => setOpening(true));
-    setMessage(null);
-    try {
-      await paintOpeningFeedback();
-      const opened = await window.mermarkd.openDroppedMarkdown(file);
-      showOpenedDocument(opened);
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '拖入文档失败，请重试。', 'alert');
-    } finally {
-      setOpening(false);
-    }
-  }, [dirtyPreview, opening, setMessage, showOpenedDocument]);
-
-  const reloadMarkdownUnchecked = useCallback(async () => {
-    if (opening || !openedDocument) return;
-    if (dirtyPreview) {
-      setMessage('请先保存或放弃当前编辑，再从磁盘重新载入。', 'alert');
-      return;
-    }
-    flushSync(() => setOpening(true));
-    setMessage(null);
-    try {
-      await paintOpeningFeedback();
-      const opened = await window.mermarkd.reloadMarkdown();
-      showOpenedDocument(opened);
-      setMessage('已从磁盘重新载入 Markdown，请审查批注的新位置。');
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : '重新载入文档失败。', 'alert');
-    } finally {
-      setOpening(false);
-    }
-  }, [dirtyPreview, openedDocument, opening, setMessage, showOpenedDocument]);
-
-  const openMarkdown = useCallback(() => leaveGuard.run(openMarkdownUnchecked), [leaveGuard.run, openMarkdownUnchecked]);
-  const newMarkdown = useCallback(() => leaveGuard.run(newMarkdownUnchecked), [leaveGuard.run, newMarkdownUnchecked]);
-  const openRecentMarkdown = useCallback((path: string) => leaveGuard.run(() => openRecentMarkdownUnchecked(path)), [leaveGuard.run, openRecentMarkdownUnchecked]);
-  const openDroppedMarkdown = useCallback((file: File) => leaveGuard.run(() => openDroppedMarkdownUnchecked(file)), [leaveGuard.run, openDroppedMarkdownUnchecked]);
-  const reloadMarkdown = useCallback(() => leaveGuard.run(reloadMarkdownUnchecked), [leaveGuard.run, reloadMarkdownUnchecked]);
 
   const onDropTargetEnter = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     if (!hasDraggedFiles(event)) return;
     event.preventDefault();
-    if (dirtyPreview) return;
     dropDepth.current += 1;
     setDropActive(true);
-  }, [dirtyPreview]);
+  }, []);
 
   const onDropTargetOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
     if (!hasDraggedFiles(event)) return;
     event.preventDefault();
-    event.dataTransfer.dropEffect = dirtyPreview ? 'none' : 'copy';
-    if (dirtyPreview) return;
+    event.dataTransfer.dropEffect = 'copy';
     setDropActive(true);
-  }, [dirtyPreview]);
+  }, []);
 
   const onDropTargetLeave = useCallback(() => {
     if (dropDepth.current === 0) return;
@@ -957,10 +939,6 @@ function App() {
     event.preventDefault();
     dropDepth.current = 0;
     setDropActive(false);
-    if (dirtyPreview) {
-      setMessage('请先保存或放弃当前编辑，再拖入另一份 Markdown。', 'alert');
-      return;
-    }
     const files = Array.from(event.dataTransfer.files);
     if (files.length !== 1) {
       setMessage('请一次只拖入一份 .md 文件。', 'alert');
@@ -972,19 +950,19 @@ function App() {
       return;
     }
     void openDroppedMarkdown(file);
-  }, [dirtyPreview, openDroppedMarkdown, setMessage]);
+  }, [openDroppedMarkdown, setMessage]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'o') {
-        event.preventDefault();
-        if (!opening && !dirtyPreview) void openMarkdown();
-        else if (dirtyPreview) setMessage('请先保存或放弃当前编辑，再打开另一份 Markdown。', 'alert');
-      }
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.isComposing) return;
+      const action = ({ o: openMarkdown, n: newMarkdown, w: closeMarkdown } as Record<string, (() => void) | undefined>)[event.key.toLowerCase()];
+      if (!action) return;
+      event.preventDefault();
+      if (!opening) void action();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [dirtyPreview, openMarkdown, opening, setMessage]);
+  }, [closeMarkdown, newMarkdown, openMarkdown, opening]);
 
   useEffect(() => {
     const cancelReattachment = (event: KeyboardEvent) => {
@@ -2102,6 +2080,12 @@ function App() {
           }
         }} />}
       onNewDocument={() => void newMarkdown()}
+      onCloseDocument={() => void closeMarkdown()}
+      departureNotice={pendingDocumentIntent && <div className="document-operation-notice" role="group" aria-label="未完成的文档操作" data-document-intent={pendingDocumentIntent.kind}>
+        <span>尚未完成：{documentIntentLabels[pendingDocumentIntent.kind]}。当前内容和原操作已保留。</span>
+        <button type="button" data-document-intent-retry="true" onClick={() => void runDocumentIntent(pendingDocumentIntent, true)}>{dirtyPreview ? '重试保存并继续' : '继续原操作'}</button>
+        <button type="button" data-document-intent-cancel="true" onClick={() => setPendingDocumentIntent(null)}>取消此次操作</button>
+      </div>}
       onOpenRecent={(documentPath) => void openRecentMarkdown(documentPath)}
       onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)}
       sourceChangeMessage={!dirtyPreview && annotationView?.canReloadSource
