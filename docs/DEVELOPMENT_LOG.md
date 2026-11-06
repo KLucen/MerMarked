@@ -1925,3 +1925,5 @@ B 首轮阅读键盘选区未就绪；C 源码追加落在开头，补焦点与�
 已查看首存取消、冲突、420/800 菜单与源码及返回开始页截图。本地 Setup 154,828,800 字节，SHA-256 87E002622646C77DE720375C36059505330E03485E618EF85ED2E68DD0EB1FB2；make 后 ASAR 1092369AF0F7FA64E55B8440D0A9C286CB7F9716DF1BADCF2C87422E8EA8792D。生成安装包不等于干净安装验收，未公开发布。
 
 UX6B 工程退出条件通过，准备推送和创建 PR。下一批 UX7，随后 UX8 与 QA1。未重做 PERF3 完整40份性能采样，不声明新性能收益；真实 IME、物理多屏 DPI、干净安装/升级/卸载仍独立未完成，P0 未完成。
+
+GitHub：实现提交 `895816e` 已推送至 `origin/codex/ux6b-document-flow`，创建 [PR #17](https://github.com/KLucen/MerMarked/pull/17)，目标 main，待审未合并。SSH dry-run 与推送成功；连接器仍要求重新认证，使用本机 Git 凭据管理器已有 KLucen 认证调用官方 API 完成创建并附加到当前任务，未修改授权范围或全局网络配置。
