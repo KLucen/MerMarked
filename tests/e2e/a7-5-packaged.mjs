@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
@@ -140,7 +141,7 @@ await writeFile(canvasPath, '{"probe":"must remain untouched"}\n');
 const sidecarBytes = await readFile(sidecarPath);
 const sidecarMtime = (await stat(sidecarPath)).mtimeMs;
 const port = 10_400 + Math.floor(Math.random() * 200);
-const child = spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
+const child = await spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
 let cdp;
 try {
   cdp = await connect(await endpoint(port));
@@ -169,7 +170,7 @@ try {
   }
   await click(cdp, '[data-editor-cancel-structure]');
   assert.equal(await cdp.evaluate(`Boolean(document.querySelector('[data-editor-structure-preview]'))`), false);
-  assert.equal(await cdp.evaluate(`document.querySelector('[data-editor-textarea]').value`), editorContent);
+  assert.equal(await cdp.evaluate(`__sourceControl().value`), editorContent);
   assert.deepEqual(await readFile(documentPath), originalBytes);
   assert.deepEqual(await readFile(sidecarPath), sidecarBytes);
   assert.equal((await stat(sidecarPath)).mtimeMs, sidecarMtime);
@@ -181,14 +182,14 @@ try {
   await click(cdp, '[data-editor-preview-move]');
   await waitFor(cdp, `document.querySelector('[data-editor-apply-structure]')?.disabled === false`, 'second preview');
   await cdp.evaluate(`(() => {
-    const textarea = document.querySelector('[data-editor-textarea]');
-    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(textarea, textarea.value + '\\n');
+    const textarea = __sourceControl();
+    __setSourceControlValue.call(textarea, textarea.value + '\\n');
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
   })()`);
   await waitFor(cdp, `document.querySelector('[data-editor-apply-structure]')?.disabled === true`, 'stale preview blocked');
   await click(cdp, '[data-editor-cancel-structure]');
   await click(cdp, '[data-editor-undo]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value === ${JSON.stringify(editorContent)}`, 'stale preview edit undo');
+  await waitFor(cdp, `__sourceControl()?.value === ${JSON.stringify(editorContent)}`, 'stale preview edit undo');
   const invalidPreview = await cdp.evaluate(`(async () => {
     const editor = await window.mermarkd.openMarkdownEditor();
     try { await window.mermarkd.previewMarkdownAnnotationImpact({ epoch: editor.epoch, content: editor.content, path: 'arbitrary.md' }); }
@@ -198,12 +199,12 @@ try {
   await click(cdp, '[data-editor-preview-move]');
   await waitFor(cdp, `document.querySelector('[data-editor-apply-structure]')?.disabled === false`, 'fresh preview');
   await click(cdp, '[data-editor-apply-structure]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value === ${JSON.stringify(candidate)}`, 'applied transform');
+  await waitFor(cdp, `__sourceControl()?.value === ${JSON.stringify(candidate)}`, 'applied transform');
   await click(cdp, '[data-editor-undo]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value === ${JSON.stringify(editorContent)}`, 'undo transform');
+  await waitFor(cdp, `__sourceControl()?.value === ${JSON.stringify(editorContent)}`, 'undo transform');
   assert.deepEqual(await readFile(documentPath), originalBytes);
   await click(cdp, '[data-editor-redo]');
-  await waitFor(cdp, `document.querySelector('[data-editor-textarea]')?.value === ${JSON.stringify(candidate)}`, 'redo transform');
+  await waitFor(cdp, `__sourceControl()?.value === ${JSON.stringify(candidate)}`, 'redo transform');
   assert.deepEqual(await readFile(sidecarPath), sidecarBytes);
   assert.equal((await stat(sidecarPath)).mtimeMs, sidecarMtime);
   await click(cdp, '[data-workspace-save]');
@@ -218,8 +219,14 @@ try {
   assert.equal(loaded.unresolvedCount, 1);
   assert.equal(loaded.items[0].note, model.annotations[0].note);
   assert.equal(loaded.items[1].note, model.annotations[1].note);
+  await waitFor(cdp, `document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' &&
+    Boolean(document.querySelector('.markdown-body h1'))`, 'saved reading ready before reopen');
+  await cdp.evaluate('void (window.__a75BeforeReopen = document.querySelector(".markdown-body h1"))');
   await dropFile(cdp, documentPath);
-  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'structure.md'`, 'reopen');
+  await waitFor(cdp, `document.querySelector('.workspace-current-name')?.textContent === 'structure.md' &&
+    document.querySelector('[data-reading-analysis]')?.dataset.readingAnalysis === 'ready' &&
+    Boolean(document.querySelector('.markdown-body h1')) &&
+    document.querySelector('.markdown-body h1') !== window.__a75BeforeReopen`, 'new document epoch after reopen');
   assert.equal((await cdp.evaluate('window.mermarkd.loadAnnotations()')).unresolvedCount, 1);
   console.log(JSON.stringify({ status: 'passed', preview: true, annotationImpact: true, cancel: true,
     rejection: true, stalePreviewBlocked: true, narrowIpc: true, apply: true, undo: true, redo: true, dirtySidecarUnchanged: true,

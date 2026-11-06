@@ -118,6 +118,30 @@ test('colliding claims for one chapter remain unresolved rather than choosing th
   assert.deepEqual(loaded.unresolvedCardIds, ['card-0', 'other']);
 });
 
+test('indexed matching agrees with an exhaustive identity oracle for mixed bases and collisions', async () => {
+  const before = source(Array.from({ length: 100 }, (_, i) => `# Title ${i % 17}\nbody ${i % 13}\n\n`).join(''));
+  const original = (await reconcileCanvasState(null, before, ids())).model;
+  for (const content of [before.content, before.content.replace('body 2', 'changed'), before.content + '# Title 0\nbody 0\n\n']) {
+    const input = source(content, true);
+    const fresh = await reconcileCanvasState(null, input, ids('descriptor'));
+    const state = { ...original, cards: [...original.cards.map((card, i) => i % 3 ? card
+      : { ...fresh.model.cards[i], id: card.id }), { ...original.cards[1], id: 'collision' }] };
+    const identity = (anchor, exact) => JSON.stringify(anchor.kind === 'heading'
+      ? [anchor.kind, anchor.titlePath, anchor.depth, anchor.headingExact, anchor.bodySha256,
+        ...(exact ? [anchor.basisSha256, anchor.startByte, anchor.endByte] : [])]
+      : [anchor.kind, anchor.bodySha256, ...(exact ? [anchor.basisSha256] : [])]);
+    const candidates = state.cards.map(card => fresh.model.cards.flatMap((target, i) =>
+      identity(card.anchor, card.anchor.basisSha256 === input.sha256) === identity(target.anchor, card.anchor.basisSha256 === input.sha256) ? [i] : []));
+    const expected = state.cards.flatMap((card, i) => candidates[i].length === 1 &&
+      candidates.filter(other => other.length === 1 && other[0] === candidates[i][0]).length === 1
+      ? [[card.id, fresh.bindings[candidates[i][0]].sectionIndex]] : []);
+    const result = await reconcileCanvasState(state, input, ids('new'));
+    const originalIds = new Set(state.cards.map(card => card.id));
+    assert.deepEqual(result.bindings.filter(binding => originalIds.has(binding.id)).map(binding => [binding.id, binding.sectionIndex]), expected);
+    assert.deepEqual(result.unresolvedCardIds, state.cards.filter(card => !expected.some(([id]) => id === card.id)).map(card => card.id));
+  }
+});
+
 test('source mismatches and forged structural identity mappings are rejected', async () => {
   const before = source('# A\n\n# B\n');
   const initial = await reconcileCanvasState(null, before, ids());

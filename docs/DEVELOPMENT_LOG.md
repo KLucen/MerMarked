@@ -1815,3 +1815,69 @@ GitHub：实现提交 `427a2b0` 已推送至 `origin/codex/perf3f-canvas-source`
 下一批 PERF3H 处理保存准备的精确源版本复用与失效/内存边界，并定位节点提交长帧及首次完整就绪成本。当前 2209 ms / 134 ms 仍超过 300 / 100 ms 候选目标，PERF3 不退出；后续 UX6B → UX7 → UX8 → QA1。自动平排、真实 IME、物理多屏 DPI、干净安装/升级/卸载仍未验收，P0 未完成。
 
 GitHub：实现提交 `f50bec9` 已推送至 `origin/codex/perf3g-background-canvas`，成功创建 [PR #15](https://github.com/KLucen/MerMarked/pull/15)，目标 main，尚未合并。PR 已附加到当前任务；SSH 推送与连接器创建均成功。暂存变更的 diff 检查通过；三项用户原有修改保持未暂存。收尾只补充交付文档，运行代码未再修改。
+
+
+## 2026-10-23 · PERF3 本地持续收口（未上传）
+
+用户要求持续至 PERF3 退出再上传；本地分支 codex/perf3-exit，基线 d704628。H–AA 的源码投影、只读批注 Worker、语义 DOM 分批和保留、窗口失败记录详见 PROGRESS.md，架构决定 ADR-048/049。当前不宣称 PERF3 或 P0 完成。
+
+- 只读批注任务四项聚焦测试、完整 npm.cmd test（311/311）、npm.cmd run typecheck 通过；S/T/W/X/Y/Z/AA package 的失败与成功日志保留在 out/qa/perf3-exit-*。Y/Z 窗口回归完成，AA 已覆盖 25 套（个别首次失败和重跑见 PROGRESS，不视为没有发生过）。
+- 源码原型 npm.cmd install --save-exact @codemirror/state@6.7.6 @codemirror/view@6.43.15 @codemirror/commands@6.11.1；锁文件已更新。node tests/e2e/source-surface-prototype.mjs 第四次通过，前几次分别为测试表达式转义、CDP 多行注入在末行未保持空行；改为实际剪贴板粘贴后精确往返。原型五次 1/5 MiB 交替结果在 out/qa/source-surface-prototype/measurements.json，未冒充应用验收。
+- AA 的实际 5 MiB pending-source 探索约 44 ms（壁钟）/ 9 ms（pointer 至 ready 后一帧）/ 13 ms（最长帧）；200 卡片约 268 / 249 / 50 ms。单次诊断，不作正式退出结论。PERF3G 首次因窗口最小化使可见性断言失败；独立重跑通过，实际准备回复前取消约 1 ms，保留两份日志。
+- 重复打开探索第一轮因 DevTools 返回 DOM 赋值结果触发 Object reference chain is too long；测试表达式改为 void 后通过。AA 第二轮 5 MiB 完整阅读约 2074 ms，重复打开（含 500 高亮）1960 ms，卡片壁钟 338 ms，仍需多轮及实际点击到显示的独立列。重复样本不与冷首屏统计混合。
+- AA 的源码输入/撤销后返回阅读约 690 ms，诊断是来源暂不匹配时卸载旧阅读树。AB 将最多一个同文档分析结果保留作隐藏、inert 的显示缓存；当前 data/map/操作权限仍必须精确匹配。文本组件类型稳定，权限和回调通过 Context 更新，避免复用旧处理函数；新文档/新分析替换旧树，旧内容不能出现在当前正常阅读流。新增未阅读的源码修改/撤销保留节点身份的窗口断言。AB1 再次类型检查、311 单测和 package 通过，针对回归进行中。
+
+## 2026-10-24 · PERF3 对照采样及剩余预算诊断
+
+- AB1 的 A7.3b 暴露被原生编辑过的旧 DOM 在快速撤销后复用；AB2 增加分析版本与提交后原始子节点恢复，12 套相关窗口回归通过。AC 仅调整 inactive 阅读 article 的 hidden 条件以保留布局；5 MiB 输入/撤销后返回阅读探索从 AB2 354 ms / 长帧 212 ms 降至 242 / 83 ms，正式多轮另计。
+- `node tests/e2e/perf3-exit-samples.mjs canvas` 与 `loaded` 完成 20+20 个交替样本；两份 manifest 含硬件、包体和脚本摘要。`node tests/e2e/perf3-exit-report.mjs perf3-exit-ac` 生成完整中位数/最差值/原始数组和预算失败项，功能通过与性能预算分开记录。
+- 汇总发现 canvas-after-5m-5 首次加载反馈 119 ms 超出 100 ms，未标整体通过。新增反馈事件分段记录后继续诊断；原 40 个样本不覆盖、不删除。普通性能采样期间没有并行构建、单测、其他窗口或 GC 分析。
+- 最终全套功能、GC 与进程内存、Vite、make、make 后专项仍待完成。未提交/推送本轮，三项用户原有修改继续排除。
+
+后续：查清 A8.4 再次投放偶发失败；完成 AB 全套窗口、开发服务、1/5 MiB 各至少五次冷/重复采样与最差值、正常查找/源码输入、三轮 GC 和应用进程工作集、make/post-make，整理最终验收证据后才提交上传。三项用户原有修改不纳入提交。
+
+## 2026-10-25 · PERF3 最终回归与剩余卡片切换成本
+
+- AD 加入打开状态的一次绘制机会及 50 ms 后备结束；AE 修正专注源码的旧 textarea 焦点目标，并在 UX2 验证实际输入焦点。AE 的 25 套窗口回归全部通过。UX2 的初始目录活动项可能为空，撤回错误的“必须已有活动项”测试等待，保留失败记录。
+- AF 将阅读当前章节跟踪限制在完整可见正文 ready 之后，源码修改/撤销专项新增顶部目录检查。`npm.cmd run typecheck`、`npm.cmd test`（311 项）、`npm.cmd run package` 通过。A7.3b 首轮在阅读编辑切源码超时，原脚本只检查可编辑节点存在；补充完整可见 ready、实际焦点和编辑后正文 ready 后通过。其余 24 套均通过，索引 `out/qa/perf3-exit-af-regression.log`，首轮失败保留。
+- AF 采样第一次在测试准备阶段访问尚未加载的 `process.mainModule.require` 失败，测试桥接补充最多 15 秒的入口等待，未改产品。AF2 从新前缀开始；1 MiB 五对完成，候选进入卡片实际输入至 ready 后一帧为 328、325、324、329、295 ms，四次超过 300 ms。5 MiB 第一份旧包样本因窗口最小化中断，manifest 保留未完成状态，不作为完整最终采样。
+- AG 修正受控节点重建时遗漏 `measured`：外框尺寸不变时保留实际测量，尺寸变化仍丢弃并重测。类型检查、package、A8.2/A8.3/A8.4/UX4/PERF3E/PERF3G 六套相关窗口回归通过；1 MiB 首份探索切卡片为 323 ms，未达标，未据此宣称速度改善。第二份探索在拖动时因窗口最小化作废。源码仅缩进整理与已构建运行代码等价。
+- 用户确认正在操作测试窗口，要求稍后再运行；立即停止所有窗口测试。独立静态验证 `npm.cmd run typecheck`、311/311 单测、四份修改脚本的 `node --check` 与排除用户三文件的 `git diff --check` 通过，日志 `perf3-exit-ag-static-*`。三项用户原有修改的 SHA-256 与起始记录一致。
+- 验收脚本补充 pending 切换前必须仍未收到真实阅读 Worker 回复的断言；预算汇总发现超标时现在以非零状态退出。它们不更改目标或产品，pending 分支的窗口复测待恢复。所有原失败/无效样本保留，没有挑选较快样本替代整组。
+
+下一步：窗口空闲后用当前包诊断卡片分批提交、尺寸反馈与视口应用的时间分布；当前测量仍超过 300 ms，先优化并回归再完整采样。随后完成 1/5 MiB 各五对冷/重复打开、查找/输入、pending 取消、独立三轮 GC/进程内存、真实 Vite、make/post-make。同一最终运行代码全部达到退出条件才提交上传；PERF3、P0 均未标记完成。
+
+## 2026-11-04 · PERF3 恢复验证与源码撤销后的阅读布局
+
+- 复核上轮恢复测试后的 AH–AK：直接使用全部节点的实际尺寸反馈应用视口；80 节点批次改为任务间让出，撤回 AJ 提前开放 React Flow 全局交互的无收益探索。部分挂载的 inert、焦点及保存禁用断言保留。AK 25 套功能回归通过；A7.5/PERF3B/PERF3A 打开等待改为确认新文档完全就绪，旧失败保留。
+- `node tests/e2e/perf3-exit-report.mjs perf3-exit-ak` 复核完整 40 份样本，7 项最长帧间隔超标：打开 126/133 ms，5 MiB 编辑撤销后返回阅读 108/108/108/112/104 ms。所有样本和脚本/ASAR 摘要保留；尚不满足退出条件。
+- AL 可选 `MERMARKD_PERF_TRACE_STAGE=return-reader` 捕获滚动恢复中的约 61 ms 样式/布局，以及高亮映射与 DOM 更新。增加逐帧间隔相对输入时间诊断，不改变原始最长帧预算。AK 的一个打开间隔始于输入前 133 ms、持续 126 ms，不能直接归因于文档解析，保留该失败。
+- AL 精确撤销保留隐藏高亮 Range，dirty 不注册或开放。类型检查、package、PERF3G/A7.3b 通过，但两次 5 MiB 返回阅读最长帧仍为 113/117 ms。
+- AM 避免隐藏正文因暂时源码不匹配而切换每个段落的 contenteditable，实际编辑仍按当前源码/权限核验，外层 hidden/inert 保持。`npm.cmd run typecheck`、`npm.cmd run package`、`npm.cmd test`（311/311）通过。两次探索返回阅读实际 149/91 ms、最长帧 75/50 ms；未把探索视为正式验收。
+- PERF3E 增加 dirty 无高亮、隐藏旧正文不能聚焦、精确撤销后 500 个原始 Range 身份与引文一致的断言，通过。AM 全套窗口回归中的 UX3 首次在正文已保存但批注后台核验尚未结束时读取空列表；等待批注提交真正可用后再计数，并独立断言新便签未写入 YAML，复测通过。保存和批注边界断言未放宽，原失败日志 `perf3-exit-am-final-ux3.log` 保留。
+
+仍待：最终候选完整 40 份普通对照、pending 五次、1/5 MiB 前后包三轮 GC 与进程内存、真实开发服务、make/post-make 和最终证据文档。未提交/推送，保留三项用户原有修改。
+
+## 2026-11-05–06 · PERF3 卡片提交与 GPU 绘制核查（AU 候选）
+
+- AM 完整画布 20 份仅一次反馈 112 ms 超标；loaded 只完成 7 份，恢复会话后进程已结束，不完整 manifest 保留。AN 同步提交 opening 状态，等待完整绘制帧后读文件；隐藏立即结束、受抑回调 250 ms 后备。四套打开/新建/离开协调专项通过。两次反馈 46/94 ms，但卡片 312/360 ms、最长帧 121/137 ms，仍未退出。
+- AO 直接使用 ResizeObserver border box，移除每批 effect 的同步 offsetHeight；开放前等待可见正文/外框实际尺寸齐全。类型检查、package 和六套相关窗口通过。AP–AR 保留 data、受控节点及数组身份，当前批次上限 40，降低已挂载卡片重复提交。AS 逐帧强制挂载为 372/374 ms、104/117 ms，已撤回；AT 仅为选中卡片挂载操作按钮，两次仍为 264/354 ms、100/146 ms。
+- 独立 `MERMARKD_PERF_PROFILE_CARDS=1` 的详细 trace：窗口 focused/visible、未最小化、240 Hz、辅助功能关闭；最长 renderer 任务约 31 ms，GPU 任务约 106 ms（GPU 线程 CPU 时间约 12 ms）。这只说明该样本的等待分布，不能宣称所有长帧都有相同根因。
+- 隐藏装饰网格的测试专属隔离诊断两次为 244/249 ms、83/88 ms，不计正式结果。AU 保留背景，在总览缩放保留二次幂间距的粗网格，屏幕间隔至少约 16 px；独立组件订阅缩放，不改坐标、吸附、持久模型或完整导出。正常网格两次探索为 228/214 ms、71/75 ms；完整阅读实际约 1961/1971 ms，反馈 47/48 ms。没有根据少量诊断证明全部因果或判定退出。
+- AQ 第 2 次探索在第二次拖动未改变位置而失败：搜索后适应全图尚未完成，测试即取拖动坐标。补入 200 张卡片实际全部可见以及起点命中 card-0 的断言；修正流程通过，但仍记录 337 ms / 133 ms 的原性能失败。原截图和日志保留。
+- AU `npm.cmd run typecheck`、`npm.cmd test`（311/311）、`npm.cmd run package`、最终 25 套窗口回归通过。UX2 原失败分别为部分卡片挂载即点击保存、当前章节初始自动跟踪与目录手动滚动测试重叠；现等待相应真实状态再操作，原断言保留。UX4 的文件等待 helper 现在仅重试事务发布间隙的 ENOENT，格式错误和其他 I/O 继续失败；关系更新与三文件边界通过。日志索引 `out/qa/perf3-exit-au-regression.log`。
+- 增加可复用 `tests/e2e/perf3-exit-probes.mjs`，分别记录五次真实 Worker 回复前切源码与前后包各三轮强制 GC/应用进程内存；manifest 保留包体、脚本摘要与失败，并拒绝覆盖已有尝试。普通采样主动清除 profiler、GC、隐藏网格等诊断开关，结果汇总拒绝这类样本。该新增 runner 的窗口验证待执行。
+
+当前命令：`MERMARKD_PERF_COHORT_PREFIX=perf3-exit-au node tests/e2e/perf3-exit-samples.mjs canvas`，随后 `loaded` 和 `node tests/e2e/perf3-exit-report.mjs perf3-exit-au`。保持独占窗口测试，不并行构建、GC 或其他回归。正式 40 份、pending、内存、Vite、make/post-make 与最终验收仍待闭合；未提交/推送，不提前标记 PERF3 或 P0 完成。
+
+## 2026-11-06 · PERF3 退出验收完成
+
+- AU 完整 40 份功能通过，原整窗报告保留两项 135/136 ms 不通过；时间点证明分别在点击前 6/7 ms 已结束。新增逐帧时间点，保留整窗、输入前和输入后指标，正常交互仍按 100 ms，跨输入帧保留其输入后全部等待。设计复核已注明，旧样本不回填、不推算为通过。
+- 实际 PowerShell：`$env:MERMARKD_PERF_COHORT_PREFIX='perf3-exit-au2'`；依次运行 `node tests/e2e/perf3-exit-samples.mjs canvas`、`loaded`、`node tests/e2e/perf3-exit-report.mjs perf3-exit-au2`。同一 AU 应用包，40 份全部功能完成且交互预算通过，原准备阶段两次 137 ms 也公开保留。
+- `node tests/e2e/perf3-exit-probes.mjs perf3-exit-au2 pending` 五份通过，每份均等待真实 Worker started、再确认尚未回复；实际切源码均 7 ms、最长交互帧最差 13 ms。随后 `memory` 四份各三轮完成，卡片/阅读堆及全应用进程工作集、Private 单独记录。5 MiB 末轮阅读堆 63.4 MiB（旧版 51.2 MiB），普通最差点采样 140 MiB（旧版 76 MiB），没有隐藏内存退化。
+- 311/311 单测、类型检查、25 套最终包回归通过，索引 `perf3-exit-au-regression.log`。UX2 的两个状态等待及 UX4 事务发布 ENOENT 等待修正后，原断言全部通过；原失败保留。
+- 首轮真实 Vite PERF3G 在 dirty 源码的投影检查失败；服务日志同期记录新发现 rehype-raw/rehype-sanitize/remark-rehype 并自动重载。AV 在配置显式预优化 Worker 解析依赖，`vite ... --force` 冷启动后 PERF3G/PERF3C 均通过，无新的优化器重载。已停止开发服务。
+- AV 最终 `npm.cmd run package` 后 ASAR 仍为 `500a83bc53d1bf5e2555b2abe8c5f54733858e8367cd661b4b628e4167239d3b`，与 AU/AU2/普通/pending/内存一致。`npm.cmd run make -- --skip-package`、5 MiB make 后 PERF3G、最终类型检查通过。Setup 154,827,776 字节，SHA-256 `E5723C5F003F861D8B4E5E98DA1FB19EE6EB85960A6757B76101F34E4B3C6261`。产物本地保存，不作为公开发行。
+- 完整证据、首次/重复打开退化、自动化/真实输入两列、内存与范围限制已写入 PERF3_EXIT_ACCEPTANCE.md / PERF3_EXIT_METRICS.json。原有三文件 SHA 校验一致，排除提交；与 origin/main 仅历史提交不同、树一致，已 fast-forward 到已合并 PR #15 的 `1617312`。
+
+PERF3 本机工程门槛通过，准备同步 GitHub；下一批 UX6B。P0、真实 IME、多屏 DPI、干净安装/升级/卸载、自动平排密度与公开发布仍未完成。

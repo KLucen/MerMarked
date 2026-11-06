@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -23,7 +24,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(process.env.MERMARKD_QA_EXE ?? path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(process.env.MERMARKD_QA_EXE ?? path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -152,12 +153,12 @@ try {
   await measure('reader-find-many',()=>query('plain content'),'document.querySelector(".reader-searchbar output").textContent.includes("1 / 1000")');
   await measure('reader-find-rapid',async()=>{await query('absent-one');await query('absent-two');await query('unique-perf-search-token');},matchIs('unique-perf-search-token'));
   await click('[aria-label="关闭正文查找"]');
-  await measure('switch-source',()=>click('[data-mode="editor"]'),'Boolean(document.querySelector("[data-editor-textarea]")?.getClientRects().length)');
+  await measure('switch-source',()=>click('[data-mode="editor"]'),'Boolean(__sourceControl()?.getClientRects().length)');
   await frame();
-  await page.evaluate('(()=>{const e=document.querySelector("[data-editor-textarea]");e.focus();e.setSelectionRange(0,0)})()');
+  await page.evaluate('(()=>{const e=__sourceControl();e.focus();e.setSelectionRange(0,0)})()');
   await page.send('Performance.enable');
   const metricsBefore=await page.send('Performance.getMetrics');
-  await page.evaluate(`window.__inputTrace={};const e=document.querySelector('[data-editor-textarea]');
+  await page.evaluate(`window.__inputTrace={};const e=__sourceControl();
     e.addEventListener('beforeinput',()=>{window.__inputTrace.beforeInput=performance.now();},{once:true,capture:true});
     e.addEventListener('input',()=>{const t=window.__inputTrace;t.input=performance.now();requestAnimationFrame(()=>requestAnimationFrame(()=>{t.painted=performance.now();}));},{once:true,capture:true});
     window.addEventListener('input',()=>{window.__inputTrace.handled=performance.now();},{once:true});`);
@@ -168,7 +169,7 @@ try {
   const inputTrace=await page.evaluate(`(()=>{const t=window.__inputTrace;return {nativeInputMs:t.input-t.beforeInput,handlerMs:t.handled-t.input,eventToFrameMs:t.painted-t.beforeInput};})()`);
   inputTrace.metrics=Object.fromEntries(metricsAfter.metrics.filter(m=>['LayoutDuration','RecalcStyleDuration','ScriptDuration','TaskDuration'].includes(m.name)).map(m=>[m.name,(m.value-metricsBefore.metrics.find(b=>b.name===m.name).value)*1000]));
   await wait('document.querySelectorAll(".toc-link").length==='+headingCount,'updated outline');
-  await page.evaluate('document.querySelector("[data-editor-textarea]").focus()');
+  await page.evaluate('__sourceControl().focus()');
   await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','undo clean');
   assert.deepEqual(await snapshot(),before,'profiling and buffer undo do not write content files');

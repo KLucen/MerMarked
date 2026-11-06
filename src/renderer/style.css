@@ -2,14 +2,17 @@
 
 :root { font-family: var(--font-ui); color: var(--text); background: var(--surface-muted); font-synthesis: none; }
 * { box-sizing: border-box; }
-html { overscroll-behavior: none; scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+html { overscroll-behavior: none; scroll-behavior: smooth; scrollbar-gutter: stable; -webkit-tap-highlight-color: transparent; }
 html, body, #root { max-width: 100%; min-height: 100%; }
 body { margin: 0; min-width: 0; overflow-x: clip; overscroll-behavior: none; }
 button { font: inherit; }
 button, a, input, select, textarea, summary { touch-action: manipulation; }
 button, summary { -webkit-user-select: none; user-select: none; }
 button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visible, textarea:focus-visible, input:focus-visible, pre[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-.app-shell { max-width: 100%; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+.app-shell { display: flex; flex-direction: column; max-width: 100%; min-height: 100vh; min-height: 100dvh; min-width: 0; }
+/* Retain text layout at the workspace width while the inert reader is inactive. */
+.reading-layout[hidden] { display: block !important; visibility: hidden; content-visibility: hidden; height: 0; flex: 0 0 0; overflow: hidden; pointer-events: none; }
+.workspace-editor-content[hidden] { display: block !important; visibility: hidden; content-visibility: hidden; height: 0; flex: 0 0 0; overflow: hidden; pointer-events: none; }
 .topbar { align-items: center; background: var(--surface); border-bottom: 1px solid var(--divider); display: flex; gap: var(--space-6); height: 72px; max-width: 100%; min-width: 0; padding: 0 28px; position: relative; z-index: 2; }
 .brand { align-items: center; display: flex; flex: 0 0 auto; gap: 10px; }
 .brand-mark { align-items: center; background: var(--accent); border-radius: var(--radius-panel); color: var(--on-accent); display: inline-flex; font-size: 19px; font-weight: 800; height: 32px; justify-content: center; width: 32px; }
@@ -464,6 +467,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .source-editor-textarea { background: var(--surface); border: 0; color: var(--text); flex: 1 1 auto; font-family: var(--font-mono); font-size: var(--text-control); line-height: 1.65; margin: 0; min-height: 420px; min-width: 0; overflow: auto; padding: 18px 20px; resize: none; tab-size: 4; white-space: pre; }
 .source-editor-textarea:read-only { background: var(--surface-muted); color: #596477; }
 .source-editor-textarea:focus { outline-offset: -3px; }
+.source-editor-surface { background: var(--surface); color: var(--text); flex: 1 1 auto; min-width: 0; min-height: 0; height: 100%; overflow: hidden; font: var(--text-control)/1.65 var(--font-mono); }
+.source-editor-surface:focus-within { outline: 2px solid var(--focus-ring, #327766); outline-offset: -3px; }
+.source-editor-surface:has([aria-readonly="true"]) { background: var(--surface-muted); color: #596477; }
+.source-editor-surface .cm-editor { background: inherit; }
 .source-editor-status { align-items: center; color: var(--text-muted); display: flex; flex-wrap: wrap; font-family: var(--font-mono); font-size: var(--text-caption); gap: 4px 14px; line-height: 1.5; min-height: 30px; padding: 7px 2px 0; }
 .source-editor-status span { white-space: nowrap; }
 .source-editor-status .dirty { color: #986016; font-weight: 750; }
@@ -716,7 +723,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .workspace-frame[data-left-open='true'] { grid-template-columns: 230px minmax(0, 1fr); }
 .workspace-frame[data-right-open='true'] { grid-template-columns: minmax(0, 1fr) 300px; }
 .workspace-frame[data-left-open='true'][data-right-open='true'] { grid-template-columns: 230px minmax(0, 1fr) 300px; }
-.workspace-content { min-width: 0; min-height: 0; }
+.workspace-content { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .workspace-sidebar { align-self: start; background: var(--surface-muted); box-shadow: none; display: flex; flex-direction: column; height: calc(100dvh - var(--workspace-chrome-height, 64px)); max-height: none; min-height: 0; min-width: 0; overflow: hidden; position: sticky; top: var(--workspace-chrome-height, 64px); bottom: auto; width: auto; z-index: 1; }
 .workspace-sidebar-header { flex: 0 0 auto; padding: 12px 14px; }
 .workspace-sidebar-header h2 { font-size: var(--text-ui); margin: 0; }
@@ -737,7 +744,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-properties input, .canvas-properties select { border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--text); min-height: 32px; padding: 5px 8px; font: inherit; width: 100%; }
 .canvas-properties button { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); cursor: pointer; }
 .canvas-properties button:disabled { opacity: .45; cursor: not-allowed; }
-.reading-layout { display: block; min-height: 0; }
+.reading-layout { display: block; flex-shrink: 0; min-height: 0; }
 .reading-main { min-height: calc(100dvh - var(--workspace-chrome-height, 64px)); }
 .app-shell:is([data-active-mode='cards'], [data-active-mode='editor']) { display: flex; flex-direction: column; height: 100dvh; min-height: 0; overflow: hidden; }
 .app-shell:is([data-active-mode='cards'], [data-active-mode='editor']) .workspace-frame { flex: 1 1 auto; min-height: 0; overflow: hidden; }

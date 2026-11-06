@@ -1,6 +1,8 @@
 import { CanvasStructurePreview } from './canvas-structure-preview';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChangeEvent, CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { SourceSurface } from './source-surface';
+import type { SourceSurfaceHandle } from './source-surface';
 import type { MarkdownSourceFormat } from '../core/markdown-source';
 import { countGraphemes } from '../core/reader-navigation';
 import { editorToMarkdownText, markdownToEditorText } from '../core/editor-text';
@@ -98,14 +100,6 @@ function recoveryRelationshipLabel(relationship: MarkdownRecoveryDraftView['rela
   if (relationship === 'conflict') return '磁盘版本已变化，只能保留或丢弃';
   if (relationship === 'source-missing') return '源文件缺失，暂不能直接恢复';
   return '源文件暂时无法读取';
-}
-
-function selectionFor(textarea: HTMLTextAreaElement): EditorSelection {
-  return {
-    start: textarea.selectionStart,
-    end: textarea.selectionEnd,
-    direction: textarea.selectionDirection ?? 'none',
-  };
 }
 
 function changedSpan(
@@ -212,7 +206,7 @@ export function MarkdownEditorView({
   onConfirmCanvasStructure,
   onCancelCanvasStructure,
 }: MarkdownEditorViewProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const sourceRef = useRef<SourceSurfaceHandle>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const currentValue = useRef(value);
   const pendingValue = useRef<string | null>(null);
@@ -245,7 +239,7 @@ export function MarkdownEditorView({
   // must follow the active mode transition rather than initial mount only.
   useEffect(() => {
     if (active && !wasActive.current) {
-      const frame = window.requestAnimationFrame(() => textareaRef.current?.focus({ preventScroll: true }));
+      const frame = window.requestAnimationFrame(() => sourceRef.current?.focus());
       wasActive.current = active;
       return () => window.cancelAnimationFrame(frame);
     }
@@ -284,20 +278,12 @@ export function MarkdownEditorView({
     if (selectionFrame.current !== null) window.cancelAnimationFrame(selectionFrame.current);
     selectionFrame.current = window.requestAnimationFrame(() => {
       selectionFrame.current = null;
-      const textarea = textareaRef.current;
-      if (!textarea) return;
-      const start = Math.max(0, Math.min(next.start, textarea.value.length));
-      const end = Math.max(start, Math.min(next.end, textarea.value.length));
-      textarea.setSelectionRange(start, end, next.direction);
-      if (focus) textarea.focus({ preventScroll: true });
-      if (reveal) {
-        // The source textarea never wraps; use its actual line metrics to reveal a jump.
-        const style = getComputedStyle(textarea);
-        const line = cursorFor(textarea.value, { start, end: start, direction: 'none' }).line - 1;
-        textarea.scrollTop = Math.max(0, line * parseFloat(style.lineHeight) +
-          parseFloat(style.paddingTop) - textarea.clientHeight / 3);
-        textarea.scrollLeft = 0;
-      }
+      const source = sourceRef.current;
+      if (!source) return;
+      const start = Math.max(0, Math.min(next.start, source.text().length));
+      const end = Math.max(start, Math.min(next.end, source.text().length));
+      source.select({ ...next, start, end }, reveal);
+      if (focus) source.focus();
       reportSelection({ ...next, start, end });
     });
   }, [reportSelection]);
@@ -453,7 +439,7 @@ export function MarkdownEditorView({
   const closeSearch = useCallback(() => {
     setSearchOpen(false);
     setReplaceOpen(false);
-    textareaRef.current?.focus({ preventScroll: true });
+    sourceRef.current?.focus();
   }, []);
 
   const undo = useCallback(() => {
@@ -538,7 +524,7 @@ export function MarkdownEditorView({
     return () => window.removeEventListener('keydown', handleShortcut);
   }, [active, openSearch]);
 
-  const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+  const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
       event.preventDefault();
       const textarea = event.currentTarget;
@@ -563,20 +549,15 @@ export function MarkdownEditorView({
     }
   };
 
-  const handleTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    const textarea = event.currentTarget;
-    recordAndEmit(textarea.value, selectionFor(textarea));
-  };
-
   const sourceIsReadOnly = readOnly || sourceFormat.lineEnding === 'mixed';
 
-  const openContextMenuAt = (left: number, top: number, textarea: HTMLTextAreaElement) => {
-    const nextSelection = selectionFor(textarea);
+  const openContextMenuAt = (left: number, top: number, _element: HTMLElement) => {
+    const nextSelection = sourceRef.current?.selection() ?? selection.current;
     reportSelection(nextSelection);
     setContextMenu({ left, top, selection: nextSelection, source: currentValue.current, revision: editRevision.current });
   };
 
-  const openContextMenu = (event: React.MouseEvent<HTMLTextAreaElement>) => {
+  const openContextMenu = (event: React.MouseEvent<HTMLDivElement>) => {
     event.preventDefault();
     const left = Math.max(8, Math.min(event.clientX, window.innerWidth - 248));
     const top = Math.max(8, Math.min(event.clientY, window.innerHeight - 330));
@@ -585,7 +566,7 @@ export function MarkdownEditorView({
 
   const handleContextMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not(:disabled)')];
-    if (event.key === 'Escape') { event.preventDefault(); setContextMenu(null); textareaRef.current?.focus({ preventScroll: true }); return; }
+    if (event.key === 'Escape') { event.preventDefault(); setContextMenu(null); sourceRef.current?.focus(); return; }
     if (items.length === 0) return;
     const current = document.activeElement instanceof HTMLButtonElement ? items.indexOf(document.activeElement) : -1;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Home' || event.key === 'End') {
@@ -917,12 +898,9 @@ export function MarkdownEditorView({
       </div>}
 
       <div className="source-editor-frame">
-        <textarea ref={textareaRef} className="source-editor-textarea" data-editor-textarea="true" title={documentName}
-          aria-label="Markdown 源码" value={value} readOnly={sourceIsReadOnly || saving}
-          onChange={handleTextChange} onKeyDown={handleEditorKeyDown}
-          onContextMenu={openContextMenu}
-          onSelect={(event) => reportSelection(selectionFor(event.currentTarget))}
-          autoCapitalize="off" autoCorrect="off" spellCheck={false} wrap="off" />
+        <SourceSurface ref={sourceRef} documentKey={documentKey} documentName={documentName} value={value}
+          readOnly={sourceIsReadOnly || saving} onChange={recordAndEmit} onSelect={reportSelection}
+          onKeyDown={handleEditorKeyDown} onContextMenu={openContextMenu} />
       </div>
 
       {contextMenu && <div ref={contextMenuRef} className="editor-context-menu" role="menu" aria-label="源码选区操作" data-editor-context-menu="true" tabIndex={-1}

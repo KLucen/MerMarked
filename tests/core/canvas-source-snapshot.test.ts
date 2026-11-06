@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import test from 'node:test';
-import { createCanvasSourceSnapshot, reconcileCanvasState } from '../../src/core/canvas-state.ts';
+import { CanvasSourceCache, createCanvasSourceSnapshot, reconcileCanvasState } from '../../src/core/canvas-state.ts';
 import { migrateCanvasStateV1ToV2, reconcileCanvasStateV2 } from '../../src/core/canvas-state-v2.ts';
 
 function source(content: string, bom = false) {
@@ -9,6 +9,20 @@ function source(content: string, bom = false) {
   return { content, bytes, sha256: createHash('sha256').update(bytes).digest('hex') };
 }
 function ids(prefix = 'card') { let next = 0; return () => `${prefix}-${next++}`; }
+
+test('session cache retains one exact source and releases prior versions explicitly', async () => {
+  const cache = new CanvasSourceCache();
+  const a = source('# A\nbody\n');
+  const first = cache.get(a.content);
+  assert.equal(cache.get(a.content), first);
+  assert.deepEqual(await reconcileCanvasState(null, a, ids(), first), await reconcileCanvasState(null, a, ids()));
+  const b = cache.get('# B\nbody\n');
+  assert.notEqual(b, first);
+  assert.notEqual(cache.get(a.content), first, 'no version history');
+  const restored = cache.get(a.content);
+  cache.clear();
+  assert.notEqual(cache.get(a.content), restored);
+});
 
 test('shared source projections preserve v1/v2 anchors, ambiguity and presentation across representative Markdown', async () => {
   for (const content of ['', 'plain 😀', '---\ntitle: x\n---\n\n前言\n\n# Same\nbody\n## Child\nchild\n# Same\nbody\n',

@@ -1,6 +1,7 @@
 import { openWorkspaceStatus, openWorkspaceTask } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -193,12 +194,12 @@ class Cdp {
   }
 }
 
-async function waitForEndpoint(port, timeoutMs = 15_000) {
+async function waitForEndpoint(port, timeoutMs = 15_000, type = 'page') {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try {
       const tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-      const page = tabs.find((item) => item.type === 'page');
+      const page = tabs.find((item) => item.type === type);
       if (page) return page;
     } catch {
       // The remote debugging endpoint is created after Electron starts.
@@ -299,17 +300,19 @@ await writeFile(sidecarPath, serializeAnnotationYaml(fixture.sidecar), 'utf8');
 await writeFile(clipboardBackupPath, readClipboard(), 'utf8');
 
 const port = 9400 + Math.floor(Math.random() * 300);
-const child = spawn(executable, [`--remote-debugging-port=${port}`], {
+const child = await spawn(executable, [`--remote-debugging-port=${port}`, `--inspect=${port + 400}`], {
   cwd: root,
   env: { ...process.env, APPDATA: appData, LOCALAPPDATA: localAppData },
   stdio: 'ignore',
 });
 let cdp;
+let main;
 let conflictDraftPath;
 
 try {
   const page = await waitForEndpoint(port);
   cdp = await connect(page);
+  main = await connect(await waitForEndpoint(port + 400, 15_000, 'node'));
   await waitFor(cdp, `document.readyState === 'complete'`, 'renderer startup');
   await dropFile(cdp, documentPath);
   await openWorkspaceStatus(cdp, "a6-relocation.md");
@@ -380,8 +383,9 @@ try {
   assert.equal(digest(await readFile(documentPath)), firstExternalHash);
 
   await cdp.send('Page.bringToFront');
+  console.log('pre-resize window', await main.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().map(w=>({visible:w.isVisible(),minimized:w.isMinimized(),maximized:w.isMaximized(),bounds:w.getBounds()}))'));
+  await main.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().forEach(w=>{w.restore();w.show();w.focus();w.setContentSize(800,600);})');
   await waitFor(cdp, `(() => {
-    window.resizeTo(800, 600);
     return matchMedia('(max-width: 1100px)').matches && innerWidth <= 800;
   })()`, 'narrow viewport');
   // A visible task panel stays open when resizing, as the single modal drawer.
@@ -461,6 +465,7 @@ try {
   }));
 } finally {
   cdp?.close();
+  main?.close();
   if (child.pid) {
     try {
       execFileSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' });

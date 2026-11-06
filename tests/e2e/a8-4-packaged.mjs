@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
@@ -33,7 +34,17 @@ async function dragToOverlap(cdp) {
   await cdp.send('Page.bringToFront');
   await waitFor(cdp, `document.querySelector('[data-id="card-1"]')?.classList.contains('draggable') === true`, 'draggable card');
   await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
-  const points = await cdp.evaluate(`(() => { const source = document.querySelector('[data-id="card-1"] .canvas-card-header strong').getBoundingClientRect(); const target = document.querySelector('[data-id="card-3"] .canvas-card-body').getBoundingClientRect(); return { sx: source.x + source.width / 2, sy: source.y + source.height / 2, tx: target.x + target.width / 2, ty: target.y + target.height / 2 }; })()`);
+  // Align the full dragged group with the target. Moving its header to the
+  // target center only partially overlaps a tall group and can enter the
+  // viewport's auto-pan zone after the inspector narrows the scene.
+  const points = await cdp.evaluate(`(() => {
+    const header=document.querySelector('[data-id="card-1"] .canvas-card-heading').getBoundingClientRect();
+    const source=document.querySelector('[data-id="card-1"]').getBoundingClientRect();
+    const target=document.querySelector('[data-id="card-3"]').getBoundingClientRect();
+    const sx=header.x+Math.min(16,header.width/4),sy=header.y+header.height/2;
+    return {sx,sy,tx:target.x+target.width/2+sx-source.x-source.width/2,ty:target.y+target.height/2+sy-source.y-source.height/2};
+  })()`);
+  assert.equal(await cdp.evaluate(`document.elementFromPoint(${points.sx},${points.sy})?.closest('.react-flow__node')?.dataset.id`),'card-1','drag begins on the intended visible card');
   await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: points.sx, y: points.sy, button: 'left', clickCount: 1, buttons: 1 });
   for (let i = 1; i <= 15; i++) {
     await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: points.sx + (points.tx - points.sx) * i / 15, y: points.sy + (points.ty - points.sy) * i / 15, buttons: 1 });
@@ -68,7 +79,7 @@ const canvas = { ...initial, cards: initial.cards.map((card, i) => ({ ...card, p
 await writeFile(paths[0], bytes); await writeFile(paths[1], serializeAnnotationYaml(annotations)); await writeFile(paths[2], serializeCanvasJson(canvas));
 const before = await Promise.all(paths.map(async (name) => ({ bytes: await readFile(name), mtime: (await stat(name)).mtimeMs })));
 const port = 10900 + Math.floor(Math.random() * 150);
-const child = spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`], { cwd: root, stdio: 'ignore' });
+const child = await spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`], { cwd: root, stdio: 'ignore' });
 let cdp;
 try {
   cdp = await connect(await endpoint(port)); await waitFor(cdp, `document.readyState === 'complete'`, 'renderer'); await drop(cdp, documentPath);
@@ -94,6 +105,7 @@ try {
   assert.deepEqual(await readFile(paths[2]), originalCanvas);
   // The in-canvas preview keeps its inspector open; fit the narrower workspace
   // before the next actual drag so the destination is not behind the panel.
+  await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   await click(cdp, '[aria-label="适应全图"]');
   await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
   await dragToOverlap(cdp);
@@ -115,7 +127,7 @@ try {
   assert.equal((await cdp.evaluate(`window.mermarkd.saveCanvas(${JSON.stringify({ sourceSha256: hash, expectedSidecarSha256: null, model: canvas })})`)).status, 'conflict');
   await click(cdp, '[data-mode="reader"]'); await click(cdp, '[data-mode="editor"]');
   await click(cdp, '[data-editor-undo]'); await waitFor(cdp, `document.querySelector('[data-editor-status]').textContent.includes('已保存')`, 'single undo');
-  assert.equal(await cdp.evaluate(`document.querySelector('[data-editor-textarea]').value`), content.replaceAll('\r\n', '\n'));
+  assert.equal(await cdp.evaluate(`__sourceControl().value`), content.replaceAll('\r\n', '\n'));
   await click(cdp, '[data-editor-redo]'); await waitFor(cdp, `document.querySelector('[data-editor-status]').textContent.includes('未保存')`, 'single redo');
   await click(cdp, '[data-workspace-save]'); await waitFor(cdp, `document.querySelector('[data-editor-status]').textContent.includes('已保存') && document.querySelector('[data-workspace-save]')?.disabled === true`, 'three-file save');
   const preview = previewSectionTransform(content, operation); assert.equal(preview.status, 'ready');

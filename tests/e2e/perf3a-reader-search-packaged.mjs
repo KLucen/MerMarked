@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -20,7 +21,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -102,7 +103,9 @@ async function result(value, expected) {
 }
 async function openFile(file) {
   await main.evaluate('process.mainModule.require("electron").dialog.showOpenDialog=async()=>({canceled:false,filePaths:['+JSON.stringify(file)+']})');
-  await click('[aria-label="打开文档"]'); await wait(ready,'new reader');
+  await click('[aria-label="打开文档"]');
+  await wait(ready+' && document.querySelector(".workspace-current-name")?.textContent==='+JSON.stringify(path.basename(file))+
+    ' && document.querySelector(".app-shell")?.dataset.leavePending==="false"','new reader');
 }
 try {
   page=await connect(port,'page'); main=await connect(port+200,'node');

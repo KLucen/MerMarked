@@ -42,6 +42,6 @@ export function DocumentOutline({ sections, status = 'ready', onRetry, activeSec
   </div>;
 }
 
-export function ReaderView({ children }: { readonly children: ReactNode }) {
-  return <div className="reading-layout">{children}</div>;
+export function ReaderView({ children, active = true }: { readonly children: ReactNode; readonly active?: boolean }) {
+  return <div className="reading-layout" hidden={!active} inert={!active}>{children}</div>;
 }

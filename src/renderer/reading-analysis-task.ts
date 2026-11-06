@@ -4,7 +4,8 @@ export interface ReadingAnalysisRequest { readonly id: number; readonly source: 
 export type ReadingAnalysisResponse = { readonly id: number; readonly result: ReadingAnalysis; readonly analysisMs: number;
   /** Same clock as Window.timeOrigin + Window.now, for separating startup and reply costs. */
   readonly analysisStartedAt: number }
-  | { readonly id: number; readonly error: true };
+  | { readonly id: number; readonly error: true }
+  | { readonly id: number; readonly started: true };
 export type ReadingAnalysisWorker = Pick<Worker, 'postMessage' | 'terminate' | 'onmessage' | 'onerror' | 'onmessageerror'>;
 
 /** Termination interrupts parsing; generations also reject replies already queued. */
@@ -27,7 +28,7 @@ export class ReadingAnalysisTask {
     this.active = null;
   }
 
-  run(source: string, bomByteLength: 0 | 3, onResult: (result: ReadingAnalysis | null) => void) {
+  run(source: string, bomByteLength: 0 | 3, onResult: (result: ReadingAnalysis | null) => void, onStarted?: () => void) {
     this.cancel();
     const id = this.generation;
     const complete = (result: ReadingAnalysis | null) => {
@@ -37,9 +38,15 @@ export class ReadingAnalysisTask {
     };
     try {
       const worker = this.factory();
+      let started = false;
       this.active = { worker, timer: setTimeout(() => complete(null), this.timeoutMs) };
       worker.onmessage = (event: MessageEvent<ReadingAnalysisResponse>) => {
-        if (event.data.id === id) complete('result' in event.data ? event.data.result : null);
+        if (event.data.id !== id || id !== this.generation) return;
+        if ('started' in event.data) {
+          if (!started) { started = true; onStarted?.(); }
+          return;
+        }
+        complete('result' in event.data ? event.data.result : null);
       };
       worker.onerror = (event) => { event.preventDefault(); complete(null); };
       worker.onmessageerror = () => complete(null);

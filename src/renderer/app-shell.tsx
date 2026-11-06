@@ -174,7 +174,7 @@ export function AppShell({
 
   useEffect(() => {
     const target = focusMode ? window.document.querySelector<HTMLElement>(
-      activeMode === 'editor' ? '[data-editor-textarea]' : activeMode === 'cards' ? '[data-canvas-flow]' : '.markdown-body',
+      activeMode === 'editor' ? '[data-source-input]' : activeMode === 'cards' ? '[data-canvas-flow]' : '.markdown-body',
     ) : focusReturn.current;
     if (!focusMode) focusReturn.current = null;
     const frame = window.requestAnimationFrame(() => {

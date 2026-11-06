@@ -19,6 +19,7 @@ module.exports = {
       config: {
         build: [
           { entry: 'src/main/main.ts', config: 'vite.main.config.mjs' },
+          { entry: 'src/main/annotation-read.worker.ts', config: 'vite.main.config.mjs' },
           { entry: 'src/preload/preload.ts', config: 'vite.preload.config.mjs' },
         ],
         renderer: [

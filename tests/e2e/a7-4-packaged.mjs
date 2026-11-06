@@ -1,6 +1,7 @@
 import { openWorkspaceStatus } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -180,7 +181,7 @@ async function waitFor(cdp, expression, label, timeoutMs = 12_000) {
 }
 
 async function launch(port, appData, localAppData, userData) {
-  const child = spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], {
+  const child = await spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], {
     cwd: root,
     env: { ...process.env, APPDATA: appData, LOCALAPPDATA: localAppData },
     stdio: 'ignore',
@@ -238,8 +239,8 @@ async function pressShortcut(cdp, key) {
 
 async function replaceEditorText(cdp, exact, replacement) {
   const focused = await cdp.evaluate(`(() => {
-    const textarea = document.querySelector('[data-editor-textarea]');
-    if (!(textarea instanceof HTMLTextAreaElement)) return false;
+    const textarea = __sourceControl();
+    if (!((__sourceControlElement() instanceof HTMLElement))) return false;
     const offset = textarea.value.indexOf(${JSON.stringify(exact)});
     if (offset < 0) return false;
     textarea.focus();
@@ -310,7 +311,7 @@ try {
 
   const yamlBeforeEdit = await snapshot(sidecarPath);
   await click(running.cdp, '[data-mode="editor"]');
-  await waitFor(running.cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'mapping source editor');
+  await waitFor(running.cdp, `Boolean(__sourceControl())`, 'mapping source editor');
   await replaceEditorText(running.cdp, 'OVERLAP_TARGET', 'CHANGED_SEGMENT_LONGER');
   await waitFor(running.cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`,
     'dirty mapping editor');
@@ -370,7 +371,7 @@ try {
     document.querySelector('.annotation-summary')?.textContent.includes('0 条记录')`, 'no-sidecar fixture');
   assert.equal(await fileExists(noSidecarAnnotationPath), false);
   await click(running.cdp, '[data-mode="editor"]');
-  await waitFor(running.cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'no-sidecar editor');
+  await waitFor(running.cdp, `Boolean(__sourceControl())`, 'no-sidecar editor');
   await replaceEditorText(running.cdp, 'NO_SIDECAR_MARKER', 'NO_SIDECAR_SAVED');
   await waitFor(running.cdp, `document.querySelector('.app-shell')?.getAttribute('data-dirty') === 'true'`,
     'dirty no-sidecar editor');

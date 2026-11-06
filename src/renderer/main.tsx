@@ -1,11 +1,13 @@
 import { StrictMode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { ComponentProps, DragEvent as ReactDragEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from 'react';
+import type { DragEvent as ReactDragEvent, FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from 'react';
 import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 import { ReaderMarkdown } from './reader-markdown';
+import type { Root as ReadingRenderTree } from 'hast';
 import { useSourceOutline } from './use-source-outline';
 import { useReadingAnalysis } from './use-reading-analysis';
 import { useInputLeaveGuard } from './use-input-leave-guard';
-import type { Components, ExtraProps } from 'react-markdown';
+import { readerComponents, ReaderComponentsProvider, type ReaderComponentState } from './reader-components';
 import { Clock3, FilePlus2, FolderOpen, X } from 'lucide-react';
 import { markdownToEditorText } from '../core/editor-text';
 import { activeSectionAtMarker, countGraphemes } from '../core/reader-navigation';
@@ -16,7 +18,6 @@ import {
   applyReaderMappedTextEdit,
   escapeReaderPlainText,
   isReaderPlainTextPaste,
-  isReaderMappedTextBlock,
   resolveReaderMappedSelection,
   resolveReaderInlineFormatSelection,
 } from '../core/reader-edit';
@@ -40,7 +41,6 @@ import type { AppMode, AppNotice, NoticeKind, RecentDocumentItem } from './app-s
 import { EditorView, type SourceEditorCursor } from './editor-view';
 import { ReaderView, DocumentOutline } from './reader-view';
 import { useWorkspacePanels, WorkspaceTaskPanel } from './workspace-panels';
-import { ReaderEditableBlock } from './reader-editable-block';
 import { CanvasView } from './canvas-view';
 import { DocumentRecoveryView } from './document-recovery-view';
 import { useReaderSearch } from './use-reader-search';
@@ -50,6 +50,32 @@ import './style.css';
 
 type SelectionProbeResult = ReturnType<typeof resolveSelection>;
 type SuccessfulSelectionProbe = Extract<SelectionProbeResult, { ok: true }>;
+
+/** Give opening feedback a paint opportunity before a fast IPC reply replaces it. */
+function paintOpeningFeedback(): Promise<void> {
+  if (document.visibilityState === 'hidden') return Promise.resolve();
+  return new Promise(resolve => {
+    let paintTask: ReturnType<typeof setTimeout> | undefined;
+    let nextFrame: number | undefined;
+    const finish = () => {
+      cancelAnimationFrame(frame);
+      if (nextFrame !== undefined) cancelAnimationFrame(nextFrame);
+      clearTimeout(fallback);
+      clearTimeout(paintTask);
+      document.removeEventListener('visibilitychange', visibilityChanged);
+      resolve();
+    };
+    const visibilityChanged = () => { if (document.visibilityState === 'hidden') finish(); };
+    document.addEventListener('visibilitychange', visibilityChanged);
+    // Commit feedback before this wait, then give it a full frame before a fast
+    // open reply mounts the source surface. Hidden/occluded windows must still
+    // settle; the fallback is not the ordinary foreground scheduling path.
+    const fallback = setTimeout(finish, 250);
+    const frame = requestAnimationFrame(() => {
+      nextFrame = requestAnimationFrame(() => { paintTask = setTimeout(finish, 0); });
+    });
+  });
+}
 
 interface ReaderContextMenuState {
   readonly left: number;
@@ -189,48 +215,8 @@ function isExternalUrl(value: string): boolean {
   }
 }
 
-function isRelativeImage(value: string): boolean {
-  return Boolean(value) && !value.startsWith('/') && !value.startsWith('\\') &&
-    !value.includes('\\') && !/^[a-z][a-z\d+.-]*:/i.test(value);
-}
-
 function hasDraggedFiles(event: ReactDragEvent<HTMLElement>): boolean {
   return Array.from(event.dataTransfer.types).includes('Files');
-}
-
-function LocalImage({ src, alt, documentPath }: {
-  readonly src?: string;
-  readonly alt?: string;
-  readonly documentPath: string;
-}) {
-  const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    setImageUrl(null);
-    setLoaded(false);
-    if (!src || !isRelativeImage(src)) {
-      setLoaded(true);
-      return () => { active = false; };
-    }
-    void window.mermarkd.readDocumentImage(src)
-      .then((result) => {
-        if (active) {
-          setImageUrl(result);
-          setLoaded(true);
-        }
-      })
-      .catch(() => { if (active) setLoaded(true); });
-    return () => { active = false; };
-  }, [src, documentPath]);
-
-  return imageUrl
-    ? <img className="article-image" src={imageUrl} alt={alt ?? ''} />
-    : <span className="image-placeholder" role="img" aria-label={alt || '图片'}>
-        <span aria-hidden="true">▧</span>
-        {alt || '图片'} · {loaded ? '无法读取本地图片或不支持该地址' : '正在加载图片'}
-      </span>;
 }
 
 function relativeRecentLabel(openedAt: number): string {
@@ -290,6 +276,17 @@ function App() {
   const [openedDocument, setOpenedDocument] = useState<OpenedMarkdownDocument | null>(null);
   const [recentDocuments, setRecentDocuments] = useState<readonly RecentMarkdownDocument[]>([]);
   const [activeMode, setActiveMode] = useState<AppMode>('reader');
+  const [readerShown, setReaderShown] = useState(true);
+  useLayoutEffect(() => {
+    if (activeMode !== 'reader') { setReaderShown(false); return; }
+    if (readerShown) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Let the previous mode release its nodes before revealing the complete reader.
+    const frame = requestAnimationFrame(() => { timer = setTimeout(() => setReaderShown(true), 0); });
+    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+  }, [activeMode, readerShown]);
+  const activeModeRef = useRef(activeMode);
+  activeModeRef.current = activeMode;
   const panels = useWorkspacePanels();
   const [outlineFocusRequest, setOutlineFocusRequest] = useState(0);
   const [editorFocusRequest, setEditorFocusRequest] = useState(0);
@@ -362,6 +359,7 @@ function App() {
   const [dropActive, setDropActive] = useState(false);
   const dropDepth = useRef(0);
   const documentEpoch = useRef(0);
+  const pendingInitialAnnotations = useRef<number | null>(null);
   const paintedRanges = useRef(new Map<string, Range>());
   const mutationInFlight = useRef(false);
   const selectionTarget = useRef<ValidatedSelectionTarget | null>(null);
@@ -376,6 +374,7 @@ function App() {
   const sectionNavigationLock = useRef<number | null>(null);
   const sectionNavigationTimer = useRef<number | null>(null);
   const readerPosition = useRef<{ path: string; scrollY: number; activeSection: number | null } | null>(null);
+  const restoreReaderPosition = useRef(false);
   const readerSelectionSourceOffset = useRef<number | null>(null);
   const noteComposerRef = useRef<HTMLTextAreaElement>(null);
 
@@ -457,23 +456,27 @@ function App() {
       .forEach((element) => element.removeAttribute('data-search-current'));
   }, []);
 
+  const annotationReadRequest = useRef(0);
   const refreshAnnotations = useCallback(async (epoch: number) => {
+    const request = ++annotationReadRequest.current;
+    const isCurrent = () => documentEpoch.current === epoch && annotationReadRequest.current === request;
     setAnnotationLoading(true);
     setAnnotationError(null);
     try {
       const view = await window.mermarkd.loadAnnotations();
-      if (documentEpoch.current === epoch) setAnnotationView(view);
+      if (isCurrent()) setAnnotationView(view);
     } catch (error) {
-      if (documentEpoch.current === epoch) {
+      if (isCurrent()) {
         setAnnotationView(null);
         setAnnotationError(error instanceof Error ? error.message : '读取批注状态失败。');
       }
     } finally {
-      if (documentEpoch.current === epoch) setAnnotationLoading(false);
+      if (isCurrent()) setAnnotationLoading(false);
     }
   }, []);
 
   const acceptEditorDocument = useCallback((opened: OpenedMarkdownDocument) => {
+    pendingInitialAnnotations.current = null;
     clearReaderSelection({ clearNative: true });
     clearReaderSearchPaint();
     const epoch = ++documentEpoch.current;
@@ -569,10 +572,21 @@ function App() {
   }, [editorController.editor?.content, editorController.editor?.dirty, openedDocument]);
   const readingAnalysis = useReadingAnalysis(openedDocument ? String(noteDocumentKey.current) : null,
     readerDocument?.content ?? '', readerDocument?.bomByteLength ?? 0, activeMode === 'reader');
-  const readingReady = readingAnalysis.status === 'ready';
+  useEffect(() => {
+    const epoch = pendingInitialAnnotations.current;
+    if (epoch === null || epoch !== documentEpoch.current) return;
+    // Allow the worker module to load before the main process checks anchors.
+    // Leaving reading or a failed worker must never strand annotation loading.
+    if (!readingAnalysis.started && readingAnalysis.status === 'pending' && activeMode === 'reader') return;
+    pendingInitialAnnotations.current = null;
+    void refreshAnnotations(epoch);
+  }, [openedDocument, activeMode, readingAnalysis.started, readingAnalysis.status, refreshAnnotations]);
+  const [renderedReadingTree, setRenderedReadingTree] = useState<ReadingRenderTree | null>(null);
+  const readingReady = readerShown && readingAnalysis.status === 'ready' && renderedReadingTree === readingAnalysis.data?.renderTree;
+  const readingStatus = readingAnalysis.status === 'ready' && !readingReady ? 'pending' : readingAnalysis.status;
   const readerSearch = useReaderSearch(openedDocument ? String(noteDocumentKey.current) : null,
     readerDocument?.content ?? '', activeMode === 'reader' && readingReady && readerSearchOpen, readerSearchOpen ? readerSearchQuery : '');
-  const readerCanEdit = readingReady && Boolean(editorController.editor?.editable) && !editorController.busy &&
+  const readerCanEdit = Boolean(readingAnalysis.data) && Boolean(editorController.editor?.editable) && !editorController.busy &&
     !openedDocument?.recoveryPending && !annotationView?.canReloadSource && readerEditFeedback?.draftText === undefined;
   useEffect(() => {
     if (!readingReady) clearReaderSelection({ clearNative: true });
@@ -582,7 +596,7 @@ function App() {
       ? { ...current, reason } : { blockStart, reason, draftText, contentSnapshot: readerDocument.content });
   }, [readerDocument]);
   const commitReaderTextEdit = useCallback(async (blockStart: number, sourceText: string, replacement: string) => {
-    if (activeMode !== 'reader' || !readerCanEdit || !openedDocument || !readerDocument) return false;
+    if (activeModeRef.current !== 'reader' || !readerCanEdit || !openedDocument || !readerDocument) return false;
     const epoch = documentEpoch.current;
     const sourcePath = openedDocument.path;
     const sourceSha256 = openedDocument.sourceSha256;
@@ -598,7 +612,7 @@ function App() {
     }
     const editor = currentEditorController.current.editor ?? await currentEditorController.current.open();
     if (!editor) { reportReaderEditRestriction(blockStart, '正文输入尚未应用，请保留输入并重试。', replacement); return false; }
-    if (activeMode !== 'reader' || documentEpoch.current !== epoch ||
+    if (activeModeRef.current !== 'reader' || documentEpoch.current !== epoch ||
       openedDocument?.path !== sourcePath || openedDocument?.sourceSha256 !== sourceSha256 ||
       editor.content !== sourceContent) {
       reportReaderEditRestriction(blockStart, '正文已变化，未应用的输入已保留，请在源码中继续。', replacement);
@@ -608,7 +622,7 @@ function App() {
     setReaderEditFeedback(null);
     setMessage('正文已修改，按 Ctrl+S 保存。');
     return true;
-  }, [activeMode, openedDocument, readerCanEdit, readerDocument, reportReaderEditRestriction, setMessage]);
+  }, [openedDocument, readerCanEdit, readerDocument, reportReaderEditRestriction, setMessage]);
   const [canvasStructurePreview, setCanvasStructurePreview] = useState<SectionStructurePreview | null>(null);
   const canvasStructureRequest = useRef(0);
   const canvasStructureContext = useRef({ document: openedDocument, content: readerDocument?.content,
@@ -623,17 +637,15 @@ function App() {
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const documentForReaderAnalysis = readerDocument;
   const sectionTree = readingAnalysis.data?.sections ?? null;
-  const selectionMap = readingReady ? readingAnalysis.data!.selection : null;
+  const selectionMap = readingAnalysis.data?.selection ?? null;
+  const annotationRangeCache = useRef<{
+    article: HTMLElement; selectionMap: typeof selectionMap; view: AnnotationDocumentView;
+    ranges: Map<string, Range>; failures: string[];
+  } | null>(null);
   const sectionIds = useMemo(() => {
     if (!sectionTree) return [];
     return sectionFragmentIds(sectionTree);
   }, [sectionTree]);
-  const headingByOffset = useMemo(() => {
-    const result = new Map<number, number>();
-    const bomOffset = documentForReaderAnalysis?.content.startsWith('\uFEFF') ? 1 : 0;
-    sectionTree?.sections.forEach((section) => result.set(section.headingRange.start - bomOffset, section.index));
-    return result;
-  }, [documentForReaderAnalysis, sectionTree]);
   const unsupportedExtensions = readingAnalysis.data?.extensions ?? [];
   const editorText = useMemo(
     () => editorController.editSession?.current.content ??
@@ -646,7 +658,7 @@ function App() {
     return normalizeOutlineOffsets(documentForReaderAnalysis.content, projectSourceOutline(sectionTree));
   }, [documentForReaderAnalysis, editorController.editor?.content, sectionTree]);
   const outline = useSourceOutline(activeMode === 'reader' ? null : editorController.editor?.epoch ?? null, editorText, parsedOutline);
-  const visibleOutlineStatus = activeMode === 'reader' ? readingAnalysis.status : outline.status;
+  const visibleOutlineStatus = activeMode === 'reader' ? readingStatus : outline.status;
   const editorSections = outline.sections;
   const editorCursor = useRef<{ key: string | null; cursor: SourceEditorCursor } | null>(null);
 
@@ -685,6 +697,7 @@ function App() {
     setOpenedDocument(opened);
     setActiveMode('reader');
     readerPosition.current = null;
+    restoreReaderPosition.current = false;
     setActiveSection(null);
     setReaderSearchOpen(false);
     setReaderSearchQuery('');
@@ -701,8 +714,10 @@ function App() {
     setSummaryCopying(false);
     window.scrollTo({ top: 0 });
     void refreshRecentDocuments();
-    void refreshAnnotations(epoch);
-  }, [clearReaderSearchPaint, clearReaderSelection, editorController.reset, panels.reset, refreshAnnotations, refreshRecentDocuments]);
+    pendingInitialAnnotations.current = epoch;
+    setAnnotationLoading(true);
+    setAnnotationError(null);
+  }, [clearReaderSearchPaint, clearReaderSelection, editorController.reset, panels.reset, refreshRecentDocuments]);
 
   useEffect(() => {
     if (noteComposer) noteComposerRef.current?.focus();
@@ -724,36 +739,49 @@ function App() {
     setHighlightSupported(Boolean(registry));
     const groups = new Map<string, Range[]>();
     const failures: string[] = [];
-    if (activeMode === 'reader' && article && selectionMap && annotationView && !dirtyPreview && !readerDraftDirty) {
-      const blockElements = new Map<number, HTMLElement>();
-      article.querySelectorAll<HTMLElement>('[data-source-block-start]').forEach((element) => {
-        blockElements.set(Number(element.dataset.sourceBlockStart), element);
-      });
-      const sourceBlocks = new Map(selectionMap.blocks.map((block) => [block.blockStart, block]));
-      const resolveHighlight = createStoredHighlightResolver(selectionMap);
+    if (readingReady && activeMode === 'reader' && article && selectionMap && annotationView && !dirtyPreview && !readerDraftDirty) {
+      const cached = annotationRangeCache.current;
+      const reusable = cached?.article === article && cached.selectionMap === selectionMap && cached.view === annotationView &&
+        [...cached.ranges.values()].every(range => article.contains(range.startContainer) && article.contains(range.endContainer));
+      if (reusable) {
+        for (const [id, range] of cached.ranges) paintedRanges.current.set(id, range);
+        failures.push(...cached.failures);
+      } else {
+        const blockElements = new Map<number, HTMLElement>();
+        article.querySelectorAll<HTMLElement>('[data-source-block-start]').forEach((element) => {
+          blockElements.set(Number(element.dataset.sourceBlockStart), element);
+        });
+        const sourceBlocks = new Map(selectionMap.blocks.map((block) => [block.blockStart, block]));
+        const resolveHighlight = createStoredHighlightResolver(selectionMap);
+        for (const item of annotationView.items) {
+          if (item.status !== 'resolved') continue;
+          if (item.kind === 'highlight' && (!item.color || !HIGHLIGHT_COLORS.some(({ value }) => value === item.color))) {
+            failures.push(item.id);
+            continue;
+          }
+          const mapped = resolveHighlight(item.anchor);
+          if (!mapped.ok) {
+            failures.push(item.id);
+            continue;
+          }
+          const block = blockElements.get(mapped.blockStart);
+          const mappedBlock = sourceBlocks.get(mapped.blockStart);
+          if (!block || !mappedBlock || block.textContent !== mappedBlock.visibleText) {
+            failures.push(item.id);
+            continue;
+          }
+          const range = textRange(block, mapped.visibleStart, mapped.visibleEnd, item.anchor.displayQuote);
+          if (!range) {
+            failures.push(item.id);
+            continue;
+          }
+          paintedRanges.current.set(item.id, range);
+        }
+        annotationRangeCache.current = { article, selectionMap, view: annotationView, ranges: new Map(paintedRanges.current), failures: [...failures] };
+      }
       for (const item of annotationView.items) {
-        if (item.status !== 'resolved') continue;
-        if (item.kind === 'highlight' && (!item.color || !HIGHLIGHT_COLORS.some(({ value }) => value === item.color))) {
-          failures.push(item.id);
-          continue;
-        }
-        const mapped = resolveHighlight(item.anchor);
-        if (!mapped.ok) {
-          failures.push(item.id);
-          continue;
-        }
-        const block = blockElements.get(mapped.blockStart);
-        const mappedBlock = sourceBlocks.get(mapped.blockStart);
-        if (!block || !mappedBlock || block.textContent !== mappedBlock.visibleText) {
-          failures.push(item.id);
-          continue;
-        }
-        const range = textRange(block, mapped.visibleStart, mapped.visibleEnd, item.anchor.displayQuote);
-        if (!range) {
-          failures.push(item.id);
-          continue;
-        }
-        paintedRanges.current.set(item.id, range);
+        const range = paintedRanges.current.get(item.id);
+        if (!range) continue;
         const baseName = item.color ? item.color : 'note';
         const name = item.id === selectedAnnotationId
           ? `mermarkd-selected-${baseName}` : `mermarkd-${baseName}`;
@@ -762,6 +790,18 @@ function App() {
           group.push(range);
           groups.set(name, group);
         }
+      }
+    } else {
+      // A source edit can be undone before returning to reading. Keep at most
+      // the hidden article's original ranges; they grant no access while the
+      // current source is dirty/mismatched. Reuse above still requires the exact
+      // analysis, annotation view and connected DOM. Native reading edits may
+      // mutate that DOM and must discard the cache immediately.
+      const cached = annotationRangeCache.current;
+      if (readerDraftDirty || (activeMode === 'reader' && dirtyPreview) ||
+        cached?.article !== article || cached?.view !== annotationView ||
+        (selectionMap !== null && cached?.selectionMap !== selectionMap)) {
+        annotationRangeCache.current = null;
       }
     }
     if (registry) {
@@ -778,16 +818,17 @@ function App() {
       paintedRanges.current.clear();
     };
   }, [activeMode, annotationView, dirtyPreview, readerDraftDirty, openedDocument?.path,
-    openedDocument?.sourceSha256, selectedAnnotationId, selectionMap]);
+    openedDocument?.sourceSha256, selectedAnnotationId, selectionMap, readingReady]);
 
   const openMarkdownUnchecked = useCallback(async () => {
     if (dirtyPreview) {
       setMessage('请先保存或放弃当前编辑，再打开另一份 Markdown。', 'alert');
       return;
     }
-    setOpening(true);
+    flushSync(() => setOpening(true));
     setMessage(null);
     try {
+      await paintOpeningFeedback();
       const opened = await window.mermarkd.openMarkdown();
       if (opened) showOpenedDocument(opened);
     } catch (error) {
@@ -802,9 +843,10 @@ function App() {
       setMessage('请先保存或放弃当前编辑，再新建 Markdown。', 'alert');
       return;
     }
-    setOpening(true);
+    flushSync(() => setOpening(true));
     setMessage(null);
     try {
+      await paintOpeningFeedback();
       const opened = await window.mermarkd.newMarkdown();
       if (opened) {
         showOpenedDocument(opened);
@@ -822,9 +864,10 @@ function App() {
       setMessage('请先保存或放弃当前编辑，再打开最近文档。', 'alert');
       return;
     }
-    setOpening(true);
+    flushSync(() => setOpening(true));
     setMessage(null);
     try {
+      await paintOpeningFeedback();
       const opened = await window.mermarkd.openRecentMarkdown(documentPath);
       showOpenedDocument(opened);
     } catch (error) {
@@ -849,9 +892,10 @@ function App() {
       if (dirtyPreview) setMessage('请先保存或放弃当前编辑，再拖入另一份 Markdown。', 'alert');
       return;
     }
-    setOpening(true);
+    flushSync(() => setOpening(true));
     setMessage(null);
     try {
+      await paintOpeningFeedback();
       const opened = await window.mermarkd.openDroppedMarkdown(file);
       showOpenedDocument(opened);
     } catch (error) {
@@ -867,9 +911,10 @@ function App() {
       setMessage('请先保存或放弃当前编辑，再从磁盘重新载入。', 'alert');
       return;
     }
-    setOpening(true);
+    flushSync(() => setOpening(true));
     setMessage(null);
     try {
+      await paintOpeningFeedback();
       const opened = await window.mermarkd.reloadMarkdown();
       showOpenedDocument(opened);
       setMessage('已从磁盘重新载入 Markdown，请审查批注的新位置。');
@@ -1013,9 +1058,17 @@ function App() {
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     target.focus({ preventScroll: true });
   }, [holdNavigatedSection, sectionIds]);
+  useLayoutEffect(() => {
+    if (!readingReady || !restoreReaderPosition.current) return;
+    restoreReaderPosition.current = false;
+    const saved = readerPosition.current;
+    if (saved?.path === openedDocument?.path) window.scrollTo({ top: saved?.scrollY ?? 0, behavior: 'auto' });
+    else if (saved?.activeSection !== null && saved?.activeSection !== undefined) jumpToSection(saved.activeSection);
+    else window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [readingReady, openedDocument?.path, jumpToSection]);
 
   useEffect(() => {
-    if (activeMode !== 'reader') return;
+    if (activeMode !== 'reader' || !readingReady) return;
     if (!readerDocument || sectionIds.length === 0) {
       setActiveSection(null);
       return;
@@ -1051,7 +1104,7 @@ function App() {
       window.removeEventListener('scroll', updateActiveSection);
       window.removeEventListener('resize', updateActiveSection);
     };
-  }, [activeMode, readerDocument, sectionIds]);
+  }, [activeMode, readingReady, readerDocument, sectionIds]);
 
   const openLink = useCallback((event: MouseEvent<HTMLAnchorElement>, href: string | undefined) => {
     event.preventDefault();
@@ -1421,7 +1474,7 @@ function App() {
   }, [activeMode, closeReaderContextMenu, openedDocument?.sourceSha256]);
 
   useEffect(() => {
-    if (activeMode !== 'reader' || !openedDocument || !readerDocument) return;
+    if (activeMode !== 'reader' || !readingReady || !openedDocument || !readerDocument) return;
     const epoch = documentEpoch.current;
     const sourceSha256 = openedDocument.sourceSha256;
     const handleSelectionChange = () => {
@@ -1466,7 +1519,7 @@ function App() {
       document.removeEventListener('selectionchange', handleSelectionChange);
       clearReaderSelection();
     };
-  }, [activeMode, clearReaderSelection, openedDocument, positionSelectionFeedback,
+  }, [activeMode, readingReady, clearReaderSelection, openedDocument, positionSelectionFeedback,
     readerDocument, rememberSelection, resolveRangeSelection]);
 
   useEffect(() => {
@@ -1819,61 +1872,30 @@ function App() {
     }
   }, [annotationView, noteFilter, setMessage, summaryCopying]);
 
-  const heading = useCallback((tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6', props: ComponentProps<'h1'> & ExtraProps) => {
-    const { node, children, ...rest } = props;
-    const blockStart = node?.position?.start.offset;
-    const index = blockStart === undefined ? undefined : headingByOffset.get(blockStart);
-    const id = index === undefined ? undefined : sectionIds[index];
-    const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-    if (readerCanEdit && activeMode === 'reader' && blockStart !== undefined && block && isReaderMappedTextBlock(selectionMap!, block)) {
-      return <ReaderEditableBlock as={tag} blockStart={blockStart} sourceText={block.visibleText} enabled
-        onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} onActivityChange={reportReaderActivity} onRestricted={reportReaderEditRestriction} id={id} tabIndex={id ? -1 : undefined} className={rest.className}>
-        {children}
-      </ReaderEditableBlock>;
-    }
-    const Tag = tag;
-    return <Tag {...rest} id={id} tabIndex={id ? -1 : undefined}
-      data-source-block-start={node?.position?.start.offset}>{children}</Tag>;
-  }, [activeMode, commitReaderTextEdit, headingByOffset, readerCanEdit, reportReaderActivity, reportReaderEditRestriction, sectionIds, selectionMap]);
-
-  const components = useMemo<Components>(() => ({
-    h1: (props) => heading('h1', props),
-    h2: (props) => heading('h2', props),
-    h3: (props) => heading('h3', props),
-    h4: (props) => heading('h4', props),
-    h5: (props) => heading('h5', props),
-    h6: (props) => heading('h6', props),
-    p: ({ node, children, ...props }) => {
-      const blockStart = node?.position?.start.offset;
-      const block = blockStart === undefined ? undefined : selectionMap?.blocks.find((candidate) => candidate.blockStart === blockStart);
-      if (readerCanEdit && activeMode === 'reader' && block && blockStart !== undefined && isReaderMappedTextBlock(selectionMap!, block)) {
-        return <ReaderEditableBlock as="p" blockStart={blockStart} sourceText={block.visibleText} enabled
-          onCommit={commitReaderTextEdit} onDraftChange={setReaderDraftDirty} onActivityChange={reportReaderActivity} onRestricted={reportReaderEditRestriction} className={props.className}>{children}</ReaderEditableBlock>;
-      }
-      return <p {...props} data-source-block-start={blockStart}>{children}</p>;
-    },
-    table: ({ node: _node, children, ...props }) => (
-      <div className="table-scroll" role="region" aria-label="表格，可水平滚动" tabIndex={0}>
-        <table {...props}>{children}</table>
-      </div>
-    ),
-    td: ({ node, children, ...props }) => (
-      <td {...props} data-source-block-start={node?.position?.start.offset}>{children}</td>
-    ),
-    th: ({ node, children, ...props }) => (
-      <th {...props} data-source-block-start={node?.position?.start.offset}>{children}</th>
-    ),
-    pre: ({ node, children, ...props }) => (
-      <pre {...props} data-source-block-start={node?.position?.start.offset} tabIndex={0} aria-label="代码块，可水平滚动">{children}</pre>
-    ),
-    a: ({ node: _node, href, children, ...props }) => (
-      <a {...props} href={href} onClick={(event) => openLink(event, href)}>{children}</a>
-    ),
-    img: ({ node: _node, src, alt }) => (
-      <LocalImage src={src} alt={alt} documentPath={openedDocument?.path ?? ''} />
-    ),
-    input: ({ node: _node, ...props }) => <input {...props} disabled readOnly />,
-  }), [activeMode, commitReaderTextEdit, heading, openedDocument?.path, openLink, readerCanEdit, reportReaderActivity, reportReaderEditRestriction, selectionMap]);
+  const retainedReading = readingAnalysis.retained;
+  // The inactive article is hidden and inert. A temporary source mismatch must
+  // not toggle contenteditable on every retained paragraph: doing so invalidates
+  // its text layout even if the edit is undone before reading resumes. Actual
+  // commands continue to use readerCanEdit and the current source checks.
+  const retainedReaderCanEdit = activeMode !== 'reader' && Boolean(retainedReading?.data)
+    ? Boolean(editorController.editor?.editable) && !editorController.busy && !openedDocument?.recoveryPending &&
+      !annotationView?.canReloadSource && readerEditFeedback?.draftText === undefined
+    : readerCanEdit;
+  const retainedReadingIndex = useMemo(() => {
+    if (!retainedReading?.data) return null;
+    const blocks = new Map<number, ReaderComponentState['analysis']['selection']['blocks'][number]>();
+    for (const block of retainedReading.data.selection.blocks) if (!blocks.has(block.blockStart)) blocks.set(block.blockStart, block);
+    const ids = sectionFragmentIds(retainedReading.data.sections);
+    const bomOffset = retainedReading.source.startsWith('\uFEFF') ? 1 : 0;
+    const headingIds = new Map(retainedReading.data.sections.sections.map(section => [section.headingRange.start - bomOffset, ids[section.index]]));
+    return { blocks, headingIds };
+  }, [retainedReading]);
+  const readerComponentState = useMemo<ReaderComponentState | null>(() => retainedReading?.data ? ({
+    analysis: retainedReading.data, blocks: retainedReadingIndex!.blocks, headingIds: retainedReadingIndex!.headingIds,
+    editable: retainedReaderCanEdit, documentPath: openedDocument?.path ?? '',
+    onCommit: commitReaderTextEdit, onDraftChange: setReaderDraftDirty, onActivityChange: reportReaderActivity,
+    onRestricted: reportReaderEditRestriction, onOpenLink: openLink,
+  }) : null, [retainedReading, retainedReadingIndex, retainedReaderCanEdit, openedDocument?.path, commitReaderTextEdit, reportReaderActivity, reportReaderEditRestriction, openLink]);
 
   const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
   const noteItems = annotationView?.items.filter((item) => item.kind === 'note') ?? [];
@@ -1926,14 +1948,9 @@ function App() {
     clearReaderSelection({ clearNative: true });
     closeReaderSearch();
     setReattachTargetId(null);
+    restoreReaderPosition.current = mode === 'reader';
     if (mode === 'reader') {
       setActiveMode('reader');
-      const savedPosition = readerPosition.current;
-      window.requestAnimationFrame(() => {
-        if (savedPosition?.path === openedDocument.path) window.scrollTo({ top: savedPosition.scrollY, behavior: 'auto' });
-        else if (savedPosition?.activeSection !== null && savedPosition?.activeSection !== undefined) jumpToSection(savedPosition.activeSection);
-        else window.scrollTo({ top: 0, behavior: 'auto' });
-      });
       return;
     }
     if (mode === 'cards') {
@@ -1941,10 +1958,9 @@ function App() {
       window.scrollTo({ top: 0, behavior: 'auto' });
       return;
     }
-    const next = editorController.editor ?? await editorController.open();
-    if (!next) return;
     setActiveMode('editor');
     window.scrollTo({ top: 0, behavior: 'auto' });
+    if (!editorController.editor) await editorController.open();
   }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, jumpToSection, openedDocument, readerDraftDirty, setMessage]);
 
   returnToInputs.current = () => {
@@ -2152,7 +2168,8 @@ function App() {
             {readerEditFeedback.draftText !== undefined ? '放弃此输入' : '关闭'}</button>
         </div>
       </section>}
-      {openedDocument && editorController.editor && <div className="workspace-editor-content" hidden={activeMode !== 'editor'}>
+      {openedDocument && editorController.editor && <div className="workspace-editor-content" hidden={activeMode !== 'editor'}
+        inert={activeMode !== 'editor'}>
         <EditorView documentKey={editorController.editor.epoch} documentName={openedDocument.name}
           active={activeMode === 'editor' && !recoveryOpen}
           value={editorText} sourceFormat={editorController.editor.sourceFormat}
@@ -2192,7 +2209,7 @@ function App() {
           onNew={() => void newMarkdown()} onOpenRecent={(documentPath) => void openRecentMarkdown(documentPath)}
           onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)} />
       ) : activeMode === 'cards' ? (
-        <CanvasView document={readerDocument!} dirty={dirtyPreview} activeSection={activeSection} focusRequest={outlineFocusRequest}
+        <CanvasView document={readerDocument!} preparedSource={readingAnalysis.data?.canvas} dirty={dirtyPreview} activeSection={activeSection} focusRequest={outlineFocusRequest}
           onSectionChange={(index) => { setActiveSection(index); readerPosition.current = null; }}
           onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} onStatusChange={reportCanvasStatus}
           onOpenProperties={() => panels.openRight('task')}
@@ -2206,10 +2223,12 @@ function App() {
             return accepted;
           }} />
       ) : activeMode === 'editor' ? editorController.editor ? null : (
-        <main className="source-editor-loading" role="status">正在准备源码编辑器…</main>
-      ) : (
-        <ReaderView>
-          <main className="reading-main" data-reading-analysis={readingAnalysis.status} aria-busy={readingAnalysis.status === 'pending'}>
+        <main className="source-editor-loading" role="status">{editorController.error
+          ? <div><p>{editorController.error}</p><button type="button" onClick={() => void editorController.open()}>重试</button></div>
+          : '正在准备源码编辑器…'}</main>
+      ) : null}
+      {openedDocument && <ReaderView active={activeMode === 'reader' && readerShown}>
+          <main className="reading-main" data-reading-analysis={readingStatus} aria-busy={readingStatus === 'pending'}>
             <div className="reader-tools">
               {editorController.editor?.editable === false && <span className="read-only-badge" title={editorController.editor.readOnlyReason}>只读</span>}
             </div>
@@ -2281,11 +2300,13 @@ function App() {
                   aria-label="关闭选区提示">×</button>
               </div>}
             <span className="sr-only" aria-live="polite">{selectionAnnouncement}</span>
-            {!readingReady ? <section className="reading-analysis-status" role={readingAnalysis.status === 'error' ? 'alert' : 'status'}>
+            {readingAnalysis.data && !readingReady && activeMode === 'reader' && <p role="status">正在排版正文…</p>}
+            {!readingAnalysis.data ? <section className="reading-analysis-status" role={readingAnalysis.status === 'error' ? 'alert' : 'status'}>
               <p>{readingAnalysis.status === 'error' ? '暂时无法准备阅读内容。可以重试，或在源码中继续。' : '正在准备阅读内容…'}</p>
               <div>{readingAnalysis.status === 'error' && <button type="button" onClick={readingAnalysis.retry}>重试</button>}
                 <button type="button" onClick={() => void changeMode('editor')}>查看源码</button></div>
-            </section> : readerDocument!.content.trim() ? <article className="markdown-body" aria-label="Markdown 正文" tabIndex={0}
+            </section> : null}
+            {readerComponentState && <ReaderComponentsProvider value={readerComponentState}><article hidden={!readingAnalysis.data && activeMode === 'reader'} className="markdown-body" aria-label="Markdown 正文" tabIndex={0} inert={!readingReady} aria-busy={!readingReady}
               onContextMenu={openReaderContextMenu} onKeyDown={handleReaderContextShortcut}
               onDoubleClick={(event) => {
                 if (!readerCanEdit || (event.target instanceof Element && event.target.closest('a, button'))) return;
@@ -2295,8 +2316,9 @@ function App() {
                   reportReaderEditRestriction(offset, '这段内容暂不能直接编辑，请在源码中继续。');
                 }
               }}>
-              <ReaderMarkdown tree={readingAnalysis.data!.renderTree} components={components} />
-            </article> : <div className="empty-document"><h2>这份文档目前没有内容</h2><p>可以打开另一份 Markdown 文件继续阅读。</p></div>}
+              <ReaderMarkdown key={retainedReading!.version} tree={readerComponentState.analysis.renderTree} components={readerComponents} active={activeMode === 'reader'} onReady={setRenderedReadingTree} />
+              {!readerDocument!.content.trim() && <div className="empty-document"><h2>这份文档目前没有内容</h2><p>可以打开另一份 Markdown 文件继续阅读。</p></div>}
+            </article></ReaderComponentsProvider>}
             {readerContextMenu && <div ref={readerContextMenuRef} className="editor-context-menu reader-context-menu" role="menu" aria-label="正文选区操作" data-reader-context-menu="true" tabIndex={-1}
               style={{ left: readerContextMenu.left, top: readerContextMenu.top }} onPointerDown={(event) => event.stopPropagation()} onKeyDown={handleReaderContextMenuKeyDown}>
               <button type="button" role="menuitem" onMouseDown={(event) => event.preventDefault()}
@@ -2344,7 +2366,7 @@ function App() {
               <span className="reader-context-note">复杂选区请切到源码视图编辑</span>
             </div>}
           </main>
-          <WorkspaceTaskPanel>
+          {activeMode === 'reader' && <WorkspaceTaskPanel>
             <div id="annotation-sidebar" className="annotation-sidebar" aria-label="批注边栏">
               <div className="annotation-sidebar-inner">
                 {annotationReferenceOnly && <p className="annotation-reference-notice" role="status" data-annotation-reference="true">
@@ -2502,9 +2524,9 @@ function App() {
                 </details>
               </div>
             </div>
-          </WorkspaceTaskPanel>
+          </WorkspaceTaskPanel>}
         </ReaderView>
-      )}
+      }
     </AppShell>
   );
 }

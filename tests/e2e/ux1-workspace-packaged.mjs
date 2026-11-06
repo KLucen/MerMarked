@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdir, mkdtemp, readFile, stat, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,7 +13,7 @@ const content = '# 工作笔记\n\n这是一段可以编辑和批注的正文。
 await writeFile(fixture, content);
 const qa = path.join(root, 'out/qa'); await mkdir(qa, { recursive: true });
 const port = 14800 + Math.floor(Math.random() * 100);
-const child = spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
+const child = await spawn(path.join(root, 'out/MerMarkd-win32-x64/MerMarkd.exe'),
   [`--inspect=${port + 200}`, `--remote-debugging-port=${port}`, `--user-data-dir=${path.join(workspace, 'user-data')}`],
   { cwd: root, stdio: 'ignore', windowsHide: true });
 const clients = [];
@@ -103,7 +104,7 @@ try {
   }
   await page.send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 800, deviceScaleFactor: 1, mobile: false });
   await click('[data-mode="editor"]');
-  await wait(`Boolean(document.querySelector('[data-editor-textarea]'))`, 'editor');
+  await wait(`Boolean(__sourceControl())`, 'editor');
   assert.equal(await page.evaluate(`document.querySelector('[data-editor-structure]').hidden`), true);
   await screenshot('source');
   await click('[data-editor-structure-toggle]');
@@ -119,7 +120,7 @@ try {
   assert.equal((await stat(fixture)).mtimeMs,before.mtimeMs);
   for(const suffix of ['.annotations.yaml','.mermarkd.json']) assert.equal(await stat(fixture+suffix).then(()=>true,()=>false),false);
   await click('[data-mode="editor"]');
-  await page.evaluate(`(() => { const e=document.querySelector('[data-editor-textarea]'); e.focus(); const setter=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set; setter.call(e,e.value+'\\n新增内容'); e.dispatchEvent(new Event('input',{bubbles:true})); })()`);
+  await page.evaluate(`(() => { const e=__sourceControl(); e.focus(); const setter=__setSourceControlValue; setter.call(e,e.value+'\\n新增内容'); e.dispatchEvent(new Event('input',{bubbles:true})); })()`);
   await wait(`document.querySelector('[data-dirty]')?.dataset.dirty==='true'`, 'dirty');
   await click('[data-mode="reader"]');
   assert.match(await page.evaluate(`document.querySelector('[data-workspace-summary]').textContent`), /未保存/);

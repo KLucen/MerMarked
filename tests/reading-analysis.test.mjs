@@ -74,6 +74,20 @@ test('leaving the document or reading mode cancels without publishing a later re
   assert.equal(worker.terminated,true); assert.equal(called,false);
 });
 
+test('startup notification is delivered once for the current task without settling or releasing it', () => {
+  const workers=[]; const results=[]; const starts=[];
+  const task=new ReadingAnalysisTask(()=>{const worker=new FakeWorker();workers.push(worker);return worker;});
+  task.run('A',0,value=>results.push(value),()=>starts.push('A'));
+  task.run('B',0,value=>results.push(value),()=>starts.push('B'));
+  const start=worker=>worker.onmessage({data:{id:worker.request.id,started:true}});
+  start(workers[0]); start(workers[1]); start(workers[1]);
+  assert.deepEqual(starts,['B']); assert.deepEqual(results,[]);
+  assert.equal(workers[1].terminated,false);
+  workers[1].reply({ready:true}); start(workers[1]);
+  assert.deepEqual(results,[{ready:true}]); assert.deepEqual(starts,['B']);
+  assert.equal(workers[1].terminated,true);
+});
+
 test('worker failure paths and retry never fall back to synchronous parsing', async () => {
   const results=[]; let startupFails=true; const workers=[];
   const task=new ReadingAnalysisTask(()=>{if(startupFails)throw Error('startup');const worker=new FakeWorker();workers.push(worker);return worker;});

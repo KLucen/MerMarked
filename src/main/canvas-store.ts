@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
-import { MAX_CANVAS_JSON_BYTES } from '../core/canvas-state.ts';
+import { MAX_CANVAS_JSON_BYTES, type CanvasSourceCache } from '../core/canvas-state.ts';
 import { parseCanvasStateJson, serializeCanvasStateJson } from '../core/canvas-state-v2.ts';
 import type { CanvasStateDocument } from '../core/canvas-state-v2.ts';
 import { prepareAndCommitDocumentTransaction } from './document-transaction.ts';
@@ -29,7 +29,7 @@ export async function saveCanvasFile(input: {
   readonly sourceSha256: string;
   readonly expectedSidecarSha256: string | null;
   readonly model: CanvasStateDocument;
-}): Promise<{ status: 'saved' | 'conflict' | 'pending'; sidecarSha256?: string; reason?: string }> {
+}, sourceCache?: CanvasSourceCache): Promise<{ status: 'saved' | 'conflict' | 'pending'; sidecarSha256?: string; reason?: string }> {
   const text = serializeCanvasStateJson(input.model);
   const bytes = Buffer.from(text, 'utf8');
   if (input.model.source.sha256 !== input.sourceSha256) return { status: 'conflict', reason: 'source-changed' };
@@ -42,7 +42,7 @@ export async function saveCanvasFile(input: {
     let annotations: Buffer | null = null;
     try { annotations = await readFile(`${input.documentPath}.annotations.yaml`); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
     const before = { markdown, annotations, canvas: existing };
-    const result = await prepareAndCommitDocumentTransaction({ documentPath: input.documentPath, before, after: { ...before, canvas: bytes } });
+    const result = await prepareAndCommitDocumentTransaction({ documentPath: input.documentPath, before, after: { ...before, canvas: bytes } }, {}, sourceCache);
     return result.status === 'committed' ? { status: 'saved', sidecarSha256: digest(bytes) }
       : { status: result.status === 'pending' ? 'pending' : 'conflict', reason: result.status };
   } catch (error) {

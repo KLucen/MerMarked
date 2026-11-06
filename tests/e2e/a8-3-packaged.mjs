@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
@@ -107,10 +108,12 @@ const yaml = `schemaVersion: 1\nsource:\n  sha256: "${hash}"\n  encoding: utf-8\
 await writeFile(annotationsPath, yaml, 'utf8');
 const port = 10700 + Math.floor(Math.random() * 200);
 const inspectorPort = port + 400;
-const child = spawn(executable, [`--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
+const child = await spawn(executable, [`--inspect=${inspectorPort}`, `--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
 let cdp; let mainCdp;
 try {
   cdp = await connect(await endpoint(port)); mainCdp = await connect(await mainEndpoint(inspectorPort)); await waitFor(cdp, `document.readyState === 'complete'`, 'renderer'); await drop(cdp, documentPath);
+  console.log('initial window', await mainCdp.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().map(w=>({visible:w.isVisible(),focused:w.isFocused(),minimized:w.isMinimized()}))'));
+  await mainCdp.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().forEach(w=>{w.restore();w.show();w.focus();})');
   await waitFor(cdp, `document.querySelector('.file-name')?.textContent === '导出样本.md'`, 'document'); await click(cdp, '[data-mode="cards"]');
   await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-view]'))`, 'canvas mode'); await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 4`, 'four cards');
   await waitFor(cdp, `document.querySelector('[data-canvas-save]')?.disabled === false`, 'measured initial layout ready');
@@ -145,12 +148,17 @@ try {
   assert.deepEqual(await readFile(documentPath), beforeMarkdown); assert.deepEqual(await readFile(annotationsPath), beforeYaml); assert.notDeepEqual(await readFile(sidecarPath), beforeCanvas);
   assert.deepEqual(await readFile(sidecarPath), seededCanvas, 'export does not persist viewport or layout changes');
   const canvasAfterExport = await readFile(sidecarPath);
-  await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'editor');
-  await cdp.evaluate(`(() => { const textarea = document.querySelector('[data-editor-textarea]'); const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; setter.call(textarea, textarea.value + String.fromCharCode(10) + 'dirty'); textarea.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(__sourceControl())`, 'editor');
+  await cdp.evaluate(`(() => { const textarea = __sourceControl(); const setter = __setSourceControlValue; setter.call(textarea, textarea.value + String.fromCharCode(10) + 'dirty'); textarea.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `document.querySelector('[data-canvas-status]').textContent.includes('写入已暂停')`, 'dirty canvas');
   assert.equal(await cdp.evaluate(`Array.from(document.querySelectorAll('[data-canvas-export]')).every((element) => element.hasAttribute('disabled'))`), true);
   assert.deepEqual(await readFile(documentPath), beforeMarkdown); assert.deepEqual(await readFile(annotationsPath), beforeYaml); assert.deepEqual(await readFile(sidecarPath), canvasAfterExport);
   console.log(JSON.stringify({ status: 'passed', formats: ['png', 'jpg', 'pdf'], fullBounds: outputs.png.size, pdfPages: outputs.pdf.pages, longChineseLabel: true, nestedAndOffscreen: true, sourceFilesUnchanged: true, dirtyExportFrozen: true }));
+} catch(error) {
+  if(cdp) console.error('failure state', await cdp.evaluate(`({visibility:document.visibilityState,status:document.querySelector('[data-canvas-status]')?.textContent,
+    nodes:[...document.querySelectorAll('.react-flow__node')].map(e=>({id:e.dataset.id,rect:e.getBoundingClientRect().toJSON(),bodyHeight:e.querySelector('.canvas-card-body')?.offsetHeight,visibility:getComputedStyle(e.element ?? e).visibility})),
+    preparation:document.querySelector('[data-canvas-preparation]')?.dataset.canvasPreparation})`));
+  throw error;
 } finally {
   mainCdp?.close(); cdp?.close(); try { execFileSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore' }); } catch { child.kill('SIGKILL'); }
   await new Promise((resolve) => setTimeout(resolve, 300)); await rm(workspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });

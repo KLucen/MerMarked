@@ -101,7 +101,10 @@ export function ReaderEditableBlock({
     if (next !== originalRef.current) {
       onActivityChange('committing', true);
       void onCommit(blockStart, originalRef.current, next).then((accepted) => {
-        if (!accepted && elementRef.current?.isConnected) restore();
+        // Native contenteditable mutations are not the cached React tree. Put
+        // its original children back even after acceptance; the next analyzed
+        // source mounts a new tree. Undo before that reply may reuse this one.
+        if (elementRef.current?.isConnected) restore();
       }).catch(() => {
         onRestricted(blockStart, '正文输入尚未应用，请保留输入并重试。', next);
         if (elementRef.current?.isConnected) restore();
@@ -148,7 +151,7 @@ export function ReaderEditableBlock({
     'data-reader-editable': enabled ? 'true' : undefined,
     'data-source-block-start': blockStart,
     title: enabled ? '点击正文直接编辑；换行或复杂编辑可在源码中继续' : undefined,
-    onFocus: () => { editingRef.current = true; },
+    onFocus: enabled ? () => { editingRef.current = true; } : undefined,
     onCompositionStart: () => { composingRef.current = true; pendingBlurRef.current = false; },
     onCompositionEnd: () => {
       composingRef.current = false;
@@ -158,6 +161,7 @@ export function ReaderEditableBlock({
       }
     },
     onBeforeInput: (event: FormEvent<HTMLElement>) => {
+      if (!enabled) { event.preventDefault(); return; }
       const inputType = (event.nativeEvent as InputEvent).inputType;
       if (!composingRef.current && (inputType === 'insertParagraph' || inputType === 'insertLineBreak' || inputType.startsWith('format'))) {
         event.preventDefault();
@@ -166,9 +170,9 @@ export function ReaderEditableBlock({
           : '阅读中暂不拆分段落，请在源码中换行。');
       }
     },
-    onInput: handleInput,
-    onPaste: handlePaste,
-    onKeyDown: handleKeyDown,
+    onInput: enabled ? handleInput : undefined,
+    onPaste: enabled ? handlePaste : undefined,
+    onKeyDown: enabled ? handleKeyDown : undefined,
     onBlur: handleBlur,
   }, children);
 }

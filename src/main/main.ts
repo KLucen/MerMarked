@@ -3,6 +3,7 @@ import type { IpcMainInvokeEvent } from 'electron';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { Worker } from 'node:worker_threads';
 import squirrelStartup from 'electron-squirrel-startup';
 import { createWindowCloseGuard } from './window-close-guard';
 import type {
@@ -31,8 +32,10 @@ import { previewSectionTransform } from '../core/section-transform';
 import type { SectionTransformOperation } from '../core/section-transform';
 import { saveAnnotationFile } from './annotation-store';
 import { loadAnnotationDocumentData } from './annotation-document-load';
+import { AnnotationReadTask } from './annotation-read-task';
 import { MarkdownEditorSession } from './markdown-editor-session';
 import { loadCanvasFile, saveCanvasFile } from './canvas-store';
+import { CanvasSourceCache } from '../core/canvas-state';
 import { loadCanvasFileV2, saveCanvasFileV2 } from './canvas-store-v2';
 import { parseCanvasJson, validateCanvasState } from '../core/canvas-state';
 import { validateCanvasStateV2 } from '../core/canvas-state-v2';
@@ -72,9 +75,11 @@ interface DocumentSession {
   };
   annotationWriteInProgress?: boolean;
   annotationRevision?: number;
+  annotationReadTask?: AnnotationReadTask;
   markdownOperationInProgress?: boolean;
   canvasWriteInProgress?: boolean;
   canvasExportInProgress?: boolean;
+  canvasSourceCache?: CanvasSourceCache;
   sectionStructurePreview?: {
     readonly token: string;
     readonly plan: Awaited<ReturnType<typeof prepareSectionStructurePlan>>;
@@ -82,6 +87,11 @@ interface DocumentSession {
 }
 
 const documentSessions = new Map<number, DocumentSession>();
+function replaceDocumentSession(id: number, session?: DocumentSession): void {
+  documentSessions.get(id)?.annotationReadTask?.cancel();
+  if (session) documentSessions.set(id, session);
+  else documentSessions.delete(id);
+}
 const recoveryPreviews = new Map<number, { token: string; documentPath: string; ref: DocumentTransactionRef; session: DocumentSession | null }>();
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder('utf-8', { fatal: true });
@@ -750,8 +760,9 @@ async function exportCanvasFor(event: IpcMainInvokeEvent, value: unknown): Promi
 
 async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocumentView> {
   const revision = session.annotationRevision ?? 0;
+  const document = session.document;
   const setLoadedState = (state: DocumentSession['annotations']): void => {
-    if ((session.annotationRevision ?? 0) === revision && !session.annotationWriteInProgress) {
+    if (session.document === document && (session.annotationRevision ?? 0) === revision && !session.annotationWriteInProgress) {
       session.annotations = state;
     }
   };
@@ -770,7 +781,16 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
       reason: '批注正在保存，请稍后重新载入。',
     };
   }
-  const result = await loadAnnotationDocumentData(session.document.path, annotationDraftDirectory());
+  session.annotationReadTask ??= new AnnotationReadTask(input => new Worker(
+    path.join(__dirname, 'annotation-read.worker.js'), { workerData: input, execArgv: [] },
+  ));
+  const { data: result, relocation } = await session.annotationReadTask.run({
+    documentPath: document.path, draftDirectory: annotationDraftDirectory(),
+    content: document.content, sourceSha256: document.sourceSha256, revision,
+  });
+  if (session.document !== document || (session.annotationRevision ?? 0) !== revision || session.annotationWriteInProgress) {
+    throw new Error('批注状态已变化，请重新载入。');
+  }
   if (!result.ok) {
     setLoadedState(undefined);
     const loaded = result.loaded;
@@ -784,7 +804,7 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
       reason: result.reason,
     };
   }
-  const { loaded, sourceBytes, currentHash, model } = result;
+  const { loaded, currentHash, model } = result;
   const view: AnnotationDocumentView = {
     status: 'ready', count: 0, unresolvedCount: 0, relocatableCount: 0,
     pendingDraftCount: loaded.pendingDrafts.length + loaded.unreadableDraftPaths.length,
@@ -796,13 +816,6 @@ async function loadAnnotations(session: DocumentSession): Promise<AnnotationDocu
   view.count = model.annotations.length;
   view.tags = model.tags.map((tag) => ({ id: tag.id, name: tag.name }));
   const sourceIsCurrent = currentHash === loaded.sourceSha256 && currentHash === session.document.sourceSha256;
-  const relocation = sourceIsCurrent
-    ? await relocateAnnotationSidecarCandidate(model, {
-        bytes: sourceBytes,
-        content: session.document.content,
-        sha256: currentHash,
-      }, safeTimestamp(model))
-    : null;
   const anchorStatuses = relocation
     ? relocation.items.map((item) => item.status === 'unchanged' ? 'resolved' as const : 'unresolved' as const)
     : model.annotations.map(() => 'unresolved' as const);
@@ -1304,7 +1317,7 @@ function registerReaderIpc(): void {
           : '恢复尚未完成或文件发生外部变化，未覆盖外部版本；请保留快照并重新检查。' };
       const document = await loadMarkdownDocument(preview.documentPath);
       assertCurrentSession(event, session);
-      documentSessions.set(event.sender.id, { document });
+      replaceDocumentSession(event.sender.id, { document });
       recoveryPreviews.delete(event.sender.id);
       return { status: 'recovered', document, message: '本次保存已恢复，三个文件已核验；原始和候选快照仍保留。' };
     } catch (error) {
@@ -1332,7 +1345,7 @@ function registerReaderIpc(): void {
     const document = await loadMarkdownDocument(filePath);
     assertCurrentSession(event, existingSession);
     assertDocumentCanBeReplaced(existingSession);
-    documentSessions.set(event.sender.id, { document });
+    replaceDocumentSession(event.sender.id, { document });
     await recordOpenedDocument(document);
     return document;
   });
@@ -1345,7 +1358,7 @@ function registerReaderIpc(): void {
     const document = await createTemporaryMarkdownDocument();
     assertCurrentSession(event, existingSession);
     assertDocumentCanBeReplaced(existingSession);
-    documentSessions.set(event.sender.id, { document });
+    replaceDocumentSession(event.sender.id, { document });
     return document;
   });
 
@@ -1368,7 +1381,7 @@ function registerReaderIpc(): void {
     const document = await loadMarkdownDocument(filePath);
     assertCurrentSession(event, existingSession);
     assertDocumentCanBeReplaced(existingSession);
-    documentSessions.set(event.sender.id, { document });
+    replaceDocumentSession(event.sender.id, { document });
     await recordOpenedDocument(document);
     return document;
   });
@@ -1384,7 +1397,7 @@ function registerReaderIpc(): void {
     const document = await loadMarkdownDocument(filePath);
     assertCurrentSession(event, existingSession);
     assertDocumentCanBeReplaced(existingSession);
-    documentSessions.set(event.sender.id, { document });
+    replaceDocumentSession(event.sender.id, { document });
     await recordOpenedDocument(document);
     return document;
   });
@@ -1400,7 +1413,7 @@ function registerReaderIpc(): void {
     const document = await loadMarkdownDocument(filePath);
     assertCurrentSession(event, session);
     assertDocumentCanBeReplaced(session);
-    documentSessions.set(event.sender.id, { document });
+    replaceDocumentSession(event.sender.id, { document });
     await recordOpenedDocument(document);
     return document;
   });
@@ -1685,7 +1698,7 @@ function registerReaderIpc(): void {
     session.canvasWriteInProgress = true;
     try {
       const result = await saveCanvasFile({ documentPath: session.document.path, sourceSha256: session.document.sourceSha256,
-        expectedSidecarSha256: entry.expectedSidecarSha256 as string | null, model });
+        expectedSidecarSha256: entry.expectedSidecarSha256 as string | null, model }, session.canvasSourceCache ??= new CanvasSourceCache());
       assertCurrentSession(event, session);
       return result.status === 'saved' ? result : { ...result, reason: result.status === 'conflict'
         ? '原文或画布在外部发生变化，未覆盖；当前画布候选仍保留。'
@@ -1729,7 +1742,7 @@ function registerReaderIpc(): void {
     session.canvasWriteInProgress = true;
     try {
       const result = await saveCanvasFileV2({ documentPath: session.document.path, sourceSha256: session.document.sourceSha256,
-        expectedSidecarSha256: entry.expectedSidecarSha256 as string | null, model });
+        expectedSidecarSha256: entry.expectedSidecarSha256 as string | null, model }, session.canvasSourceCache ??= new CanvasSourceCache());
       assertCurrentSession(event, session);
       return result.status === 'saved' ? result : { ...result, reason: result.status === 'conflict'
         ? '原文或画布在外部发生变化，未覆盖；当前画布候选仍保留。'
@@ -1857,7 +1870,7 @@ function createWindow(): void {
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event) => event.preventDefault());
   window.webContents.on('destroyed', () => {
-    documentSessions.delete(window.webContents.id);
+    replaceDocumentSession(window.webContents.id);
     recoveryPreviews.delete(window.webContents.id);
   });
 

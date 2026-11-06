@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -20,7 +21,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -107,7 +108,7 @@ try {
         if(reading&&window.__failReading)throw Error('QA reading worker startup failure');super(...args);
         if(reading)window.__readingWorkers.push(this);
         this.addEventListener('error',event=>window.__workerError={message:event.message,filename:event.filename});
-        this.addEventListener('message',event=>{if(reading&&window.__holdReading){event.stopImmediatePropagation();window.__readingReplies.push(()=>this.onmessage?.(event));}});}
+        this.addEventListener('message',event=>{if(reading&&window.__holdReading&&!event.data.started){event.stopImmediatePropagation();window.__readingReplies.push(()=>this.onmessage?.(event));}});}
       terminate(){this.wasTerminated=true;this.terminatedAt=performance.now();super.terminate();}
     };`);
   const before=await snapshot();
@@ -117,7 +118,7 @@ try {
   assert.equal(await page.evaluate('document.querySelectorAll(".markdown-body,.toc-link,[data-reader-editable]").length'),0,'pending exposes no stale content or offsets');
   await screenshot('reading-pending');
   await click('[data-mode="editor"]');
-  await wait('Boolean(document.querySelector("[data-editor-textarea]")?.getClientRects().length)','source during analysis');
+  await wait('Boolean(__sourceControl()?.getClientRects().length)','source during analysis');
   assert.equal(await page.evaluate('window.__readingWorkers[0].wasTerminated'),true,'leaving interrupts worker');
   await page.evaluate('window.__readingReplies.shift()()'); await frame();
   assert.equal(await page.evaluate('Boolean(document.querySelector(".markdown-body"))'),false,'queued old reply does not leave source mode');
@@ -159,7 +160,7 @@ try {
 
   // Dirty text snapshots invalidate previous mappings without writing any sidecar.
   await click('[data-mode="editor"]');
-  await page.evaluate('(()=>{const e=document.querySelector("[data-editor-textarea]");e.focus();e.setSelectionRange(0,0)})()');
+  await page.evaluate('(()=>{const e=__sourceControl();e.focus();e.setSelectionRange(0,0)})()');
   await page.send('Input.insertText',{text:'# Pending candidate\n\n'});
   await wait('document.querySelector(".app-shell").dataset.dirty==="true"','dirty source');
   await page.evaluate('window.__holdReading=true');
@@ -167,7 +168,7 @@ try {
   await wait(pendingReading,'dirty analysis pending');
   assert.equal(await page.evaluate('document.querySelectorAll("[data-reader-editable],.toc-link").length'),0);
   await click('[data-mode="editor"]'); await frame();
-  await page.evaluate('document.querySelector("[data-editor-textarea]").focus()');
+  await page.evaluate('__sourceControl().focus()');
   await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','undo clean');
   await page.evaluate('window.__holdReading=false;window.__readingReplies.shift()()');
@@ -187,7 +188,7 @@ try {
       window.__sourceSwitchDOM=performance.now();observer.disconnect();}});observer.observe(document.body,{subtree:true,attributes:true,attributeFilter:['data-active-mode']});`);
   const switchStarted=performance.now();
   await click('[data-mode="editor"]');
-  await wait('Boolean(document.querySelector("[data-editor-textarea]")?.getClientRects().length)','source while large analysis is pending');
+  await wait('Boolean(__sourceControl()?.getClientRects().length)','source while large analysis is pending');
   const switchSourceMs=Math.round(performance.now()-switchStarted);
   assert.equal(await page.evaluate('window.__readingWorkers.at(-1).wasTerminated'),true,'large analysis is interrupted');
   assert.equal(await readFile(large,'utf8'),largeContent);

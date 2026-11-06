@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -20,7 +21,7 @@ await writeFile(fixture+'.mermarkd.json', serializeCanvasJson(canvas));
 await writeFile(fixture+'.annotations.yaml', 'schemaVersion: 1\nsource:\n  sha256: "'+hash+'"\n  encoding: utf-8\n  coordinateSystem: utf8-byte\ntags: []\nannotations: []\n');
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -92,8 +93,11 @@ async function snapshot(file = fixture) {
 
 const ready = 'document.querySelector("[data-reading-analysis]")?.dataset.readingAnalysis==="ready"';
 async function openFile(file) {
+  await page.evaluate('void (window.__beforePerf3bOpen=document.querySelector(".markdown-body h1"))');
   await main.evaluate('process.mainModule.require("electron").dialog.showOpenDialog=async()=>({canceled:false,filePaths:['+JSON.stringify(file)+']})');
-  await click('[aria-label="打开文档"]'); await wait(ready,'new reader');
+  await click('[aria-label="打开文档"]');
+  await wait(ready+' && document.querySelector(".workspace-current-name")?.textContent==='+JSON.stringify(path.basename(file))+
+    ' && Boolean(document.querySelector(".markdown-body h1")) && document.querySelector(".markdown-body h1")!==window.__beforePerf3bOpen','new reader');
 }
 try {
   page=await connect(port,'page'); main=await connect(port+200,'node');
@@ -127,7 +131,7 @@ try {
   await click('[aria-label="关闭正文查找"]');
   const workers=await page.evaluate('window.__renderWorkers.length');
   await click('[data-mode="editor"]');
-  assert.equal(await page.evaluate('document.querySelector("[data-editor-textarea]").value'),content.replaceAll('\r\n','\n'));
+  assert.equal(await page.evaluate('__sourceControl().value'),content.replaceAll('\r\n','\n'));
   await click('[data-mode="reader"]'); await wait(ready,'cached prepared reader');
   assert.equal(await page.evaluate('window.__renderWorkers.length'),workers,'unchanged complete projection is reused');
   assert.deepEqual(await snapshot(),before);

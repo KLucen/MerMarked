@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawn, execFileSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -36,7 +37,7 @@ if(scale){
 }
 const qa = path.join(root, 'out/qa'); await mkdir(qa, {recursive:true});
 const port = 16000+Math.floor(Math.random()*100);
-const child=spawn(process.env.MERMARKD_QA_EXE ?? path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
+const child=await spawn(process.env.MERMARKD_QA_EXE ?? path.join(root,'out/MerMarkd-win32-x64/MerMarkd.exe'),[
   '--inspect='+(port+200),'--remote-debugging-port='+port,'--user-data-dir='+path.join(workspace,'user-data')
 ],{cwd:root,stdio:'ignore',windowsHide:true});
 const clients=[];
@@ -50,14 +51,16 @@ async function connect(port, type) {
   assert.ok(target, `endpoint ${type}`);
   const socket = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve) => socket.addEventListener('open', resolve, { once: true }));
-  const pending = new Map(); let nextId = 1;
+  const pending = new Map(); const events = new Map(); let nextId = 1;
   socket.addEventListener('message', (event) => {
     const result = JSON.parse(event.data); const request = pending.get(result.id);
+    if (result.method && events.has(result.method)) { events.get(result.method)(result.params); events.delete(result.method); }
     if (!request) return;
-    pending.delete(result.id); result.error ? request.reject(Error(JSON.stringify(result.error))) : request.resolve(result.result);
+    pending.delete(result.id); clearTimeout(request.timer); result.error ? request.reject(Error(JSON.stringify(result.error))) : request.resolve(result.result);
   });
   const client = {
-    send(method, params = {}) { return new Promise((resolve, reject) => { const id = nextId++; pending.set(id, { resolve, reject }); socket.send(JSON.stringify({ id, method, params })); }); },
+    once(method) { return new Promise(resolve => events.set(method, resolve)); },
+    send(method, params = {}) { return new Promise((resolve, reject) => { const id = nextId++; const timer=setTimeout(()=>{pending.delete(id);reject(Error('CDP timeout: '+method));},30000);pending.set(id, { resolve, reject, timer }); socket.send(JSON.stringify({ id, method, params })); }); },
     async evaluate(expression) {
       const result = await this.send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: true });
       if (result.exceptionDetails) throw Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text);
@@ -105,14 +108,47 @@ async function snapshot(file = fixture) {
 }
 
 const measurements=[];
+async function assertVisibleWindow(){
+  assert.equal(await main.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().some(w=>w.isVisible()&&!w.isMinimized())'),true,'measurement window must be visible');
+  assert.equal(await page.evaluate('document.visibilityState'),'visible','measurement page must be visible');
+}
 async function measure(name, action, condition) {
-  await page.evaluate(`window.__frameGaps=[]; window.__lastFrame=performance.now();`);
+  await assertVisibleWindow();
+  const tracing = process.env.MERMARKD_PERF_TRACE_STAGE === name;
+  if (tracing) {
+    await page.send('Tracing.start', { categories: 'devtools.timeline,v8,blink.user_timing', transferMode: 'ReturnAsStream' });
+    await page.send('Profiler.enable'); await page.send('Profiler.start');
+  }
+  await page.evaluate(`window.__frameGaps=[]; window.__frameStalls=[]; window.__frameIntervals=[]; window.__measurementStart=window.__lastFrame=performance.now();`);
+  await page.evaluate(`(()=>{const sample=window.__interaction={input:null,paint:null};let frame,paintFrame;
+    const input=()=>{sample.input??=performance.now();};const events=['pointerdown','beforeinput','keydown','input'];
+    events.forEach(type=>document.addEventListener(type,input,true));
+    const poll=()=>{if(sample.input!==null&&sample.paint===null&&!paintFrame&&(${condition??'false'})) paintFrame=requestAnimationFrame(()=>{sample.paint=performance.now();});frame=requestAnimationFrame(poll);};frame=requestAnimationFrame(poll);
+    window.__interactionCleanup=()=>{events.forEach(type=>document.removeEventListener(type,input,true));[frame,paintFrame].forEach(cancelAnimationFrame);};})()`);
   const started=performance.now();
   await action();
   if(condition) await wait(condition,name);
   await frame();
   const elapsedMs=Math.round(performance.now()-started);
   measurements.push({name,elapsedMs,maxFrameGapMs:await page.evaluate('Math.round(Math.max(0,...window.__frameGaps))')});
+  measurements.at(-1).inputToReadyPaintMs=await page.evaluate('window.__interaction.paint===null?null:Math.round(window.__interaction.paint-window.__interaction.input)');
+  Object.assign(measurements.at(-1),await page.evaluate(`(()=>{const input=window.__interaction.input??window.__measurementStart;return {
+    interactionMaxFrameGapMs:Math.round(Math.max(0,...window.__frameIntervals.map(frame=>Math.max(0,frame.end-Math.max(input,frame.start))))),
+    preInputMaxFrameGapMs:Math.round(Math.max(0,...window.__frameIntervals.filter(frame=>frame.end<=input).map(frame=>frame.end-frame.start)))
+  };})()`));
+  measurements.at(-1).frameStalls=await page.evaluate('window.__frameStalls.map(frame=>({...frame,relativeToInputMs:window.__interaction.input===null?null:Math.round(frame.start-window.__interaction.input)}))');
+  await page.evaluate('window.__interactionCleanup()');
+  if (tracing) {
+    const basename = path.join(qa, 'perf3d-' + (process.env.MERMARKD_PERF_LABEL ?? 'current') + '-' + name);
+    const { profile } = await page.send('Profiler.stop');
+    await writeFile(basename + '.cpuprofile', JSON.stringify(profile));
+    const completed = page.once('Tracing.tracingComplete'); await page.send('Tracing.end');
+    const { stream } = await completed; let trace = '';
+    for (;;) { const part = await page.send('IO.read', { handle: stream }); trace += part.data; if (part.eof) break; }
+    await page.send('IO.close', { handle: stream });
+    await writeFile(basename + '.trace.json', trace);
+  }
+  await assertVisibleWindow();
   const heap=await page.send('Runtime.getHeapUsage');
   measurements.at(-1).usedHeapMiB=Math.round(heap.usedSize/1024/1024);
   console.log('measured',name,elapsedMs);
@@ -128,8 +164,10 @@ try {
   await page.send('Emulation.setFocusEmulationEnabled',{enabled:true});
   await wait('Boolean(document.querySelector("[data-start-open]"))','start');
   await page.send('Page.bringToFront'); await metrics(1200,800);
-  await page.evaluate(`window.__frameGaps=[]; window.__lastFrame=performance.now();
-    function tick(time){window.__frameGaps.push(time-window.__lastFrame);window.__lastFrame=time;
+  await page.evaluate(`window.__frameGaps=[]; window.__frameStalls=[]; window.__frameIntervals=[]; window.__lastFrame=performance.now();
+    function tick(time){const gap=time-window.__lastFrame;window.__frameGaps.push(gap);
+      window.__frameIntervals.push({start:window.__lastFrame,end:time});
+      if(gap>80)window.__frameStalls.push({start:window.__lastFrame,duration:Math.round(gap)});window.__lastFrame=time;
       if(${scale}&&window.__readingTrace&&!window.__readingTrace.annotationsReady&&CSS.highlights.get('mermarkd-amber')?.size===500)window.__readingTrace.annotationsReady=performance.now();
       requestAnimationFrame(tick)}requestAnimationFrame(tick)`);
   await page.evaluate(`window.__readingTrace={};window.__longTasks=[];
@@ -148,7 +186,7 @@ try {
   await main.evaluate('process.mainModule.require("electron").dialog.showOpenDialog=async()=>({canceled:false,filePaths:['+JSON.stringify(fixture)+']})');
   await page.evaluate('window.__readingTrace.started=performance.now()');
   if (process.env.MERMARKD_PERF_PROFILE) { await page.send('Profiler.enable'); await page.send('Profiler.start'); }
-  await measure('open-reader',()=>click('[data-start-open]'),'document.querySelectorAll(".markdown-body h1").length==='+headingCount);
+  await measure('open-reader',()=>click('[data-start-open]'),'document.querySelectorAll(".markdown-body h1").length==='+headingCount+' && document.querySelector("[data-reading-analysis]")?.dataset.readingAnalysis==="ready"');
   if (process.env.MERMARKD_PERF_PROFILE) {
     const { profile } = await page.send('Profiler.stop');
     await writeFile(path.join(qa,'perf3d-open-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));
@@ -179,23 +217,24 @@ try {
   await measure('reader-find-many',()=>query('plain content'),'document.querySelector(".reader-searchbar output").textContent.includes("1 / 1000")');
   await measure('reader-find-rapid',async()=>{await query('absent-one');await query('absent-two');await query('unique-perf-search-token');},matchIs('unique-perf-search-token'));
   await click('[aria-label="关闭正文查找"]');
-  await measure('switch-source',()=>click('[data-mode="editor"]'),'Boolean(document.querySelector("[data-editor-textarea]")?.getClientRects().length)');
+  await measure('switch-source',()=>click('[data-mode="editor"]'),'(()=>{const e=__sourceControl();return Boolean(e && !e.closest("[hidden],[inert]") && e.getClientRects().length && getComputedStyle(e.element ?? e).visibility==="visible");})()');
   await frame();
-  await page.evaluate('(()=>{const e=document.querySelector("[data-editor-textarea]");e.focus();e.setSelectionRange(0,0)})()');
+  await page.evaluate('(()=>{const e=__sourceControl();e.focus();e.setSelectionRange(0,0)})()');
   await page.send('Performance.enable');
   const metricsBefore=await page.send('Performance.getMetrics');
-  await page.evaluate(`window.__inputTrace={};const e=document.querySelector('[data-editor-textarea]');
+  await page.evaluate(`window.__inputTrace={};const e=__sourceControl();
     e.addEventListener('beforeinput',()=>{window.__inputTrace.beforeInput=performance.now();},{once:true,capture:true});
     e.addEventListener('input',()=>{const t=window.__inputTrace;t.input=performance.now();requestAnimationFrame(()=>requestAnimationFrame(()=>{t.painted=performance.now();}));},{once:true,capture:true});
     window.addEventListener('input',()=>{window.__inputTrace.handled=performance.now();},{once:true});`);
   if (process.env.MERMARKD_PERF_INPUT_PROFILE) { await page.send('Profiler.enable'); await page.send('Profiler.start'); }
   await measure('source-input-next-frame',()=>page.send('Input.insertText',{text:'prefix\n\n'}),'document.querySelector(".app-shell").dataset.dirty==="true"');
+  assert.equal(await page.evaluate(`__sourceControl().value.startsWith(${JSON.stringify('prefix\n\n')})`),true,'native input retains complete inserted text');
   if (process.env.MERMARKD_PERF_INPUT_PROFILE) { const {profile}=await page.send('Profiler.stop');await writeFile(path.join(qa,'perf3d-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile)); }
   const metricsAfter=await page.send('Performance.getMetrics');
   const inputTrace=await page.evaluate(`(()=>{const t=window.__inputTrace;return {nativeInputMs:t.input-t.beforeInput,handlerMs:t.handled-t.input,eventToFrameMs:t.painted-t.beforeInput};})()`);
   inputTrace.metrics=Object.fromEntries(metricsAfter.metrics.filter(m=>['LayoutDuration','RecalcStyleDuration','ScriptDuration','TaskDuration'].includes(m.name)).map(m=>[m.name,(m.value-metricsBefore.metrics.find(b=>b.name===m.name).value)*1000]));
   await wait('document.querySelectorAll(".toc-link").length==='+headingCount,'updated outline');
-  await page.evaluate('document.querySelector("[data-editor-textarea]").focus()');
+  await page.evaluate('__sourceControl().focus()');
   await key('z','KeyZ',90,2);
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','undo clean');
   if(scale){
@@ -205,7 +244,7 @@ try {
     measurements.at(-1).visibleCards=visibleCards;
     assert.equal(visibleCards,200,'fit view contains 200 rendered cards');
     await screenshot('scale-cards');
-    await measure('return-reader',()=>click('[data-mode="reader"]'),'CSS.highlights.get("mermarkd-amber")?.size===500');
+    await measure('return-reader',()=>click('[data-mode="reader"]'),'document.querySelector("[data-reading-analysis]")?.dataset.readingAnalysis==="ready" && CSS.highlights.get("mermarkd-amber")?.size===500');
   }
   assert.deepEqual(await snapshot(),before,'profiling and buffer undo do not write content files');
   const workerTrace=await page.evaluate(`(()=>{const t=window.__readingTrace;return {loadingToCreateMs:t.created-t.loading,createToPostMs:t.posted-t.created,postToReplyMs:t.reply-t.posted,analysisMs:t.analysisMs,

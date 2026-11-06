@@ -1,6 +1,7 @@
 import { openWorkspaceTask } from './workspace-controls.mjs';
 import assert from 'node:assert/strict';
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import { spawn } from './packaged-window.mjs';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import os from 'node:os';
@@ -38,7 +39,7 @@ const yaml = `schemaVersion: 1\nsource:\n  sha256: "${hash}"\n  encoding: utf-8\
 await writeFile(annotationsPath, yaml);
 const annotationMtime = (await stat(annotationsPath)).mtimeMs;
 const port = 10500 + Math.floor(Math.random() * 200);
-const child = spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
+const child = await spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], { cwd: root, stdio: 'ignore' });
 let cdp;
 try {
   cdp = await connect(await endpoint(port)); await waitFor(cdp, `document.readyState === 'complete'`, 'renderer'); await drop(cdp, documentPath);
@@ -94,8 +95,8 @@ try {
   }
   await cdp.send('Emulation.clearDeviceMetricsOverride');
   const sidecarBeforeDirty = await readFile(sidecarPath);
-  await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'editor');
-  await cdp.evaluate(`(() => { const textarea = document.querySelector('[data-editor-textarea]'); const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set; setter.call(textarea, textarea.value + String.fromCharCode(10) + 'Dirty'); textarea.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await click(cdp, '[data-mode="editor"]'); await waitFor(cdp, `Boolean(__sourceControl())`, 'editor');
+  await cdp.evaluate(`(() => { const textarea = __sourceControl(); const setter = __setSourceControlValue; setter.call(textarea, textarea.value + String.fromCharCode(10) + 'Dirty'); textarea.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-view]'))`, 'dirty canvas');
   await waitFor(cdp, `document.querySelector('[data-canvas-status]').textContent.includes('写入已暂停')`, 'dirty freeze');
   assert.deepEqual(await readFile(sidecarPath), sidecarBeforeDirty);
@@ -104,7 +105,7 @@ try {
   assert.equal(dirtyWrite.status, 'conflict');
   assert.deepEqual(await readFile(sidecarPath), sidecarBeforeDirty);
   await click(cdp, '[data-mode="editor"]'); await click(cdp, '[aria-label="文档菜单"]'); await click(cdp, '[data-workspace-discard]'); await click(cdp, '.workspace-discard-confirm-button');
-  await waitFor(cdp, `Boolean(document.querySelector('[data-editor-textarea]'))`, 'discard'); await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-view]'))`, 'reopen cards'); await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 2`, 'restored collapsed cards');
+  await waitFor(cdp, `Boolean(__sourceControl())`, 'discard'); await click(cdp, '[data-mode="cards"]'); await waitFor(cdp, `Boolean(document.querySelector('[data-canvas-view]'))`, 'reopen cards'); await waitFor(cdp, `document.querySelectorAll('.react-flow__node').length === 2`, 'restored collapsed cards');
   await waitFor(cdp, `document.querySelectorAll('.react-flow__edge').length === 1`, 'reopened arrow rendered');
   assert.equal(await readFile(documentPath, 'utf8'), content);
   assert.equal(await readFile(annotationsPath, 'utf8'), yaml);

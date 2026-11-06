@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { link, lstat, open, readFile, readdir, realpath, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { parseAnnotationYaml, MAX_ANNOTATION_YAML_BYTES } from '../core/annotations.ts';
-import { createCanvasSourceSnapshot, MAX_CANVAS_JSON_BYTES, reconcileCanvasState, type CanvasSourceSnapshot } from '../core/canvas-state.ts';
+import { createCanvasSourceSnapshot, MAX_CANVAS_JSON_BYTES, reconcileCanvasState, type CanvasSourceSnapshot, type CanvasSourceCache } from '../core/canvas-state.ts';
 import { parseCanvasStateJson, reconcileCanvasStateV2 } from '../core/canvas-state-v2.ts';
 import type { CanvasStateDocument } from '../core/canvas-state-v2.ts';
 import { assertMarkdownLineEndingsPreserved, decodeMarkdownBytes } from '../core/markdown-source.ts';
@@ -116,7 +116,7 @@ function bundleHashes(bundle: DocumentBundle): Record<DocumentFileKind, string |
   return { markdown: digest(bundle.markdown), annotations: bundle.annotations === null ? null : digest(bundle.annotations), canvas: bundle.canvas === null ? null : digest(bundle.canvas) };
 }
 
-interface ValidationContext { snapshot?: CanvasSourceSnapshot }
+interface ValidationContext { snapshot?: CanvasSourceSnapshot; sourceCache?: CanvasSourceCache }
 
 async function validateBundles(before: DocumentBundle, after: DocumentBundle, context: ValidationContext = {}): Promise<void> {
   for (const kind of kinds) {
@@ -131,9 +131,6 @@ async function validateBundles(before: DocumentBundle, after: DocumentBundle, co
   if (original.format.bomByteLength !== next.format.bomByteLength) invalid();
   if (beforeHash !== afterHash && original.format.lineEnding === 'mixed') invalid();
   assertMarkdownLineEndingsPreserved(original.format, next.format);
-  const snapshot = context.snapshot ?? createCanvasSourceSnapshot(next.content);
-  if (snapshot.source !== next.content) invalid();
-  context.snapshot = snapshot;
   const oldAnnotations = before.annotations === null ? null : parseAnnotationYaml(decode(before.annotations));
   if (after.annotations !== null) {
     const model = parseAnnotationYaml(decode(after.annotations));
@@ -155,6 +152,9 @@ async function validateBundles(before: DocumentBundle, after: DocumentBundle, co
     const model = parseCanvasStateJson(decode(after.canvas));
     if (!same(before.canvas, after.canvas)) {
       if (model.source.sha256 !== afterHash) invalid();
+      const snapshot = context.snapshot ?? context.sourceCache?.get(next.content) ?? createCanvasSourceSnapshot(next.content);
+      if (snapshot.source !== next.content) invalid();
+      context.snapshot = snapshot;
       const unresolvedCardIds = model.schemaVersion === 2
         ? (await reconcileCanvasStateV2(model, { bytes: after.markdown, content: next.content, sha256: afterHash }, undefined, snapshot)).unresolvedCardIds
         : (await reconcileCanvasState(model, { bytes: after.markdown, content: next.content, sha256: afterHash }, undefined, snapshot)).unresolvedCardIds;
@@ -180,9 +180,10 @@ export async function prepareDocumentTransaction(input: TransactionInput): Promi
 }
 
 /** Reuse only source-derived work; publish still reloads and validates the journal and all three files. */
-export async function prepareAndCommitDocumentTransaction(input: TransactionInput, operations: DocumentTransactionOperations = {}): Promise<DocumentTransactionResult> {
+export async function prepareAndCommitDocumentTransaction(input: TransactionInput, operations: DocumentTransactionOperations = {},
+  sourceCache?: CanvasSourceCache): Promise<DocumentTransactionResult> {
   const documentPath = input.documentPath;
-  const context: ValidationContext = {};
+  const context: ValidationContext = { sourceCache };
   const ref = await prepare(input, context);
   return publish(documentPath, ref, false, operations, context);
 }
