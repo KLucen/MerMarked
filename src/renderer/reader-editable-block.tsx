@@ -101,6 +101,7 @@ export function ReaderEditableBlock({
     if (next !== originalRef.current) {
       onActivityChange('committing', true);
       void onCommit(blockStart, originalRef.current, next).then((accepted) => {
+        if (!accepted) onRestricted(blockStart, '正文输入尚未应用，请在源码中继续。', next);
         // Native contenteditable mutations are not the cached React tree. Put
         // its original children back even after acceptance; the next analyzed
         // source mounts a new tree. Undo before that reply may reuse this one.

@@ -12,6 +12,8 @@ export interface SourceSelection {
 export interface SourceSurfaceHandle {
   focus(): void;
   text(): string;
+  lineCount(): number;
+  offsetForLine(line: number): number | null;
   selection(): SourceSelection;
   select(selection: SourceSelection, reveal?: boolean): void;
 }
@@ -20,6 +22,7 @@ interface Props {
   readonly documentName: string;
   readonly value: string;
   readonly readOnly: boolean;
+  readonly softWrap?: boolean;
   readonly onChange: (value: string, selection: SourceSelection) => void;
   readonly onSelect: (selection: SourceSelection) => void;
   readonly onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
@@ -38,10 +41,17 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
   const latest = useRef(props); latest.current = props;
   const text = useRef(props.value);
   const readonly = useRef(new Compartment());
+  const wrapping = useRef(new Compartment());
+  const wrapped = useRef(Boolean(props.softWrap));
   const syncing = useRef(false);
   useImperativeHandle(ref, () => ({
     focus: () => editor.current?.focus(),
     text: () => text.current,
+    lineCount: () => editor.current?.state.doc.lines ?? 1,
+    offsetForLine: line => {
+      const document = editor.current?.state.doc;
+      return document && Number.isSafeInteger(line) && line >= 1 && line <= document.lines ? document.line(line).from : null;
+    },
     selection: () => editor.current ? selection(editor.current) : { start: 0, end: 0, direction: 'none' },
     select: (next, reveal) => {
       const view = editor.current;
@@ -56,10 +66,12 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
   useLayoutEffect(() => {
     const current = latest.current;
     text.current = current.value;
+    wrapped.current = Boolean(current.softWrap);
     const view = new EditorView({ parent: host.current!, state: EditorState.create({ doc: current.value, extensions: [
       // No local history: all modes use the owner's single transaction history.
       keymap.of([{ key: 'Enter', run: insertNewline }, ...defaultKeymap]),
       EditorState.tabSize.of(4), readonly.current.of(EditorState.readOnly.of(current.readOnly)),
+      wrapping.current.of(current.softWrap ? EditorView.lineWrapping : []),
       EditorView.contentAttributes.of({ 'aria-label': 'Markdown 源码', 'data-source-input': 'true', spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off' }),
       EditorView.updateListener.of(update => {
         if (syncing.current) return;
@@ -92,6 +104,13 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
     } finally { syncing.current = false; }
   }, [props.value, props.readOnly, props.documentKey]);
 
-  return <div ref={host} className="source-editor-surface" data-source-editor="true" title={props.documentName}
+  useLayoutEffect(() => {
+    const next = Boolean(props.softWrap);
+    if (!editor.current || wrapped.current === next) return;
+    wrapped.current = next;
+    editor.current.dispatch({ effects: wrapping.current.reconfigure(next ? EditorView.lineWrapping : []) });
+  }, [props.softWrap, props.documentKey]);
+
+  return <div ref={host} className="source-editor-surface" data-source-editor="true" data-source-wrap={Boolean(props.softWrap)} title={props.documentName}
     onKeyDown={props.onKeyDown} onContextMenu={props.onContextMenu} />;
 });

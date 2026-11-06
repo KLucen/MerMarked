@@ -1,5 +1,16 @@
 # MerMarkd 开发进度
 
+## 2026-11-06 · UX7A 编辑范围与源码便利（软件验收通过，准备上传）
+
+基于已合并 UX6B / [PR #17](https://github.com/KLucen/MerMarked/pull/17)，main `028c210`，分支 `codex/ux7-editing-guidance`。本次为设计复核第 5 批 UX7 的软件子批次，边界和证据见 [UX7A_ACCEPTANCE.md](UX7A_ACCEPTANCE.md)、ADR-051；不声明 UX7 整批或 P0 退出。
+
+- 阅读中只保留当前目标的一份编辑能力提示，并按当前文档/正文/解析器范围进入源码；BOM、CRLF 和 UTF-16 位置对应完整 LF 模型。提示浮动显示并可关闭，不移动正文，不为每段增加控件。受限输入保留完整未应用文字，旧文档的失败反馈不串入新文档。
+- 源码新增内存软换行选项、Ctrl+G 行定位与展开式快捷键帮助。显示重配不改正文、选区或共享历史；行定位使用 CodeMirror 逻辑行，非法行号不移动光标，组合期间不抢先处理 Escape/提交，恢复模态阻断 Ctrl+G。
+- 最终 G 类型检查、315/315 单测和 Squirrel make 通过；make 后 27 套窗口回归及强制冷优化的真实 Vite 完整 UX7 专项通过，服务已停止。原布局位移、测试 Enter 字符事件和脚本表达式失败日志保留。
+- 已尝试准备真实 IME：原生工具未列出唯一隔离测试窗口，因此没有发送原生按键、观察候选或组合事件。系统语言列表 en-US 和 WeType 配置不能证明中文候选流程通过，也不能据此宣称本机没有中文输入法；证据 `out/qa/ux7-ime-attempt.json`。测试进程已停止，没有改系统语言设置或用户文档。
+
+真实中文 IME 验收仍是 UX7 后续门槛，合成 composition 仅回归组合状态保护。其后推进 UX8；物理多屏 DPI、干净安装/升级/卸载与公开发布仍分别待 QA1，P0 未完成。三项用户原有修改继续校验并排除提交。
+
 ## 2026-11-06 · UX6B 文档流程与保存语义（已推送，PR #17 待审）
 
 基于已合并 PERF3 / [PR #16](https://github.com/KLucen/MerMarked/pull/16)，main `19e1402`，分支 `codex/ux6b-document-flow`。对应设计复核第 4 批，验收细节见 [UX6B_ACCEPTANCE.md](UX6B_ACCEPTANCE.md)，架构决定见 ADR-050。

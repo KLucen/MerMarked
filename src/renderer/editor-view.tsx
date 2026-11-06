@@ -208,6 +208,8 @@ export function MarkdownEditorView({
 }: MarkdownEditorViewProps) {
   const sourceRef = useRef<SourceSurfaceHandle>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const lineInputRef = useRef<HTMLInputElement>(null);
+  const lineComposing = useRef(false);
   const currentValue = useRef(value);
   const pendingValue = useRef<string | null>(null);
   const selection = useRef<EditorSelection>({ start: 0, end: 0, direction: 'none' });
@@ -219,6 +221,12 @@ export function MarkdownEditorView({
   const [cursor, setCursor] = useState<SourceEditorCursor>(() => cursorFor(value, selection.current));
   const [searchOpen, setSearchOpen] = useState(false);
   const [replaceOpen, setReplaceOpen] = useState(false);
+  const [lineOpen, setLineOpen] = useState(false);
+  const [lineInput, setLineInput] = useState('1');
+  const [lineError, setLineError] = useState<string | null>(null);
+  const [lineLimit, setLineLimit] = useState(1);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [softWrap, setSoftWrap] = useState(false);
   const [query, setQuery] = useState('');
   const [replacement, setReplacement] = useState('');
   const [searchIndex, setSearchIndex] = useState(0);
@@ -246,6 +254,13 @@ export function MarkdownEditorView({
     wasActive.current = active;
     return undefined;
   }, [active]);
+
+  useEffect(() => {
+    setLineOpen(false);
+    setLineError(null);
+    setOptionsOpen(false);
+    lineComposing.current = false;
+  }, [active, documentKey]);
 
   useEffect(() => {
     setAnnotationImpact(null);
@@ -428,6 +443,7 @@ export function MarkdownEditorView({
     const selected = currentValue.current.slice(selection.current.start, selection.current.end);
     if (selected && !/[\r\n]/.test(selected)) setQuery(selected);
     setSearchOpen(true);
+    setLineOpen(false);
     setReplaceOpen(withReplace);
     setActionMessage(null);
     window.requestAnimationFrame(() => {
@@ -441,6 +457,38 @@ export function MarkdownEditorView({
     setReplaceOpen(false);
     sourceRef.current?.focus();
   }, []);
+
+  const openLine = useCallback(() => {
+    setLineLimit(sourceRef.current?.lineCount() ?? 1);
+    setLineInput(String(cursorFor(currentValue.current, selection.current).line));
+    setLineError(null);
+    setLineOpen(true);
+    setContextMenu(null);
+    setSearchOpen(false);
+    setReplaceOpen(false);
+    window.requestAnimationFrame(() => { lineInputRef.current?.focus(); lineInputRef.current?.select(); });
+  }, []);
+
+  const closeLine = useCallback(() => {
+    setLineOpen(false);
+    setLineError(null);
+    sourceRef.current?.focus();
+  }, []);
+
+  const goToLine = () => {
+    const limit = sourceRef.current?.lineCount() ?? 1;
+    const line = /^[1-9]\d*$/.test(lineInput.trim()) ? Number(lineInput.trim()) : NaN;
+    const offset = sourceRef.current?.offsetForLine(line);
+    if (offset === null || offset === undefined) {
+      setLineLimit(limit);
+      setLineError(`请输入 1 至 ${limit} 的行号。`);
+      lineInputRef.current?.focus();
+      return;
+    }
+    setLineOpen(false);
+    setLineError(null);
+    selectAfterRender({ start: offset, end: offset, direction: 'none' }, true, true);
+  };
 
   const undo = useCallback(() => {
     if (readOnly || saving) return;
@@ -509,7 +557,7 @@ export function MarkdownEditorView({
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
-      if (!active) return;
+      if (!active || event.defaultPrevented || event.isComposing || event.altKey) return;
       if (!(event.ctrlKey || event.metaKey)) return;
       const key = event.key.toLocaleLowerCase();
       if (key === 'f' && !event.shiftKey) {
@@ -518,11 +566,14 @@ export function MarkdownEditorView({
       } else if (key === 'h') {
         event.preventDefault();
         openSearch(true);
+      } else if (key === 'g' && !event.shiftKey) {
+        event.preventDefault();
+        openLine();
       }
     };
     window.addEventListener('keydown', handleShortcut);
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [active, openSearch]);
+  }, [active, openSearch, openLine]);
 
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
@@ -760,10 +811,41 @@ export function MarkdownEditorView({
           <button type="button" data-editor-find="true" onClick={() => openSearch(false)}>查找</button>
           <button type="button" data-editor-replace="true" onClick={() => openSearch(true)}
             disabled={sourceIsReadOnly}>替换</button>
+          <button type="button" data-editor-goto-toggle="true" aria-expanded={lineOpen} aria-controls="source-goto-line"
+            aria-keyshortcuts="Control+G" onClick={openLine}>转到行</button>
+          <button type="button" data-editor-options-toggle="true" aria-expanded={optionsOpen} aria-controls="source-display-options"
+            onClick={() => setOptionsOpen(open => !open)}>显示与快捷键</button>
           {sections && sections.length > 0 && <button type="button" data-editor-structure-toggle="true"
             aria-expanded={structureToolsOpen} aria-controls="source-structure-tools" onClick={() => setStructureToolsOpen((value) => !value)}>章节操作</button>}
         </div>
       </header>
+
+      {optionsOpen && <section id="source-display-options" className="source-display-options" data-editor-options="true" aria-label="源码显示与快捷键">
+        <label><input type="checkbox" data-editor-soft-wrap="true" checked={softWrap} onChange={event => setSoftWrap(event.target.checked)} />软换行</label>
+        <p>长行适应窗口宽度，文件中的换行保持原样。</p>
+        <dl className="source-shortcuts">
+          <div><dt><kbd>Ctrl+S</kbd></dt><dd>保存正文</dd></div>
+          <div><dt><kbd>Ctrl+Z / Y</kbd></dt><dd>撤销 / 重做</dd></div>
+          <div><dt><kbd>Ctrl+F / H</kbd></dt><dd>查找 / 替换</dd></div>
+          <div><dt><kbd>Ctrl+G</kbd></dt><dd>转到行</dd></div>
+        </dl>
+      </section>}
+      {lineOpen && <form id="source-goto-line" className="source-goto-line" data-editor-goto-form="true" aria-label="转到源码行"
+        onSubmit={event => { event.preventDefault(); if (!lineComposing.current) goToLine(); }}>
+        <label htmlFor="source-goto-input">行号</label>
+        <input ref={lineInputRef} id="source-goto-input" data-editor-goto-input="true" type="text" inputMode="numeric"
+          autoComplete="off" value={lineInput} aria-invalid={Boolean(lineError)}
+          aria-describedby={lineError ? 'source-goto-error' : 'source-goto-range'}
+          onCompositionStart={() => { lineComposing.current = true; }}
+          onCompositionEnd={() => { lineComposing.current = false; }}
+          onChange={event => { setLineInput(event.target.value); setLineError(null); }}
+          onKeyDown={event => { if (event.nativeEvent.isComposing || lineComposing.current) return;
+            if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeLine(); } }} />
+        <span id="source-goto-range">1–{lineLimit} 行</span>
+        <button type="submit">转到</button>
+        <button type="button" data-editor-goto-cancel="true" onClick={closeLine}>取消</button>
+        {lineError && <span id="source-goto-error" data-editor-goto-error="true" role="alert">{lineError}</span>}
+      </form>}
 
       {recoveryDrafts.length > 0 && <section className="source-recovery" role="status" data-editor-recovery="true">
         <div>
@@ -899,7 +981,7 @@ export function MarkdownEditorView({
 
       <div className="source-editor-frame">
         <SourceSurface ref={sourceRef} documentKey={documentKey} documentName={documentName} value={value}
-          readOnly={sourceIsReadOnly || saving} onChange={recordAndEmit} onSelect={reportSelection}
+          readOnly={sourceIsReadOnly || saving} softWrap={softWrap} onChange={recordAndEmit} onSelect={reportSelection}
           onKeyDown={handleEditorKeyDown} onContextMenu={openContextMenu} />
       </div>
 

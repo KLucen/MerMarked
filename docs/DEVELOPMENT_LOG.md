@@ -1927,3 +1927,38 @@ B 首轮阅读键盘选区未就绪；C 源码追加落在开头，补焦点与�
 UX6B 工程退出条件通过，准备推送和创建 PR。下一批 UX7，随后 UX8 与 QA1。未重做 PERF3 完整40份性能采样，不声明新性能收益；真实 IME、物理多屏 DPI、干净安装/升级/卸载仍独立未完成，P0 未完成。
 
 GitHub：实现提交 `895816e` 已推送至 `origin/codex/ux6b-document-flow`，创建 [PR #17](https://github.com/KLucen/MerMarked/pull/17)，目标 main，待审未合并。SSH dry-run 与推送成功；连接器仍要求重新认证，使用本机 Git 凭据管理器已有 KLucen 认证调用官方 API 完成创建并附加到当前任务，未修改授权范围或全局网络配置。
+
+## 2026-11-06 · UX7A 编辑范围与源码便利
+
+### 目标与设计
+
+基于已合并 PR #17 / main `028c210`，建立 `codex/ux7-editing-guidance`。按设计复核第 5 批实施可运行软件子批次：当前内容提前说明编辑范围、受限输入保留与源码定位，以及源码软换行、Ctrl+G 行定位和快捷键帮助。真实中文 IME 作为独立验收，不以合成事件替代，不声明 UX7 整批或 P0 完成。
+
+阅读只显示一份绑定逻辑文档/完整正文/解析器范围的提示，不给每段增加按钮。浮动提示可关闭且不改变正文位置；BOM、CRLF 转到完整 LF 模型。onCommit false 与异常均保留完整未应用文字，限制反馈按逻辑文档隔离。源码通过 Compartment 切换显示，通过 doc.lines/.line.from 定位，保留原正文、选区与单一共享历史。没有依赖、schema、IPC 或偏好文件变化，决定见 ADR-051。
+
+### 修改文件
+
+main.tsx、reader-editable-block.tsx、editor-view.tsx、source-surface.tsx、document-recovery-view.tsx、style.css；新增 UX7 打包专项与 npm 命令；UX7A_ACCEPTANCE、DECISIONS、PROGRESS 与设计复核路线。原三项用户修改 SHA-256 一致，排除提交。
+
+### 命令和结果
+
+- npm.cmd run typecheck / npm.cmd test：最终 G 通过，315/315 单测。日志 ux7-g-typecheck.log、ux7-g-unit.log。
+- npm.cmd run package：A/D 通过；npm.cmd run make：B/G 通过，使用既有校验过的 Electron 44.4.1 ZIP 和 MERMARKD_ELECTRON_ZIP_DIR。
+- G make 后串行 UX7、UX6B、A6、A7.1/2/3b/4/5、A8.2/3/4/5、B1、UX1–5、PERF1、UX6A、PERF2、PERF3A/B/C/D/E/G：27/27 退出码 0。独立日志与摘要 ux7-g-regression-manifest.json。
+- Vite --config vite.renderer.config.mjs --host 127.0.0.1 --port 5178 --strictPort --force，MERMARKD_QA_RENDERER_URL 指向真实开发服务，完整 UX7 专项通过，ux7-g-vite.log；服务已停止。
+- 专项验证 ordinary/strong/link/list/table/code 的范围与源码偏移、BOM/CRLF/emoji、跨语法修改拒绝和原输入保留、Enter、真实多行剪贴板、跨模式撤销重做、显示重配无修改、非法行号保持光标、恢复模态Ctrl+G、合成composition门禁、420/800宽度以及三文件bytes/mtime/原先不存在状态。
+- 新专项 node --check、排除用户三文件的 diff --check 和最终用户文件 SHA-256 校验通过。
+
+### 原失败与修复
+
+最初本机 main 为旧独立历史，ff 合并拒绝；确认只有原三项用户修改后，切至已核实 origin/main `028c210` 并更新尚无新提交的本批分支，未改写旧 main 或用户文件。
+
+B 首次窗口源码目标偏移变0，C 精确诊断证明提示插入布局使段落 y196→263，pointerup 命中标题。改为浮动提示，不降低目标/偏移断言。D 原生表单 Enter 未执行，是 CDP helper 缺字符事件；补普通 Enter 的回车字符，CtrlEnter仍只有按键。E 关闭反馈的测试 evaluate 引号有误，修复后 F 完整通过。最终 G 重建并跑全量回归。全部原日志保留。
+
+### 实机尝试、产物与限制
+
+computer-use 原生工具未能列出唯一隔离 MerMarkd 窗口，因此实际中文输入没有发送任何按键、观察候选或组合事件。系统语言仅en-US/WeType配置不等于真实候选通过，也不能证明本机无IME。记录 ux7-ime-attempt.json 的 not_verified，未改变系统语言设置或用户文档，测试进程已停止。合成 composition 回归仅验证保护逻辑，UX7真实IME仍待验收。
+
+阅读浮动提示与420/800源码控件截图已查看。最终本地 Setup 154,830,848字节，SHA-256 482FD17DA42DC01BB8FD02F5C95370AA4A5C6FAC79163FF1B2032A345F39AF0E；ASAR 417122D980DFD343BDF9C7730CF051CE91F916BF46E9A635856C74ABA1F7079A。未做新的PERF3完整40份采样，不称性能提升；干净安装/升级/卸载、物理DPI、公开发布仍未完成。
+
+UX7A 软件工程验收通过，准备上传并创建 PR。继续 UX7 实机输入验收后推进 UX8，P0未完成。
