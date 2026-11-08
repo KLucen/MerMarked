@@ -75,7 +75,7 @@ async function poll(check, label, timeout = 15000) {
   const diagnostics = page ? await page.evaluate(`(() => ({
     mode:document.querySelector('.app-shell')?.dataset.activeMode,
     preparation:document.querySelector('[data-canvas-preparation]')?.dataset.canvasPreparation,
-    search:document.querySelector('[data-canvas-search-status]')?.dataset,
+    search:{...document.querySelector('[data-canvas-search-status]')?.dataset},
     selected:[...document.querySelectorAll('.react-flow__node.selected')].map(node=>({
       id:node.dataset.id,rect:node.getBoundingClientRect().toJSON(),
     })),
@@ -308,6 +308,7 @@ try {
   await ready(1);
   const freshGeometry = await cardGeometry('.react-flow__node');
   assert.deepEqual([freshGeometry.body.width, freshGeometry.body.height], [328, 176], 'first layout keeps the compact default card dimensions');
+  await screenshot('default-density');
   assert.deepEqual(await snapshot(freshFixture), fresh, 'opening and automatically arranging a fresh document create no companion files');
   passed = true;
   console.log(JSON.stringify({ status: 'passed', structuredPreviewAndFull: true, duplicateSearchInSourceOrder: true,
