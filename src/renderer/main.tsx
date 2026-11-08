@@ -336,6 +336,10 @@ function App() {
   const noteComposerState = useRef(noteComposer);
   noteComposerState.current = noteComposer;
   const [readerEditFeedback, setReaderEditFeedback] = useState<ReaderEditFeedback | null>(null);
+  const [readerEditTarget, setReaderEditTarget] = useState<{
+    documentKey: number; content: string; blockStart: number; editable: boolean;
+  } | null>(null);
+  useEffect(() => { setReaderEditTarget(null); }, [activeMode, openedDocument]);
   const noteDocumentKey = useRef(0);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteTagChoice, setNoteTagChoice] = useState(NO_TAG);
@@ -607,10 +611,26 @@ function App() {
   useEffect(() => {
     if (!readingReady) clearReaderSelection({ clearNative: true });
   }, [readingReady, clearReaderSelection]);
+  const readerFeedbackDocumentKey = noteDocumentKey.current;
   const reportReaderEditRestriction = useCallback((blockStart: number, reason: string, draftText?: string) => {
+    if (readerFeedbackDocumentKey !== noteDocumentKey.current) return;
     if (readerDocument) setReaderEditFeedback((current) => current?.draftText !== undefined && draftText === undefined
       ? { ...current, reason } : { blockStart, reason, draftText, contentSnapshot: readerDocument.content });
-  }, [readerDocument]);
+  }, [readerDocument, readerFeedbackDocumentKey]);
+  const rememberReaderEditTarget = useCallback((node: Node) => {
+    if (!readingReady || activeModeRef.current !== 'reader' || !readerDocument) return;
+    const block = sourceBlockFor(node);
+    const raw = block?.dataset.sourceBlockStart;
+    if (raw === undefined) return;
+    const blockStart = Number(raw);
+    const sourceLength = readerDocument.content.length - (readerDocument.content.startsWith('\uFEFF') ? 1 : 0);
+    if (!Number.isSafeInteger(blockStart) || blockStart < 0 || blockStart >= sourceLength) return;
+    const editable = block?.hasAttribute('data-reader-editable') ?? false;
+    setReaderEditTarget(old => old?.documentKey === noteDocumentKey.current && old.content === readerDocument.content &&
+      old.blockStart === blockStart && old.editable === editable ? old : {
+      documentKey: noteDocumentKey.current, content: readerDocument.content, blockStart, editable,
+    });
+  }, [readerDocument, readingReady]);
   const commitReaderTextEdit = useCallback(async (blockStart: number, sourceText: string, replacement: string) => {
     if (activeModeRef.current !== 'reader' || !readerCanEdit || !openedDocument || !readerDocument) return false;
     const epoch = documentEpoch.current;
@@ -636,6 +656,7 @@ function App() {
     }
     currentEditorController.current.changeEditorText(markdownToEditorText(result.content));
     setReaderEditFeedback(null);
+    setReaderEditTarget(null);
     setMessage('正文已修改，按 Ctrl+S 保存。');
     return true;
   }, [openedDocument, readerCanEdit, readerDocument, reportReaderEditRestriction, setMessage]);
@@ -1166,6 +1187,7 @@ function App() {
   }, [selectionMap]);
 
   const rememberSelection = useCallback((range: Range, result: SelectionProbeResult) => {
+    rememberReaderEditTarget(range.startContainer);
     if (selectionAnnouncementTimer.current !== null) {
       window.clearTimeout(selectionAnnouncementTimer.current);
       selectionAnnouncementTimer.current = null;
@@ -1207,7 +1229,7 @@ function App() {
       setSelectionAnnouncement(`已选择 ${countGraphemes(result.displayQuote)} 个字符，可以添加高亮或批注。`);
       selectionAnnouncementTimer.current = null;
     }, 180);
-  }, [openedDocument, positionSelectionFeedback, readerDocument]);
+  }, [openedDocument, positionSelectionFeedback, readerDocument, rememberReaderEditTarget]);
 
   const readSelection = useCallback((): SelectionProbeResult => {
     const cached = selectionTarget.current;
@@ -2001,6 +2023,15 @@ function App() {
     await changeMode('editor');
   }, [changeMode, readerDocument, readerEditFeedback]);
 
+  const editReaderTargetInSource = useCallback(async () => {
+    if (!readerEditTarget || readerEditTarget.documentKey !== noteDocumentKey.current ||
+      readerEditTarget.content !== readerDocument?.content || !readingReady) return;
+    const bomOffset = readerDocument.content.startsWith('\uFEFF') ? 1 : 0;
+    setEditorFocusOffset(markdownToEditorText(readerDocument.content.slice(0, bomOffset + readerEditTarget.blockStart)).length);
+    setEditorFocusRequest(request => request + 1);
+    await changeMode('editor');
+  }, [readerEditTarget, readerDocument, readingReady, changeMode]);
+
   const editCanvasSection = useCallback((index: number | null) => {
     setActiveSection(index);
     setEditorFocusOffset(null);
@@ -2232,6 +2263,16 @@ function App() {
             <div className="reader-tools">
               {editorController.editor?.editable === false && <span className="read-only-badge" title={editorController.editor.readOnlyReason}>只读</span>}
             </div>
+            {activeMode === 'reader' && readingReady && readerEditTarget?.documentKey === noteDocumentKey.current && readerEditTarget.content === readerDocument?.content &&
+              <div className="reader-edit-affordance" data-reader-edit-target={readerEditTarget.blockStart} role="group" aria-label="当前内容的编辑方式">
+                <span>{!readerCanEdit ? '当前正文暂不能直接编辑；可在源码中查看此处。' : readerEditTarget.editable
+                  ? '可在同一文字片段内编辑；跨强调或链接、换行请使用源码。Ctrl+Enter 提交，Esc 取消本段输入。'
+                  : '这类内容请在源码中编辑；阅读内容保持原样。'}</span>
+                <button type="button" data-reader-edit-source="true" onClick={() => void editReaderTargetInSource()}>{readerCanEdit ? '在源码中编辑此处' : '在源码中查看此处'}</button>
+                <button type="button" aria-label="关闭编辑方式提示" onMouseDown={event => event.preventDefault()}
+                  onClick={event => { const restoreFocus = document.activeElement === event.currentTarget; setReaderEditTarget(null);
+                    if (restoreFocus) document.querySelector<HTMLElement>('.markdown-body')?.focus({ preventScroll: true }); }}>×</button>
+              </div>}
             {dirtyPreview ? <div className="annotation-summary dirty-preview" role="status" data-dirty-preview="true">
               <strong>未保存</strong>
               <span>已有批注可在侧栏参考；选择正文后可保存并继续批注。</span>
@@ -2308,6 +2349,8 @@ function App() {
             </section> : null}
             {readerComponentState && <ReaderComponentsProvider value={readerComponentState}><article hidden={!readingAnalysis.data && activeMode === 'reader'} className="markdown-body" aria-label="Markdown 正文" tabIndex={0} inert={!readingReady} aria-busy={!readingReady}
               onContextMenu={openReaderContextMenu} onKeyDown={handleReaderContextShortcut}
+              onFocusCapture={event => rememberReaderEditTarget(event.target as Node)}
+              onPointerUp={event => rememberReaderEditTarget(event.target as Node)}
               onDoubleClick={(event) => {
                 if (!readerCanEdit || (event.target instanceof Element && event.target.closest('a, button'))) return;
                 const block = sourceBlockFor(event.target as Node);
