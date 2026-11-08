@@ -23,7 +23,7 @@ export function DocumentRecoveryView({ items, preview, busy, error, onPreview, o
   return <div className="document-recovery-backdrop">
     <div ref={panel} tabIndex={-1} className="document-recovery-panel" role="dialog" aria-modal="true"
       aria-labelledby="document-recovery-title" data-document-recovery="true" onKeyDown={(event) => {
-        if ((event.ctrlKey || event.metaKey) && ['f', 'h', 's', 'o', 'n', 'w'].includes(event.key.toLowerCase())) { event.preventDefault(); event.stopPropagation(); }
+        if ((event.ctrlKey || event.metaKey) && ['f', 'h', 's', 'o', 'n', 'w', 'g'].includes(event.key.toLowerCase())) { event.preventDefault(); event.stopPropagation(); }
         if (event.key === 'Escape' && !busy) { event.preventDefault(); onClose(); }
         if (event.key !== 'Tab') return;
         const controls = Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? []);
