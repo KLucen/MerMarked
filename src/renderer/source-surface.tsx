@@ -14,6 +14,7 @@ export interface SourceSurfaceHandle {
   text(): string;
   lineCount(): number;
   offsetForLine(line: number): number | null;
+  composing(): boolean;
   selection(): SourceSelection;
   select(selection: SourceSelection, reveal?: boolean): void;
 }
@@ -25,6 +26,7 @@ interface Props {
   readonly softWrap?: boolean;
   readonly onChange: (value: string, selection: SourceSelection) => void;
   readonly onSelect: (selection: SourceSelection) => void;
+  readonly onActivityChange?: (kind: 'committing', active: boolean) => void;
   readonly onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void;
   readonly onContextMenu: (event: MouseEvent<HTMLDivElement>) => void;
 }
@@ -40,6 +42,9 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
   const editor = useRef<EditorView | null>(null);
   const latest = useRef(props); latest.current = props;
   const text = useRef(props.value);
+  const publishedText = useRef(props.value);
+  const compositionActive = useRef(false);
+  const cancelComposition = useRef<(() => void) | null>(null);
   const readonly = useRef(new Compartment());
   const wrapping = useRef(new Compartment());
   const wrapped = useRef(Boolean(props.softWrap));
@@ -48,6 +53,7 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
     focus: () => editor.current?.focus(),
     text: () => text.current,
     lineCount: () => editor.current?.state.doc.lines ?? 1,
+    composing: () => compositionActive.current,
     offsetForLine: line => {
       const document = editor.current?.state.doc;
       return document && Number.isSafeInteger(line) && line >= 1 && line <= document.lines ? document.line(line).from : null;
@@ -55,7 +61,7 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
     selection: () => editor.current ? selection(editor.current) : { start: 0, end: 0, direction: 'none' },
     select: (next, reveal) => {
       const view = editor.current;
-      if (!view) return;
+      if (!view || compositionActive.current) return;
       const start = Math.min(Math.max(0, next.start), view.state.doc.length);
       const end = Math.min(Math.max(start, next.end), view.state.doc.length);
       view.dispatch({ selection: EditorSelection.single(next.direction === 'backward' ? end : start, next.direction === 'backward' ? start : end),
@@ -66,25 +72,82 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
   useLayoutEffect(() => {
     const current = latest.current;
     text.current = current.value;
+    publishedText.current = current.value;
     wrapped.current = Boolean(current.softWrap);
+    let alive = true;
+    let composing = false;
+    let finishTimer: number | null = null;
+    const setCompositionActive = (active: boolean) => {
+      if (compositionActive.current === active) return;
+      compositionActive.current = active;
+      latest.current.onActivityChange?.('committing', active);
+    };
+    const clearFinishTimer = () => {
+      if (finishTimer !== null) window.clearTimeout(finishTimer);
+      finishTimer = null;
+    };
+    const publish = (view: EditorView) => {
+      text.current = view.state.doc.toString();
+      if (publishedText.current === text.current) latest.current.onSelect(selection(view));
+      else {
+        publishedText.current = text.current;
+        latest.current.onChange(text.current, selection(view));
+      }
+    };
+    const finishComposition = (view: EditorView) => {
+      clearFinishTimer();
+      if (!alive || editor.current !== view || !compositionActive.current) return;
+      composing = false;
+      try { publish(view); }
+      finally { setCompositionActive(false); }
+    };
+    const cancel = () => {
+      clearFinishTimer();
+      composing = false;
+      setCompositionActive(false);
+    };
+    cancelComposition.current = cancel;
     const view = new EditorView({ parent: host.current!, state: EditorState.create({ doc: current.value, extensions: [
       // No local history: all modes use the owner's single transaction history.
       keymap.of([{ key: 'Enter', run: insertNewline }, ...defaultKeymap]),
       EditorState.tabSize.of(4), readonly.current.of(EditorState.readOnly.of(current.readOnly)),
       wrapping.current.of(current.softWrap ? EditorView.lineWrapping : []),
       EditorView.contentAttributes.of({ 'aria-label': 'Markdown 源码', 'data-source-input': 'true', spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off' }),
+      EditorView.domEventObservers({
+        compositionstart: (_event, view) => {
+          if (!composing && compositionActive.current) finishComposition(view);
+          composing = true;
+          setCompositionActive(true);
+        },
+        compositionend: (_event, view) => {
+          composing = false;
+          clearFinishTimer();
+          // CodeMirror can flush the final DOM mutation in a microtask after
+          // compositionend. Publish only the final source as one shared edit.
+          finishTimer = window.setTimeout(() => finishComposition(view), 0);
+        },
+        keydown: (_event, view) => {
+          if (!composing && compositionActive.current) finishComposition(view);
+        },
+      }),
       EditorView.updateListener.of(update => {
         if (syncing.current) return;
         if (update.docChanged) {
           text.current = update.state.doc.toString();
-          latest.current.onChange(text.current, selection(update.view));
-        } else if (update.selectionSet) latest.current.onSelect(selection(update.view));
+          if (!compositionActive.current) publish(update.view);
+        } else if (update.selectionSet && !compositionActive.current) latest.current.onSelect(selection(update.view));
       }),
       EditorView.theme({ '&': { height: '100%' }, '.cm-scroller': { fontFamily: 'inherit', fontSize: 'inherit', lineHeight: '1.65', overflow: 'auto' },
         '.cm-content': { padding: '18px 0' }, '.cm-line': { padding: '0 20px' }, '&.cm-focused': { outline: 'none' } }),
     ] }) });
     editor.current = view;
-    return () => { editor.current = null; view.destroy(); };
+    return () => {
+      alive = false;
+      cancel();
+      cancelComposition.current = null;
+      editor.current = null;
+      view.destroy();
+    };
   }, [props.documentKey]);
 
   useLayoutEffect(() => {
@@ -94,9 +157,11 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
     try {
       const effects = view.state.facet(EditorState.readOnly) !== props.readOnly
         ? readonly.current.reconfigure(EditorState.readOnly.of(props.readOnly)) : [];
-      if (text.current !== props.value) {
+      if (publishedText.current !== props.value) {
+        cancelComposition.current?.();
         const { anchor, head } = view.state.selection.main;
         text.current = props.value;
+        publishedText.current = props.value;
         view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: props.value }, effects,
           selection: EditorSelection.single(Math.min(anchor, props.value.length), Math.min(head, props.value.length)) });
       } else if (!Array.isArray(effects)) view.dispatch({ effects });

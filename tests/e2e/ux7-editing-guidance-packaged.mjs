@@ -41,6 +41,7 @@ async function poll(check, label, timeout = 15000) {
       lastReaderTarget:globalThis.__ux7LastReaderTarget,activeMode:shell?.dataset.activeMode,
       leavePending:shell?.dataset.leavePending,focus:describe(document.activeElement),
       source:control?{start:control.selectionStart,end:control.selectionEnd,length:control.value.length}:null,
+      chromiumComposition:globalThis.__ux7ChromiumComposition,
       blocks:[...document.querySelectorAll('.markdown-body h1,.markdown-body p')].slice(0,8).map(describe)};
   })()`).catch(error => ({ error: error.message })) : null;
   throw Error(`${label}: ${body}\nUX7 diagnostic: ${JSON.stringify(diagnostic)}`);
@@ -212,6 +213,59 @@ try {
   assert.equal(await page.evaluate('document.querySelector("[data-editor-undo]").disabled'), true, 'view option creates no undo entry');
   assert.deepEqual(await snapshot(), original, 'source navigation and display controls preserve bytes/mtime');
 
+  // CDP drives Chromium's composition lifecycle and CodeMirror transactions.
+  // OS candidates and physical input-method acceptance have separate evidence.
+  await click('[data-editor-options-toggle]');
+  await page.evaluate('__sourceControl().focus()'); await sourceFocused();
+  await key('End', 'End', 35, 2); await atOffset(source.length, 'composition starts at the source end');
+  await page.evaluate(`(() => {
+    globalThis.__ux7ChromiumComposition=[];
+    const input=__sourceControlElement();
+    for(const type of ['compositionstart','compositionupdate','compositionend','beforeinput','input']) {
+      input.addEventListener(type,event=>__ux7ChromiumComposition.push({
+        type:event.type,data:event.data,isTrusted:event.isTrusted,inputType:event.inputType,
+      }),true);
+    }
+  })()`);
+  async function candidate(text) {
+    await page.send('Input.imeSetComposition', { text, selectionStart: text.length, selectionEnd: text.length });
+    await wait(`__sourceControl().value===${JSON.stringify(source)}+${JSON.stringify(text)}`,
+      `Chromium composition updates the actual editor to ${JSON.stringify(text)}`);
+    await frame();
+  }
+  await candidate('n'); await candidate('ni');
+  await ctrl('s'); await frame();
+  assert.equal(await sourceText(), source + 'ni', 'save shortcut preserves the active composition candidate');
+  assert.deepEqual(await snapshot(), original, 'save shortcut during composition preserves all three files');
+  await page.send('Input.insertText', { text: '你' });
+  const composed = source + '你';
+  await wait(`__sourceControl().value===${JSON.stringify(composed)}`, 'Chromium commits the final Chinese text');
+  await frame();
+  // Chromium's CDP commit can end with an untrusted compositionend event.
+  // The candidate input events below still prove the browser mutation path.
+  await wait('__ux7ChromiumComposition.some(event=>event.type==="compositionend")',
+    'Chromium ends the composition');
+  await ctrl('z');
+  await wait(`__sourceControl().value===${JSON.stringify(source)}`, 'one source undo reverses the entire composition');
+  await ctrl('y');
+  await wait(`__sourceControl().value===${JSON.stringify(composed)}`, 'source redo restores only the committed Chinese text');
+  await click('[data-mode="reader"]'); await reader();
+  await click('[data-mode="editor"]'); await editor();
+  await page.evaluate('__sourceControl().focus()'); await sourceFocused();
+  assert.equal(await sourceText(), composed, 'mode switches preserve the committed composition');
+  await ctrl('z');
+  await wait(`__sourceControl().value===${JSON.stringify(source)}`, 'shared undo reverses the composition after mode switches');
+  await wait('document.querySelector(".app-shell")?.dataset.dirty==="false"', 'composition undo restores the clean source');
+  await key('End', 'End', 35, 2); await atOffset(source.length, 'cancelled composition starts at the source end');
+  await candidate('n'); await candidate('ni'); await candidate('');
+  await wait('__ux7ChromiumComposition.filter(event=>event.type==="compositionend").length===2',
+    'Chromium ends the cancelled composition'); await frame();
+  assert.equal(await page.evaluate('document.querySelector("[data-editor-undo]").disabled'), true,
+    'cancelled composition creates no shared undo entry');
+  assert.equal(await page.evaluate('__ux7ChromiumComposition.some(event=>event.type==="input" && event.isTrusted && event.inputType==="insertCompositionText")'), true,
+    'regression exercises trusted Chromium composition input');
+  assert.deepEqual(await snapshot(), original, 'composition, shared history and mode switches preserve all three files');
+
   // A recovery modal must own its keyboard commands, even when source is active.
   await click('[aria-label="文档菜单"]'); await click('[data-open-document-recovery]');
   await wait('document.querySelector("[data-document-recovery]")?.contains(document.activeElement)', 'recovery modal focus');
@@ -295,8 +349,10 @@ try {
   passed = true;
   console.log(JSON.stringify({ status: 'passed', sourceWrapWithoutMutation: true, exactGotoLine: true, shortcutHelp: true,
     contextualReaderRoutes: true, rejectedFormattedInputRetained: true, multilinePasteRetained: true,
-    crossModeUndoRedo: true, modalShortcutIsolation: true, syntheticCompositionGate: true, narrowWidths: [420, 800], threeFileZeroWrites: true,
-    actualImeDeviceAcceptance: 'not performed by this synthetic-input test' }));
+    crossModeUndoRedo: true, modalShortcutIsolation: true, syntheticCompositionGate: true,
+    chromiumCompositionHistory: true, chromiumCompositionSaveProtection: true, chromiumCompositionCancellation: true,
+    narrowWidths: [420, 800], threeFileZeroWrites: true,
+    actualImeDeviceAcceptance: 'not performed by this browser-automation test' }));
 } catch (error) {
   if (page) await screenshot('failure').catch(() => {});
   console.error(`UX7 fixtures retained: ${workspace}`); throw error;

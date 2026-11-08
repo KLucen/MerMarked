@@ -81,6 +81,7 @@ export interface MarkdownEditorViewProps {
   readonly recoveringDraft?: boolean;
   readonly latestSourceBackupId?: string;
   readonly onChange: (editorText: string) => void;
+  readonly onActivityChange?: (kind: 'committing', active: boolean) => void;
   /** Shared renderer transaction. When provided, local undo history is bypassed. */
   readonly sharedEditSession?: MarkdownEditSession | null;
   readonly onUndo?: () => MarkdownEditSelection | null;
@@ -195,6 +196,7 @@ export function MarkdownEditorView({
   recoveringDraft = false,
   latestSourceBackupId,
   onChange,
+  onActivityChange,
   sharedEditSession,
   onUndo,
   onRedo,
@@ -576,6 +578,7 @@ export function MarkdownEditorView({
   }, [active, openSearch, openLine]);
 
   const handleEditorKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (!active || event.nativeEvent.isComposing || sourceRef.current?.composing()) return;
     if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
       event.preventDefault();
       const textarea = event.currentTarget;
@@ -982,6 +985,7 @@ export function MarkdownEditorView({
       <div className="source-editor-frame">
         <SourceSurface ref={sourceRef} documentKey={documentKey} documentName={documentName} value={value}
           readOnly={sourceIsReadOnly || saving} softWrap={softWrap} onChange={recordAndEmit} onSelect={reportSelection}
+          onActivityChange={onActivityChange}
           onKeyDown={handleEditorKeyDown} onContextMenu={openContextMenu} />
       </div>
 
