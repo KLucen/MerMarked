@@ -5,9 +5,12 @@ import remarkFrontmatter from 'remark-frontmatter';
 import { unified } from 'unified';
 import type { SectionTree } from './sections.ts';
 import type { MarkdownSnapshot } from './markdown-snapshot.ts';
-import type { Root, Nodes } from 'mdast';
+import { remarkReadingDangerousHtmlPolicy } from './markdown-reading.ts';
+import type { List, Nodes, PhrasingContent, Root, RootContent } from 'mdast';
 
 const processor = unified().use(remarkParse).use(remarkGfm).use(remarkFrontmatter);
+const applyReadingHtmlPolicy = remarkReadingDangerousHtmlPolicy();
+const inlineTextOptions = { includeHtml: false };
 
 export interface CanvasCardContent {
   readonly title: string;
@@ -67,20 +70,89 @@ export function canvasContentsFromSnapshot(snapshot: MarkdownSnapshot, tree: Sec
 
 function contentFromRoot(root: Root, tree: SectionTree, sectionIndex: number | null): CanvasCardContent {
   const section = sectionIndex === null ? null : tree.sections[sectionIndex];
-  root = { ...root };
-  root.children = root.children.filter((node) => !['html', 'definition', 'yaml'].includes(node.type));
-  const fullText = toString(root).replace(/\s+/g, ' ').trim();
+  // The reader policy can suppress content between separate raw HTML nodes.
+  // Apply it to a copy only when present, so the shared Markdown snapshot stays intact.
+  const safeRoot = containsRawHtml(root) ? copyHtmlPolicyTree(root) : root;
+  if (safeRoot !== root) applyReadingHtmlPolicy(safeRoot);
+  const fullText = blocksText(safeRoot.children);
   // Preserve the existing 160-code-point excerpt without materializing an
   // array containing every character of a potentially multi-megabyte chapter.
-  const excerpt: string[] = [];
+  let excerptEnd = 0;
+  let codePoints = 0;
   for (const character of fullText) {
-    if (excerpt.length === 160) break;
-    excerpt.push(character);
+    excerptEnd += character.length;
+    codePoints += 1;
+    if (codePoints === 160) break;
   }
   return {
     title: section?.title ?? (tree.virtualCard?.kind === 'preamble' ? '文档前言' : '全文'),
-    summary: excerpt.join(''),
+    summary: fullText.slice(0, excerptEnd),
     fullText,
     childCount: section?.childIndexes.length ?? 0,
   };
+}
+
+function containsRawHtml(node: Nodes): boolean {
+  return node.type === 'html' || ('children' in node && node.children.some(containsRawHtml));
+}
+
+function copyHtmlPolicyTree<T extends Nodes>(node: T): T {
+  if ('children' in node) return { ...node, children: node.children.map(copyHtmlPolicyTree) };
+  return node.type === 'html' ? { ...node } : node;
+}
+
+function inlineText(node: PhrasingContent): string {
+  if (node.type === 'break') return '\n';
+  if (node.type === 'html') return /^<br(?:\s|\/?>)/i.test(node.value) ? '\n' : '';
+  if ('children' in node) return node.children.map(inlineText).join('');
+  return toString(node, inlineTextOptions).replace(/\s+/g, ' ');
+}
+
+function phrasingText(children: readonly PhrasingContent[]): string {
+  // Most card paragraphs have a single text node.
+  if (children.length === 1 && children[0].type === 'text') return inlineText(children[0]).trim();
+  return children.map(inlineText).join('').replace(/ *\n */g, '\n').replace(/ {2,}/g, ' ').trim();
+}
+
+function listText(list: List): string {
+  const start = list.start ?? 1;
+  return list.children.map((item, index) => {
+    const marker = list.ordered ? `${start + index}.` : '•';
+    const task = item.checked == null ? '' : item.checked ? ' ☑' : ' ☐';
+    const parts: string[] = [];
+    for (const child of item.children) {
+      const text = blockText(child);
+      if (!text) continue;
+      if (child.type === 'list') parts.push('\n');
+      else if (parts.length) parts.push('\n\n');
+      parts.push(text);
+    }
+    const body = parts.join('').replace(/\n(?=[^\n])/g, '\n  ');
+    const prefix = marker + task;
+    return body ? prefix + (body.startsWith('\n') ? '' : ' ') + body : prefix;
+  }).join('\n');
+}
+
+function blockText(node: RootContent): string {
+  switch (node.type) {
+    case 'heading':
+    case 'paragraph':
+      return phrasingText(node.children);
+    case 'code':
+      return node.value.replace(/\r\n?/g, '\n');
+    case 'blockquote': {
+      const text = blocksText(node.children);
+      return text ? `│ ${text.replace(/\n/g, '\n│ ')}` : '';
+    }
+    case 'list':
+      return listText(node);
+    case 'table':
+      return node.children.map(row => row.children.map(cell => phrasingText(cell.children)).join(' │ ')).join('\n');
+    default:
+      return '';
+  }
+}
+
+function blocksText(nodes: readonly RootContent[]): string {
+  return nodes.map(blockText).filter(Boolean).join('\n\n');
 }

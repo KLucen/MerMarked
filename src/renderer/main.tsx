@@ -392,6 +392,7 @@ function App() {
   const sectionNavigationTimer = useRef<number | null>(null);
   const readerPosition = useRef<{ path: string; scrollY: number; activeSection: number | null } | null>(null);
   const restoreReaderPosition = useRef(false);
+  const readerSectionRequest = useRef<{ documentKey: number; content: string; index: number } | null>(null);
   const readerSelectionSourceOffset = useRef<number | null>(null);
   const noteComposerRef = useRef<HTMLTextAreaElement>(null);
 
@@ -736,6 +737,7 @@ function App() {
     setActiveMode('reader');
     readerPosition.current = null;
     restoreReaderPosition.current = false;
+    readerSectionRequest.current = null;
     setActiveSection(null);
     setReaderSearchOpen(false);
     setReaderSearchQuery('');
@@ -1058,13 +1060,19 @@ function App() {
     target.focus({ preventScroll: true });
   }, [holdNavigatedSection, sectionIds]);
   useLayoutEffect(() => {
-    if (!readingReady || !restoreReaderPosition.current) return;
+    if (activeMode !== 'reader' || !readingReady || !restoreReaderPosition.current) return;
     restoreReaderPosition.current = false;
+    const requested = readerSectionRequest.current;
+    readerSectionRequest.current = null;
+    if (requested?.documentKey === noteDocumentKey.current && requested.content === readerDocument?.content && sectionIds[requested.index]) {
+      jumpToSection(requested.index);
+      return;
+    }
     const saved = readerPosition.current;
     if (saved?.path === openedDocument?.path) window.scrollTo({ top: saved?.scrollY ?? 0, behavior: 'auto' });
     else if (saved?.activeSection !== null && saved?.activeSection !== undefined) jumpToSection(saved.activeSection);
     else window.scrollTo({ top: 0, behavior: 'auto' });
-  }, [readingReady, openedDocument?.path, jumpToSection]);
+  }, [activeMode, readingReady, openedDocument?.path, readerDocument?.content, sectionIds, jumpToSection]);
 
   useEffect(() => {
     if (activeMode !== 'reader' || !readingReady) return;
@@ -1934,7 +1942,7 @@ function App() {
     controls[nextIndex].focus();
   }, []);
 
-  const changeMode = useCallback(async (mode: AppMode) => {
+  const changeMode = useCallback(async (mode: AppMode, readerSection?: number) => {
     if (!openedDocument || mode === activeMode) return;
     if (readerInputActivity.current.composing || readerInputActivity.current.committing || mutationInFlight.current) {
       setMessage('请先完成当前输入或保存，再切换视图。', 'alert'); return;
@@ -1950,6 +1958,9 @@ function App() {
     setReattachTargetId(null);
     restoreReaderPosition.current = mode === 'reader';
     if (mode === 'reader') {
+      readerSectionRequest.current = readerSection !== undefined && readerDocument
+        ? { documentKey: noteDocumentKey.current, content: readerDocument.content, index: readerSection }
+        : null;
       setActiveMode('reader');
       return;
     }
@@ -1961,7 +1972,11 @@ function App() {
     setActiveMode('editor');
     window.scrollTo({ top: 0, behavior: 'auto' });
     if (!editorController.editor) await editorController.open();
-  }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, jumpToSection, openedDocument, readerDraftDirty, setMessage]);
+  }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, openedDocument, readerDocument, readerDraftDirty, setMessage]);
+
+  const readCanvasSection = useCallback((index: number) => {
+    void changeMode('reader', index);
+  }, [changeMode]);
 
   returnToInputs.current = () => {
     void changeMode('reader').then(() => {
@@ -2226,7 +2241,8 @@ function App() {
       ) : activeMode === 'cards' ? (
         <CanvasView document={readerDocument!} preparedSource={readingAnalysis.data?.canvas} dirty={dirtyPreview} activeSection={activeSection} focusRequest={outlineFocusRequest}
           onSectionChange={(index) => { setActiveSection(index); readerPosition.current = null; }}
-          onEditSection={editCanvasSection} onStructurePreview={previewCanvasStructure} onStatusChange={reportCanvasStatus}
+          onEditSection={editCanvasSection} onReadSection={readCanvasSection}
+          onStructurePreview={previewCanvasStructure} onStatusChange={reportCanvasStatus}
           onOpenProperties={() => panels.openRight('task')}
           canUndoSource={editorController.canUndo} canRedoSource={editorController.canRedo}
           onUndoSource={() => { editorController.undo(); }} onRedoSource={() => { editorController.redo(); }}

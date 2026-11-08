@@ -47,3 +47,14 @@ test('export SVG uses verified card content and a routed label box', () => {
   assert.match(svg, /中文长标签/);
   assert.match(svg, /<rect[^>]+rx="4"/);
 });
+
+test('structured summary stays within a narrow card and escapes source text', () => {
+  const scene = buildCanvasExportScene([
+    { id: 'narrow', sectionIndex: 0, hidden: false, width: 180, height: 240, hiddenDescendants: 0, position: { x: 0, y: 0 } },
+  ], []);
+  const svg = canvasSceneToSvg(scene, {}, new Map([
+    ['narrow', { title: '列表与表格', summary: '• 第一项\n• 第二项\n\n项目 │ <数值>', childCount: 0 }],
+  ]));
+  assert.match(svg, /<foreignObject[^>]* width="180"/);
+  assert.match(svg, /<p>• 第一项\n• 第二项\n\n项目 │ &lt;数值&gt;<\/p>/);
+});

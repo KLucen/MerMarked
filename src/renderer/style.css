@@ -383,7 +383,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .source-structure-preview button.primary:disabled { cursor: not-allowed; opacity: .5; }
 
 .canvas-mode { background: var(--surface-canvas); color: var(--text); }
-.canvas-toolbar { align-items: center; background: var(--surface); border-bottom: 1px solid var(--divider); display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 20px; }
+.canvas-toolbar { align-items: center; background: var(--surface); border-bottom: 1px solid var(--divider); display: flex; flex-wrap: wrap; gap: 7px; padding: 10px 20px; position: relative; }
 .canvas-toolbar-group, .canvas-toolbar-more-menu, .canvas-toolbar-export-menu { align-items: center; display: flex; flex-wrap: wrap; gap: 5px; }
 .canvas-toolbar-labeled, .canvas-toolbar-more summary, .canvas-toolbar-exports summary { align-items: center; display: inline-flex; gap: 5px; min-height: 34px; padding: 0 9px; white-space: nowrap; }
 .canvas-toolbar-icon { align-items: center; display: inline-flex; height: 34px; justify-content: center; padding: 0; width: 34px; }
@@ -401,10 +401,14 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-mode button:disabled { opacity: .45; cursor: not-allowed; }
 .canvas-mode button:hover:not(:disabled) { border-color: #2f7667; background: var(--accent-soft); }
 .canvas-toolbar output { flex: 1 1 160px; font-size: var(--text-caption); min-width: 120px; text-align: right; }
+.canvas-toolbar [data-canvas-status]:empty { display: none; }
+.canvas-toolbar [data-canvas-status]:not(:empty) { position: absolute; top: calc(100% + 8px); right: 12px; z-index: 9; padding: 7px 10px; max-width: min(500px, calc(100vw - 24px)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-control); box-shadow: 0 3px 12px #142b4920; pointer-events: none; }
 .canvas-toolbar .spin { animation: canvas-spin .8s linear infinite; }
 @keyframes canvas-spin { to { transform: rotate(360deg); } }
-.canvas-search { display: flex; align-items: center; gap: 7px; margin-left: 6px; font-size: var(--text-caption); }
+.canvas-search { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-left: 6px; min-width: 0; font-size: var(--text-caption); }
+.canvas-search label { white-space: nowrap; }
 .canvas-search input { width: 140px; min-width: 0; }
+.canvas-toolbar .canvas-search output { flex: 0 1 auto; min-width: 0; text-align: left; color: var(--text-muted); }
 .canvas-mode input, .canvas-mode select { border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--surface); color: var(--text); min-height: 32px; padding: 5px 8px; font: inherit; max-width: 100%; }
 .canvas-warning { margin: 0; padding: 8px 20px; background: #fff1d9; color: #725119; font-size: var(--text-caption); overflow-wrap: anywhere; }
 .canvas-warning-info { background: #edf4fb; color: #315273; }
@@ -435,7 +439,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-card-actions { display: flex; gap: var(--space-1); flex: 0 0 auto; }
 .canvas-card-actions[hidden] { display: none; }
 .canvas-card-actions button { width: 26px; height: 26px; padding: 0; display: grid; place-items: center; }
-.canvas-card-summary { font-size: var(--text-caption); line-height: 1.5; margin: 4px 14px; max-width: none; overflow-wrap: anywhere; }
+.canvas-card-summary { font-size: var(--text-caption); line-height: 1.5; margin: 4px 14px; max-width: none; overflow-wrap: anywhere; white-space: pre-wrap; tab-size: 2; }
 .canvas-card-full { max-height: 360px; overflow: auto; white-space: pre-wrap; }
 .canvas-card-count { display: flex; align-items: center; gap: var(--space-1); background: var(--surface-hover); border: 0; border-radius: 4px; padding: 4px 6px; margin: 8px 14px; font-size: var(--text-caption); color: var(--text-muted); cursor: pointer; }
 .canvas-nest-indicator, .canvas-detach-indicator { border-radius: 4px; margin: 8px 14px; padding: 6px; font-size: var(--text-caption); text-align: center; max-width: none; }
@@ -611,7 +615,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
   .canvas-toolbar-export-menu { right: 0; }
   .canvas-toolbar output { flex: 1 1 100%; min-height: 20px; text-align: left; }
   .canvas-search { flex: 1 1 100%; margin-left: 0; }
-  .canvas-search input { flex: 1 1 auto; width: auto; }
+  .canvas-search input { flex: 1 1 110px; width: auto; }
   .startbar { padding-inline: 14px; }
   .start-page { display: flex; flex-direction: column; gap: 38px; min-height: calc(100vh - 90px); padding: 52px 20px 60px; }
   .start-hero h1 { font-size: 34px; }
