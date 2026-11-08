@@ -3,9 +3,9 @@ import { CanvasStructurePreview } from './canvas-structure-preview';
 import { WorkspaceTaskPanel } from './workspace-panels';
 import { useCanvasToolbarMenus } from './use-canvas-toolbar-menus';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow, useViewport } from '@xyflow/react';
+import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore, useViewport } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
-import { ArrowDownToLine, ArrowUpToLine, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpToLine, BookOpen, ChevronDown, ChevronUp, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
 import { preparedCanvasContent, prepareCanvasFromProjection, type PreparedCanvas } from '../core/canvas-preparation';
 import type { CanvasCardContentCache } from '../core/canvas-card-content';
 import type { SectionTree } from '../core/sections';
@@ -47,6 +47,7 @@ interface CardData extends Record<string, unknown> {
   sectionIndex: number | null;
   fold: (id: string) => void;
   edit: (index: number | null) => void;
+  read?: (index: number) => void;
   properties: () => void;
   hiddenLinks: number;
   measure: (id: string, height: number) => void;
@@ -64,6 +65,7 @@ function sameCardData(left: CardData, right: CardData): boolean {
 
 const ChapterCard = memo(function ChapterCard({ id, data, selected }: NodeProps<ChapterNode>) {
   const body = useRef<HTMLDivElement>(null);
+  const { read, sectionIndex } = data;
   useEffect(() => {
     const element = body.current;
     if (!element) return;
@@ -85,6 +87,8 @@ const ChapterCard = memo(function ChapterCard({ id, data, selected }: NodeProps<
       width: data.size.width, height: data.size.height }}><div className="canvas-card-header">
       <div className="canvas-card-heading"><strong title={data.pathLabel}>{data.title}</strong></div>
       {selected && <div className="canvas-card-actions nodrag">
+        {read && sectionIndex !== null && <button type="button" title="阅读本节" aria-label="阅读本节" data-canvas-read-section="true"
+          onClick={event => { event.stopPropagation(); read(sectionIndex); }}><BookOpen size={15} /></button>}
         <button type="button" title="编辑本节" aria-label="编辑本节" onClick={() => data.edit(data.sectionIndex)}><FilePenLine size={15} /></button>
         <button type="button" title="卡片操作" aria-label="卡片操作" onClick={data.properties}><MoreHorizontal size={15} /></button>
       </div>}
@@ -146,6 +150,7 @@ export interface CanvasViewProps {
   readonly focusRequest?: number;
   readonly onSectionChange: (index: number | null) => void;
   readonly onEditSection: (index: number | null) => void;
+  readonly onReadSection?: (index: number) => void;
   readonly onStructurePreview: (operation: SectionTransformOperation) => Promise<void>;
   readonly structurePreview: SectionStructurePreview | null;
   readonly structureBusy: boolean;
@@ -159,9 +164,13 @@ export interface CanvasViewProps {
   readonly onStatusChange?: (path: string, sha256: string, status: PartStatus) => void;
 }
 
-function CanvasEditor({ document, preparedSource, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onStructurePreview, onStatusChange, structurePreview, structureBusy, onConfirmStructure, onCancelStructure, onOpenProperties, canUndoSource, canRedoSource, onUndoSource, onRedoSource }: CanvasViewProps) {
+function CanvasEditor({ document, preparedSource, dirty, activeSection, focusRequest = 0, onSectionChange, onEditSection, onReadSection, onStructurePreview, onStatusChange, structurePreview, structureBusy, onConfirmStructure, onCancelStructure, onOpenProperties, canUndoSource, canRedoSource, onUndoSource, onRedoSource }: CanvasViewProps) {
   const flow = useReactFlow<ChapterNode>();
+  const flowHost = useRef<HTMLDivElement>(null);
+  const flowWidth = useStore(state => state.width);
+  const flowHeight = useStore(state => state.height);
   const toolbar = useRef<HTMLDivElement>(null);
+  const searchInput = useRef<HTMLInputElement>(null);
   useCanvasToolbarMenus(toolbar);
   const [model, setModel] = useState<CanvasStateV2 | null>(null);
   const [bindings, setBindings] = useState<readonly CanvasBinding[]>([]);
@@ -182,6 +191,8 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [query, setQuery] = useState('');
+  const [searchMatchId, setSearchMatchId] = useState<string | null>(null);
+  const [searchLocation, setSearchLocation] = useState<{ id: string; generation: number } | null>(null);
   const [history, setHistory] = useState<CanvasStateV2[]>([]);
   const [future, setFuture] = useState<CanvasStateV2[]>([]);
   const [loadRevision, setLoadRevision] = useState(0);
@@ -210,7 +221,8 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   const cardContent = projection?.path === document.path && projection.source === document.content &&
     projection.bom === document.bomByteLength && projection.dirty === dirty && projection.revision === loadRevision ? projection.content : null;
   const tree = cardContent?.tree ?? emptyTree;
-  const scene = useMemo(() => model && cardContent ? buildCanvasSceneV2(document.content, tree, model, bindings, minimumHeights, cardContent) : null, [bindings, document.content, minimumHeights, model, tree, cardContent]);
+  const scene = useMemo(() => model && cardContent ? buildCanvasSceneV2(document.content, tree, model, bindings, cardContent) : null,
+    [bindings, document.content, model, tree, cardContent]);
   const nodesReady = Boolean(scene && nodes.length === scene.cards.length);
   const nodeReadOnly = !cardContent || dirty || Boolean(document.recoveryPending) || busy || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
   const readOnly = nodeReadOnly || !nodesReady || layoutPending;
@@ -240,6 +252,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
     setProjection(null); setBindings([]); setNodes([]); setNodeLimit(CANVAS_NODE_BATCH); initialLayout.current = false;
     pendingInitialViewport.current = null;
     setModel(null); setLayoutPending(true); setReadError(null); setLoadWarning(null); setBusy(false); setMessage('正在加载画布…'); setHistory([]); setFuture([]); setMinimumHeights({}); setSelectedLink(null); setSelectedCardId(null);
+    setQuery(''); setSearchMatchId(null); setSearchLocation(null); setExportMessage(null);
     void (async () => {
       const loadedResult = await window.mermarkd.loadCanvasV2();
       if (generation.current !== current) return;
@@ -263,7 +276,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       const rootAtCorner = boundCards.some((card) => rootIds.has(card.id) && card.position.x < 32 && card.position.y < 32);
       const needsArrangement = loaded.model === null || hasNewCards || (sourceChanged && reconciled.unresolvedCardIds.length > 0) || allCardsAtOrigin || rootAtCorner;
       if (needsArrangement) initial = await arrangeCanvasV2(tree, initial, reconciled.bindings);
-      const initialScene = buildCanvasSceneV2(document.content, tree, initial, reconciled.bindings, {}, cardContent);
+      const initialScene = buildCanvasSceneV2(document.content, tree, initial, reconciled.bindings, cardContent);
       const viewportValid = loaded.model !== null && isCanvasViewportVisible(loaded.model.viewport, initialScene.cards);
       if (loaded.model && !viewportValid && !needsArrangement) loadWarningText ??= '已保存的画布视口不再覆盖当前卡片，已自动定位到当前布局。';
       if (loaded.model && needsArrangement && (sourceChanged || hasNewCards || rootAtCorner)) loadWarningText ??= '检测到卡片位置未初始化或文档结构已变化，已自动整理当前章节。';
@@ -276,7 +289,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       initialLayout.current = needsArrangement;
       setModel(initial); setBindings(reconciled.bindings); setUnresolvedIds(reconciled.unresolvedCardIds);
       setUnresolvedLinkIds(reconciled.unresolvedLinkIds); setSidecarHash(loaded.sidecarSha256); setLoadWarning(loadWarningText);
-      setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : needsArrangement ? '正在整理画布布局…' : loaded.model === null ? '初始布局 · 尚未创建画布文件' : loaded.sourceVersion === 1 ? '旧版画布已迁移到内存 v2' : '画布 v2 已载入');
+      setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : needsArrangement ? '正在整理画布布局…' : '');
       setFrom(reconciled.bindings[0]?.id ?? ''); setTo(reconciled.bindings[1]?.id ?? reconciled.bindings[0]?.id ?? '');
     })().catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('画布无法载入，原文件未修改；请重新载入或检查 Markdown。'); setMessage('画布未载入'); } });
     return () => { generation.current += 1; pendingInitialViewport.current = null; task.cancel(); };
@@ -295,16 +308,18 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
           const viewport = flow.getViewport();
           setModel((previous) => previous ? { ...previous, viewport } : previous);
           setLayoutPending(false);
-          setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : '布局已就绪 · 尚未保存');
+          setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : '');
         }); }, 50);
     }).catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('初始布局失败，请重新载入画布。'); } });
   }, [bindings, dirty, minimumHeights, model, tree, cardContent]);
 
-  const persist = useCallback(async (next: CanvasStateV2, remember = true) => {
+  const persist = useCallback(async (next: CanvasStateV2, remember = true, { showOnSuccess = false } = {}) => {
     if (!model || readOnly || saveInFlight.current) return false;
     const current = generation.current;
     saveInFlight.current = true;
-    setBusy(true); setModel(next); setMessage('正在保存画布…');
+    setBusy(true);
+    if (!showOnSuccess) setModel(next);
+    setMessage('正在保存画布…');
     try {
       const needsV2 = sourceVersion.current === 2 || next.cards.some((card) => card.bodyDisplay !== 'preview' || card.contentPosition.x !== 0 || card.contentPosition.y !== 0 ||
         card.size !== undefined && (card.size.width !== CANVAS_DEFAULT_CARD_SIZE.width || card.size.height !== CANVAS_DEFAULT_CARD_SIZE.height));
@@ -315,22 +330,36 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       if (result.status !== 'saved') { setReadError(result.reason ?? '画布未保存，请重新载入。'); setMessage(result.reason ?? '画布未保存'); return false; }
       sourceVersion.current = needsV2 ? 2 : 1;
       if (remember) { setHistory((previous) => [...previous.slice(-49), model]); setFuture([]); }
-      setModel(next); setSidecarHash(result.sidecarSha256 ?? null); setLoadWarning(null); setMessage('画布已保存 · Markdown 未改动');
+      setModel(next); setSidecarHash(result.sidecarSha256 ?? null); setLoadWarning(null); setMessage('画布已保存');
       return true;
     } catch { if (generation.current === current) { setReadError('画布保存失败，请重新载入。'); setMessage('画布保存失败，原文未修改。'); } }
     finally { saveInFlight.current = false; if (generation.current === current) setBusy(false); }
   }, [document.sourceSha256, model, readOnly, sidecarHash]);
 
+  useEffect(() => {
+    if (!message.startsWith('画布已保存') && !message.startsWith('结构预览已完成')) return;
+    const timer = setTimeout(() => setMessage(current => current === message ? '' : current), 5000);
+    return () => clearTimeout(timer);
+  }, [message]);
+
+  useEffect(() => {
+    if (!exportMessage?.startsWith('已导出 ')) return;
+    const timer = setTimeout(() => setExportMessage(current => current === exportMessage ? null : current), 5000);
+    return () => clearTimeout(timer);
+  }, [exportMessage]);
+
   const measured = useCallback((id: string, height: number) => {
     setMinimumHeights((previous) => previous[id] === height ? previous : { ...previous, [id]: height });
   }, []);
-  const currentActions = useRef({ model, persist, onEditSection, onOpenProperties });
-  currentActions.current = { model, persist, onEditSection, onOpenProperties };
+  const currentActions = useRef({ model, persist, onEditSection, onReadSection, onOpenProperties });
+  currentActions.current = { model, persist, onEditSection, onReadSection, onOpenProperties };
   const foldCard = useCallback((id: string) => {
     const { model, persist } = currentActions.current;
     if (model) void persist({ ...model, cards: model.cards.map(card => card.id === id ? { ...card, descendantsCollapsed: !card.descendantsCollapsed } : card) });
   }, []);
   const editCard = useCallback((index: number | null) => currentActions.current.onEditSection(index), []);
+  const readCard = useCallback((index: number) => currentActions.current.onReadSection?.(index), []);
+  const canReadSection = Boolean(onReadSection);
   const openProperties = useCallback(() => currentActions.current.onOpenProperties(), []);
   useEffect(() => {
     if (activeSection !== null) {
@@ -339,12 +368,12 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       setStructureSource(String(activeSection));
     }
   }, [activeSection, bindings, focusRequest]);
-  const selectCard = (id: string) => {
+  const selectCard = useCallback((id: string) => {
     const binding = bindings.find(item => item.id === id);
     setSelectedCardId(binding ? id : null); setSelectedLink(null);
     setStructureSource(binding?.sectionIndex === null || binding?.sectionIndex === undefined ? '' : String(binding.sectionIndex));
     if (binding) onSectionChange(binding.sectionIndex);
-  };
+  }, [bindings, onSectionChange]);
   const selectLink = (id: string) => {
     const link = model?.links.find(item => item.id === id);
     setSelectedCardId(null); setSelectedLink(link?.id ?? null); setSelectedLinkLabel(link?.label ?? '');
@@ -426,6 +455,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
             bodyDisplay: card.bodyDisplay, contentPosition: card.contentPosition, size: card.size ?? CANVAS_DEFAULT_CARD_SIZE, descendantsCollapsed: card.descendantsCollapsed, readOnly: nodeReadOnly,
             fold: foldCard,
             edit: editCard,
+            read: canReadSection ? readCard : undefined,
             properties: openProperties,
             hiddenLinks: scene.links.filter(link => link.hiddenEndpoint && (link.from === card.id || link.to === card.id)).length,
             measure: measured };
@@ -445,7 +475,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       });
       return projected.length === previous.length && projected.every((node, index) => node === previous[index]) ? previous : projected;
     });
-  }, [selectedCardId, selectedLink, cardContent, measured, model, nodeLimit, editCard, openProperties, foldCard, nodeReadOnly, scene, tree]);
+  }, [selectedCardId, selectedLink, cardContent, measured, model, nodeLimit, editCard, readCard, canReadSection, openProperties, foldCard, nodeReadOnly, scene, tree]);
 
   useLayoutEffect(() => {
     const pending = pendingInitialViewport.current;
@@ -490,6 +520,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   };
   const currentCard = nodes.find((node) => node.selected);
   const currentModelCard = currentCard && model?.cards.find((card) => card.id === currentCard.id);
+  const currentSection = currentCard?.data.sectionIndex;
   const updateCardSize = useCallback((dimension: 'width' | 'height', rawValue: string) => {
     if (!model || readOnly || !currentCard) return;
     const value = Number(rawValue);
@@ -518,7 +549,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
     try {
       await onStructurePreview(operation);
       if (generation.current !== current) return false;
-      setMessage('结构预览已完成 · Markdown 未改动'); return true;
+      setMessage('结构预览已完成'); return true;
     } catch (error) {
       if (generation.current === current) setMessage(error instanceof Error ? error.message : '结构预览失败，请重新检查文档。');
       return false;
@@ -529,7 +560,59 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
     try { return preflightCanvasExport(scene.cards, scene.links, { padding: 48 }); }
     catch { return null; }
   }, [scene]);
-  const searchMatches = nodes.filter((node) => !node.hidden && node.data.title.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+  const searchTerm = query.trim().toLocaleLowerCase();
+  const searchMatches = useMemo(() => {
+    if (!searchTerm || !scene) return [];
+    return scene.contents.filter(card => card.title.toLocaleLowerCase().includes(searchTerm))
+      .sort((left, right) => (left.sectionIndex ?? -1) - (right.sectionIndex ?? -1));
+  }, [scene, searchTerm]);
+  const searchMatchIndex = searchMatches.findIndex(card => card.cardId === searchMatchId);
+  const searchMatch = searchMatches[searchMatchIndex];
+  const canNavigateSearch = Boolean(scene && nodesReady && !layoutPending && !busy && !readError &&
+    !draggingId && !exporting && !structurePreview && !structureBusy);
+
+  // Follow the existing scene projection for a collapsed result. Locating it
+  // selects its visible ancestor without changing the model or link endpoints.
+  let searchTarget = scene?.cards.find(card => card.id === searchMatch?.cardId);
+  while (searchTarget?.hidden) {
+    const parentId = searchTarget.parentId;
+    searchTarget = scene?.cards.find(card => card.id === parentId);
+  }
+  useEffect(() => {
+    if (!searchLocation || !canNavigateSearch || searchLocation.generation !== generation.current ||
+      searchLocation.id !== searchMatch?.cardId || !searchTarget) return;
+    const node = nodes.find(node => node.id === searchTarget.id);
+    if (!node || node.hidden || node.style?.width !== searchTarget.width || node.style.height !== searchTarget.height ||
+      !node.measured?.width || !node.measured.height) return;
+    const bounds = flowHost.current?.getBoundingClientRect();
+    if (!bounds || Math.abs(bounds.width - flowWidth) >= 1 || Math.abs(bounds.height - flowHeight) >= 1) return;
+    setSearchLocation(null);
+    selectCard(node.id);
+    void flow.fitView({ nodes: [{ id: node.id }], padding: 0.4 });
+  }, [canNavigateSearch, flow, flowWidth, flowHeight, nodes, searchLocation, searchMatch?.cardId, searchTarget, selectCard]);
+
+  const moveSearch = (direction: 1 | -1) => {
+    if (!canNavigateSearch || !searchMatches.length) return;
+    const index = searchMatchIndex < 0 ? (direction === 1 ? 0 : searchMatches.length - 1)
+      : (searchMatchIndex + direction + searchMatches.length) % searchMatches.length;
+    const id = searchMatches[index].cardId;
+    setSearchMatchId(id);
+    setSearchLocation({ id, generation: generation.current });
+  };
+  const revealSearchMatch = async () => {
+    if (!searchMatch?.hidden || !model || !scene || !canNavigateSearch || readOnly) return;
+    const ancestors = new Set<string>();
+    let parentId = scene.cards.find(card => card.id === searchMatch.cardId)?.parentId;
+    while (parentId) {
+      ancestors.add(parentId);
+      parentId = scene.cards.find(card => card.id === parentId)?.parentId;
+    }
+    const request = { id: searchMatch.cardId, generation: generation.current };
+    searchInput.current?.focus({ preventScroll: true });
+    const saved = await persist({ ...model, cards: model.cards.map(card =>
+      ancestors.has(card.id) && card.descendantsCollapsed ? { ...card, descendantsCollapsed: false } : card) }, true, { showOnSuccess: true });
+    if (saved && request.generation === generation.current) setSearchLocation(request);
+  };
   const exportCanvas = useCallback(async (format: 'png' | 'jpg' | 'pdf') => {
     if (!scene || !exportPreflight?.allowed || exporting || readOnly || busy || Boolean(readError)) return;
     setExporting(format); setExportMessage(null);
@@ -592,14 +675,39 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
             onClick={() => void exportCanvas('pdf')}>{exporting === 'pdf' ? <RefreshCw className="spin" size={17} /> : <FileDown size={17} />}<span>PDF</span></button>
         </div>
       </details>
-      <label className="canvas-search">查找卡片<input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => {
-        if (event.key === 'Enter' && searchMatches[0]) void flow.fitView({ nodes: [{ id: searchMatches[0].id }], padding: 0.4 });
-      }} /></label>
+      <div className="canvas-search" role="search" aria-label="查找卡片">
+        <label htmlFor="canvas-search-input">查找卡片</label>
+        <input id="canvas-search-input" ref={searchInput} data-canvas-search-input="true" value={query}
+          aria-describedby={searchTerm ? 'canvas-search-status' : undefined}
+          onChange={event => { setQuery(event.target.value); setSearchMatchId(null); setSearchLocation(null); }}
+          onKeyDown={event => {
+            if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+            event.preventDefault();
+            moveSearch(event.shiftKey ? -1 : 1);
+          }} />
+        {searchTerm && <>
+          <button type="button" className="canvas-toolbar-icon" aria-label="上一项卡片匹配" title="上一项（Shift+Enter）"
+            data-canvas-search-previous="true" disabled={!canNavigateSearch || !searchMatches.length}
+            onClick={() => moveSearch(-1)}><ChevronUp size={15} aria-hidden="true" /></button>
+          <button type="button" className="canvas-toolbar-icon" aria-label="下一项卡片匹配" title="下一项（Enter）"
+            data-canvas-search-next="true" disabled={!canNavigateSearch || !searchMatches.length}
+            onClick={() => moveSearch(1)}><ChevronDown size={15} aria-hidden="true" /></button>
+          <output id="canvas-search-status" data-canvas-search-status="true" data-total={searchMatches.length}
+            data-current={searchMatchIndex + 1} data-card-id={searchMatch?.cardId} data-hidden={searchMatch?.hidden}
+            title={searchMatch ? titleFor(searchMatch.cardId) : undefined}>
+            {!scene ? (readError ? '画布尚未就绪' : '正在准备卡片…') : !searchMatches.length ? '无匹配卡片'
+              : searchMatch ? `${searchMatchIndex + 1} / ${searchMatches.length}${searchMatch.hidden ? ' · 已收起' : ''}` : `${searchMatches.length} 项匹配`}
+          </output>
+          {searchMatch?.hidden && <button type="button" className="canvas-toolbar-labeled" data-canvas-search-reveal="true"
+            title="展开该卡片所在分支并保存折叠状态" disabled={!canNavigateSearch || readOnly}
+            onClick={() => void revealSearchMatch()}>展开并保存</button>}
+        </>}
+      </div>
       <output role="status" data-canvas-status="true">{exporting ? `正在导出 ${exporting.toUpperCase()}…` : exportMessage ?? (draggingId && nestCandidate
         ? `${nestCandidate.status === 'ready' ? '松开' : '继续'}以预览设为子章节 · 重叠 ${Math.round(nestCandidate.overlapRatio * 100)}%`
         : draggingId && detachCandidate
           ? `${detachCandidate.status === 'ready' ? '松开' : '继续'}以预览移出父章节 · 已移出 ${Math.round(detachCandidate.escapeRatio * 100)}%`
-          : busy ? '正在保存…' : message)}</output>
+          : busy ? '正在保存…' : message || (layoutPending ? '正在加载画布…' : ''))}</output>
     </div>
     {loadWarning && <div className="canvas-warning canvas-warning-info" role="status">{loadWarning}</div>}
     {readError && <div className="canvas-warning" role="alert">{readError}
@@ -611,7 +719,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       <button type="button" data-canvas-source-redo="true" disabled={!canRedoSource || structureBusy || Boolean(structurePreview)} onClick={onRedoSource}>重做正文修改</button>
     </div>}
     <div className="canvas-workspace">
-      <div className="canvas-flow" data-canvas-flow="true" inert={!nodesReady || layoutPending}>
+      <div ref={flowHost} className="canvas-flow" data-canvas-flow="true" inert={!nodesReady || layoutPending}>
         <ReactFlow<ChapterNode> nodes={cardContent ? nodes : []} edges={cardContent ? edges : []} nodeTypes={nodeTypes} minZoom={0.05} maxZoom={8}
           nodesDraggable={!readOnly} nodesConnectable={!readOnly} edgesReconnectable={false} deleteKeyCode={null}
           panOnDrag={[1, 2]} panActivationKeyCode="Space" selectionOnDrag
@@ -702,6 +810,8 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
           </div> : <>
             {currentCard && currentModelCard ? <div data-canvas-card-inspector="true">
               <p className="canvas-inspector-path">{currentCard.data.pathLabel}</p>
+              {canReadSection && currentSection != null && <button type="button" data-canvas-inspector-read-section="true"
+                onClick={() => readCard(currentSection)}><BookOpen size={16} /> 阅读本节</button>}
               <button onClick={() => currentCard.data.edit(currentCard.data.sectionIndex)}><FilePenLine size={16} /> 编辑本节</button>
               <label>正文显示<select data-canvas-body-display="true" value={currentModelCard.bodyDisplay} disabled={readOnly}
                 onChange={event => model && void persist({ ...model, cards: model.cards.map(card => card.id === currentCard.id

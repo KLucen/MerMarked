@@ -147,7 +147,6 @@ export function buildCanvasSceneV2(
   tree: SectionTree,
   state: CanvasStateV2,
   bindings: readonly CanvasBinding[],
-  minimumHeights: Readonly<Record<string, number>> = {},
   contentCache?: CanvasCardContentCache,
 ): CanvasSceneV2 {
   if (contentCache && (contentCache.source !== content || contentCache.tree !== tree)) {
@@ -178,8 +177,9 @@ export function buildCanvasSceneV2(
       ? tree.sections.filter((item) => item.index !== section.index && item.headingRange.start >= section.headingRange.start && item.headingRange.start < section.subtreeRange.end).length
       : 0;
     const preferredSize = card.size ?? CANVAS_DEFAULT_CARD_SIZE;
-    const bodyHeight = card.bodyDisplay === 'full' ? Math.max(preferredSize.height, 220, minimumHeights[binding.id] ?? 220)
-      : Math.max(preferredSize.height, 176);
+    // The rendered body already uses this height. Feeding its measured height
+    // plus layout padding back into the body causes it to grow on every measure.
+    const bodyHeight = Math.max(preferredSize.height, card.bodyDisplay === 'full' ? 220 : 176);
     groups.push({ id: groupId(binding.id), cardId: binding.id, sectionIndex: binding.sectionIndex,
       ...(parentCardId ? { parentId: groupId(parentCardId) } : {}), hidden,
       hiddenDescendants: card.descendantsCollapsed ? hiddenDescendants : 0,

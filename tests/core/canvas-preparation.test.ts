@@ -30,8 +30,8 @@ test('background preparation preserves anchors, ambiguity, text and scene across
       assert.deepEqual(prepared.tree, extractSections(source));
       const cache = preparedCanvasContent(source, prepared);
       for (const binding of expected.bindings) assert.deepEqual(cache.get(binding.sectionIndex), canvasCardContent(source, prepared.tree, binding.sectionIndex));
-      assert.deepEqual(buildCanvasSceneV2(source, prepared.tree, expected.model, expected.bindings, {}, cache),
-        buildCanvasSceneV2(source, prepared.tree, expected.model, expected.bindings, {}, createCanvasCardContentCache(source, prepared.tree)));
+      assert.deepEqual(buildCanvasSceneV2(source, prepared.tree, expected.model, expected.bindings, cache),
+        buildCanvasSceneV2(source, prepared.tree, expected.model, expected.bindings, createCanvasCardContentCache(source, prepared.tree)));
     }
   }
 });

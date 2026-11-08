@@ -155,7 +155,7 @@ try {
 
   await click('[data-mode="cards"]');
   await wait('document.querySelector("[data-canvas-save]")?.disabled===false','canvas');
-  assert.match(await page.evaluate('document.querySelector("[data-canvas-status]").textContent'), /布局已就绪/, 'completed layout does not retain a loading message');
+  assert.equal(await page.evaluate('document.querySelector("[data-canvas-status]").textContent.trim()'), '', 'completed layout leaves the ordinary status row quiet');
   if(await visible('#workspace-left-panel')) await click('[aria-label="收起左侧栏"]');
   const more='.canvas-toolbar-more'; const exports='.canvas-toolbar-exports';
   await page.evaluate(`document.querySelector('${more} > summary').focus()`);

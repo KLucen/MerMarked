@@ -714,12 +714,15 @@ async function exportCanvasFor(event: IpcMainInvokeEvent, value: unknown): Promi
     const fits = await renderer.webContents.executeJavaScript(`(async () => {
       await document.fonts.ready;
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      return [...document.querySelectorAll('.export-card')].every((card) => card.scrollHeight <= card.parentElement.height.baseVal.value && card.scrollWidth <= 300)
+      return [...document.querySelectorAll('.export-card')].every((card) => {
+        const frame = card.parentElement;
+        return card.scrollHeight <= Math.ceil(frame.height.baseVal.value) && card.scrollWidth <= Math.ceil(frame.width.baseVal.value);
+      })
         && [...document.querySelectorAll('[data-link] text')].every((text) => {
           const box = text.getBBox(); return box.x >= 0 && box.y >= 0 && box.x + box.width <= ${width} && box.y + box.height <= ${height};
         });
     })()`);
-    if (!fits) return { status: 'error', reason: '导出文字超出卡片或场景边界，已停止导出；请自动整理后重试。' };
+    if (!fits) return { status: 'error', reason: '导出文字超出卡片或场景边界。请增加卡片尺寸或调整布局后重试。' };
     let bytes: Buffer;
     if (input.format === 'pdf') {
       bytes = await renderer.webContents.printToPDF({
