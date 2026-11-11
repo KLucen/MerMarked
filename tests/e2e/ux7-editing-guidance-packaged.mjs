@@ -247,6 +247,7 @@ try {
     'Chromium ends the composition');
   await ctrl('z');
   await wait(`__sourceControl().value===${JSON.stringify(source)}`, 'one source undo reverses the entire composition');
+  await atOffset(source.length, 'composition undo restores the insertion caret');
   await ctrl('y');
   await wait(`__sourceControl().value===${JSON.stringify(composed)}`, 'source redo restores only the committed Chinese text');
   await click('[data-mode="reader"]'); await reader();

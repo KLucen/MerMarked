@@ -56,8 +56,9 @@ export function applyMarkdownTextEdit(session: MarkdownEditSession, edit: Markdo
   if (typeof edit.replacement !== 'string') throw new Error('Markdown 替换内容无效。');
   const content = session.current.content.slice(0, selection.start) + edit.replacement + session.current.content.slice(selection.end);
   if (content === session.current.content) return session;
+  const previous: MarkdownEditSnapshot = { ...session.current, selection: { ...selection } };
   const next: MarkdownEditSnapshot = { content, selection: { start: selection.start, end: selection.start + edit.replacement.length } };
-  return { ...session, revision: session.revision + 1, current: next, past: [...session.past, session.current], future: [] };
+  return { ...session, revision: session.revision + 1, current: next, past: [...session.past, previous], future: [] };
 }
 
 export function undoMarkdownEdit(session: MarkdownEditSession): MarkdownEditSession {
