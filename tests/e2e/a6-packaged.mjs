@@ -485,5 +485,8 @@ try {
     // Clipboard restoration is best effort and does not affect product verification.
   }
   if (conflictDraftPath) await rm(conflictDraftPath, { force: true });
-  await rm(workspace, { recursive: true, force: true });
+  const resolvedWorkspace = path.resolve(workspace);
+  assert.equal(path.dirname(resolvedWorkspace), path.resolve(os.tmpdir()), 'cleanup stays in the temporary directory');
+  assert.ok(path.basename(resolvedWorkspace).startsWith('mermarkd-a6-e2e-'), 'cleanup targets this generated workspace');
+  await rm(resolvedWorkspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }

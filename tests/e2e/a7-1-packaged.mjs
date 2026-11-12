@@ -653,5 +653,8 @@ try {
       child.kill('SIGKILL');
     }
   }
-  await rm(workspace, { recursive: true, force: true });
+  const resolvedWorkspace = path.resolve(workspace);
+  assert.equal(path.dirname(resolvedWorkspace), path.resolve(os.tmpdir()), 'cleanup stays in the temporary directory');
+  assert.ok(path.basename(resolvedWorkspace).startsWith('mermarkd-a7-1-e2e-'), 'cleanup targets this generated workspace');
+  await rm(resolvedWorkspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
 }
