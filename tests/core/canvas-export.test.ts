@@ -31,6 +31,10 @@ test('export rejects cyclic parents and unsafe single-file dimensions', () => {
     { id: 'b', sectionIndex: 1, parentId: 'a', hidden: false, width: 100, height: 100, hiddenDescendants: 0, position: { x: 0, y: 0 } },
   ], []), /Cyclic export hierarchy/);
   assert.throws(() => assertCanvasExportSize({ x: 0, y: 0, width: 12_001, height: 100 }), /超出单文件导出上限/);
+  assert.deepEqual(assertCanvasExportSize({ x: 0, y: 0, width: 12_000, height: 3333 }), { width: 12_000, height: 3333 });
+  assert.deepEqual(assertCanvasExportSize({ x: 0, y: 0, width: 10_000, height: 4000 }), { width: 10_000, height: 4000 });
+  assert.throws(() => assertCanvasExportSize({ x: 0, y: 0, width: 12_000, height: 3334 }), /超出单文件导出上限/);
+  assert.throws(() => assertCanvasExportSize({ x: 0, y: 0, width: 100, height: 12_001 }), /超出单文件导出上限/);
 });
 
 test('export SVG uses verified card content and a routed label box', () => {
