@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, nativeImage, shell } from 'electron';
 import type { IpcMainInvokeEvent } from 'electron';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, open, readFile, realpath, rename, rm, writeFile } from 'node:fs/promises';
@@ -711,6 +711,13 @@ async function exportCanvasFor(event: IpcMainInvokeEvent, value: unknown): Promi
     });
     renderer.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
     await renderer.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    if (input.format !== 'pdf') {
+      // The native window can be smaller than the scene on Windows, even offscreen.
+      renderer.webContents.debugger.attach('1.3');
+      await renderer.webContents.debugger.sendCommand('Emulation.setDeviceMetricsOverride', {
+        width, height, deviceScaleFactor: 1, mobile: false,
+      });
+    }
     const fits = await renderer.webContents.executeJavaScript(`(async () => {
       await document.fonts.ready;
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
@@ -734,12 +741,22 @@ async function exportCanvasFor(event: IpcMainInvokeEvent, value: unknown): Promi
           printBackground: true,
         });
     } else {
-      const image = await renderer.webContents.capturePage({ x: 0, y: 0, width, height }, { stayHidden: true });
+      const capture: unknown = await renderer.webContents.debugger.sendCommand('Page.captureScreenshot', {
+        format: input.format === 'jpg' ? 'jpeg' : 'png',
+        ...(input.format === 'jpg' ? { quality: 92 } : {}),
+        clip: { x: 0, y: 0, width, height, scale: 1 },
+        fromSurface: true,
+        captureBeyondViewport: true,
+      });
+      if (!capture || typeof capture !== 'object' || !('data' in capture) || typeof capture.data !== 'string' || !capture.data.length) {
+        throw new Error('Empty export capture.');
+      }
+      bytes = Buffer.from(capture.data, 'base64');
+      const image = nativeImage.createFromBuffer(bytes);
       const actualSize = image.getSize();
       if (image.isEmpty() || actualSize.width !== width || actualSize.height !== height) {
         return { status: 'error', reason: `导出引擎返回 ${actualSize.width} × ${actualSize.height}，预期 ${width} × ${height}；已停止保存以避免裁切。` };
       }
-      bytes = input.format === 'jpg' ? image.toJPEG(92) : image.toPNG();
     }
     if (!bytes.length) throw new Error('Empty export output.');
     assertCurrentSession(event, session);
@@ -757,7 +774,12 @@ async function exportCanvasFor(event: IpcMainInvokeEvent, value: unknown): Promi
     console.error('[canvas:export]', error);
     return { status: 'error', reason: '画布导出失败，未能写入完整文件。' };
   } finally {
-    if (renderer && !renderer.isDestroyed()) renderer.destroy();
+    if (renderer && !renderer.isDestroyed()) {
+      try {
+        if (renderer.webContents.debugger.isAttached()) renderer.webContents.debugger.detach();
+      } catch (error) { console.error('[canvas:export:detach]', error); }
+      finally { renderer.destroy(); }
+    }
   }
 }
 

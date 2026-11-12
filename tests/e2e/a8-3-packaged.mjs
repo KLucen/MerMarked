@@ -124,7 +124,7 @@ try {
   const model = JSON.parse(beforeCanvas.toString('utf8'));
   // Keep the root initialized so automatic layout recovery does not replace this
   // deliberately oversized scene. The remote branch and its arrow exceed the viewport.
-  model.cards[0].position = { x: 80, y: 80 }; model.cards[1].position = { x: 240, y: 160 }; model.cards[2].position = { x: 320, y: 240 }; model.cards[3].position = { x: 1300, y: 700 };
+  model.cards[0].position = { x: 80, y: 80 }; model.cards[1].position = { x: 240, y: 160 }; model.cards[2].position = { x: 320, y: 240 }; model.cards[3].position = { x: 7800, y: 700 };
   model.links = [{ id: 'a8-3-export-link', from: model.cards[2].id, to: model.cards[3].id, label: '跨层中文关系标签-这是一个很长的标签用于边界检查', }];
   const saved = await cdp.evaluate(`window.mermarkd.saveCanvas(${JSON.stringify({ sourceSha256: hash, expectedSidecarSha256: loaded.sidecarSha256, model })})`);
   assert.equal(saved.status, 'saved');
@@ -142,7 +142,7 @@ try {
     if (format === 'pdf') outputs[format].pages = countPdfPages(bytes);
     if (format === 'png') { await mkdir(path.join(root, 'out', 'qa'), { recursive: true }); await writeFile(path.join(root, 'out', 'qa', 'a8-3-export.png'), bytes); }
   }
-  assert.ok(outputs.png.size.width > 1200 && outputs.png.size.height > 900);
+  assert.ok(outputs.png.size.width > 8000 && outputs.png.size.height > 900);
   assert.deepEqual(outputs.jpg.size, outputs.png.size);
   assert.equal(outputs.pdf.pages, 1);
   assert.deepEqual(await readFile(documentPath), beforeMarkdown); assert.deepEqual(await readFile(annotationsPath), beforeYaml); assert.notDeepEqual(await readFile(sidecarPath), beforeCanvas);
