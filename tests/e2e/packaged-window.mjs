@@ -1,4 +1,5 @@
 import { spawn as spawnProcess, execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { build } from 'vite';
 import { connectCdp } from './cdp-client.mjs';
 
@@ -14,6 +15,12 @@ async function sourceBridge() {
 // screenshots even when BrowserWindow reports that it is visible/focused.
 // Product throttling and rendering settings remain untouched.
 export async function spawn(executable, args, options) {
+  const userDataSwitches = args.filter(value => value === '--user-data-dir' || value.startsWith('--user-data-dir='));
+  const userDataDirectory = userDataSwitches[0]?.slice('--user-data-dir='.length);
+  if (userDataSwitches.length !== 1 || !userDataDirectory?.trim() || !path.isAbsolute(userDataDirectory)) {
+    throw Error('A packaged-window test requires exactly one nonempty absolute --user-data-dir.');
+  }
+  const expectedUserData = path.resolve(userDataDirectory);
   const script = await sourceBridge();
   const remotePort = Number(args.find(value=>value.startsWith('--remote-debugging-port='))?.split('=')[1]);
   if (!remotePort) throw Error('A packaged-window test requires a renderer debugging port.');
@@ -31,6 +38,14 @@ export async function spawn(executable, args, options) {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     if (!entryReady) throw Error('Packaged application entry did not load.');
+    const actualUserData = await main.evaluate(`(async()=>{
+      const {app}=process.mainModule.require('electron');await app.whenReady();
+      return app.getPath('userData');
+    })()`);
+    const normalizeUserData = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+    if (typeof actualUserData !== 'string' || normalizeUserData(actualUserData) !== normalizeUserData(expectedUserData)) {
+      throw Error('The packaged application did not use the explicit isolated user-data directory.');
+    }
     await main.evaluate(`(async()=>{
       const {app,BrowserWindow}=process.mainModule.require('electron');await app.whenReady();
       const deadline=Date.now()+15000;let w;
