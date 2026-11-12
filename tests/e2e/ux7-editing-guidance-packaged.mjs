@@ -221,9 +221,10 @@ try {
   await page.evaluate(`(() => {
     globalThis.__ux7ChromiumComposition=[];
     const input=__sourceControlElement();
-    for(const type of ['compositionstart','compositionupdate','compositionend','beforeinput','input']) {
+    for(const type of ['compositionstart','compositionupdate','compositionend','beforeinput','input','keydown']) {
       input.addEventListener(type,event=>__ux7ChromiumComposition.push({
         type:event.type,data:event.data,isTrusted:event.isTrusted,inputType:event.inputType,
+        key:event.key,keyCode:event.keyCode,isComposing:event.isComposing,
       }),true);
     }
   })()`);

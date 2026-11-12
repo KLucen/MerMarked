@@ -15,6 +15,8 @@ async function sourceBridge() {
 // screenshots even when BrowserWindow reports that it is visible/focused.
 // Product throttling and rendering settings remain untouched.
 export async function spawn(executable, args, options) {
+  const selectedExecutable = process.env.MERMARKD_QA_EXE ?? executable;
+  if (!path.isAbsolute(selectedExecutable)) throw Error('The selected QA executable must be an absolute path.');
   const userDataSwitches = args.filter(value => value === '--user-data-dir' || value.startsWith('--user-data-dir='));
   const userDataDirectory = userDataSwitches[0]?.slice('--user-data-dir='.length);
   if (userDataSwitches.length !== 1 || !userDataDirectory?.trim() || !path.isAbsolute(userDataDirectory)) {
@@ -26,7 +28,7 @@ export async function spawn(executable, args, options) {
   if (!remotePort) throw Error('A packaged-window test requires a renderer debugging port.');
   const existingInspector = args.find(value=>value.startsWith('--inspect='));
   const inspectorPort = existingInspector ? Number(existingInspector.split('=').at(-1).split(':').at(-1)) : remotePort+8000;
-  const child = spawnProcess(executable, existingInspector ? args : [...args,`--inspect=127.0.0.1:${inspectorPort}`],{...options,windowsHide:false});
+  const child = spawnProcess(selectedExecutable, existingInspector ? args : [...args,`--inspect=127.0.0.1:${inspectorPort}`],{...options,windowsHide:false});
   let main;
   try {
     main = await connectCdp(inspectorPort,t=>t.type==='node');
@@ -38,6 +40,11 @@ export async function spawn(executable, args, options) {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
     if (!entryReady) throw Error('Packaged application entry did not load.');
+    const actualExecutable = await main.evaluate('process.execPath');
+    const normalizePath = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+    if (typeof actualExecutable !== 'string' || normalizePath(actualExecutable) !== normalizePath(selectedExecutable)) {
+      throw Error('The packaged application did not start the selected QA executable.');
+    }
     const actualUserData = await main.evaluate(`(async()=>{
       const {app}=process.mainModule.require('electron');await app.whenReady();
       return app.getPath('userData');
