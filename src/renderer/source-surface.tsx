@@ -76,15 +76,12 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
     wrapped.current = Boolean(current.softWrap);
     let alive = true;
     let composing = false;
-    let finishTimer: number | null = null;
+    let finishGeneration = 0;
+    const finishMeasureKey = {};
     const setCompositionActive = (active: boolean) => {
       if (compositionActive.current === active) return;
       compositionActive.current = active;
       latest.current.onActivityChange?.('committing', active);
-    };
-    const clearFinishTimer = () => {
-      if (finishTimer !== null) window.clearTimeout(finishTimer);
-      finishTimer = null;
     };
     const publish = (view: EditorView) => {
       text.current = view.state.doc.toString();
@@ -95,14 +92,14 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
       }
     };
     const finishComposition = (view: EditorView) => {
-      clearFinishTimer();
+      finishGeneration++;
       if (!alive || editor.current !== view || !compositionActive.current) return;
       composing = false;
       try { publish(view); }
       finally { setCompositionActive(false); }
     };
     const cancel = () => {
-      clearFinishTimer();
+      finishGeneration++;
       composing = false;
       setCompositionActive(false);
     };
@@ -116,20 +113,33 @@ export const SourceSurface = forwardRef<SourceSurfaceHandle, Props>(function Sou
       EditorView.domEventObservers({
         compositionstart: (_event, view) => {
           if (!composing && compositionActive.current) finishComposition(view);
+          finishGeneration++;
           composing = true;
           setCompositionActive(true);
         },
         compositionend: (_event, view) => {
           composing = false;
-          clearFinishTimer();
-          // CodeMirror can flush the final DOM mutation in a microtask after
-          // compositionend. Publish only the final source as one shared edit.
-          finishTimer = window.setTimeout(() => finishComposition(view), 0);
+          const generation = ++finishGeneration;
+          // Normal measurement flushes CodeMirror's DOM observer first. Read
+          // the latest state after measurement exits, never a captured candidate.
+          view.requestMeasure({ key: finishMeasureKey, read: () => generation,
+            write: token => queueMicrotask(() => {
+              if (alive && editor.current === view && token === finishGeneration &&
+                  compositionActive.current && !composing && !view.compositionStarted) finishComposition(view);
+            }) });
         },
-        keydown: (_event, view) => {
-          if (!composing && compositionActive.current) finishComposition(view);
+        keydown: (event, view) => {
+          // CodeMirror flushes pending DOM changes before ordinary keydown,
+          // but explicitly excludes the IME's 229 key.
+          if (!composing && compositionActive.current && !view.compositionStarted &&
+              !event.isComposing && event.keyCode !== 229) finishComposition(view);
         },
       }),
+      EditorView.domEventHandlers({ keydown: event => {
+        // An IME confirmation arriving after compositionend must not reach
+        // ordinary bindings such as Enter while final text is still pending.
+        return compositionActive.current && (event.isComposing || event.keyCode === 229);
+      } }),
       EditorView.updateListener.of(update => {
         if (syncing.current) return;
         if (update.docChanged) {
