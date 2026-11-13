@@ -80,7 +80,14 @@ async function wait(expression, label) {
     if (await page.evaluate(expression)) return;
     await new Promise((resolve) => setTimeout(resolve, 60));
   }
-  throw Error(`${label}: ${await page.evaluate('document.body.innerText.slice(0,2200)')}`);
+  const controls = await page.evaluate(`({
+    focus: { tag: document.activeElement?.tagName, id: document.activeElement?.id, dataset: { ...document.activeElement?.dataset } },
+    selects: [...document.querySelectorAll('select')].map(element => ({
+      dataset: { ...element.dataset }, disabled: element.disabled, value: element.value,
+      visible: Boolean(element.getClientRects().length), focused: document.activeElement === element,
+    })),
+  })`);
+  throw Error(`${label}: ${await page.evaluate('document.body.innerText.slice(0,2200)')}\nUX4 controls: ${JSON.stringify(controls)}`);
 }
 async function frame() { await page.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))'); }
 async function key(key, code, windowsVirtualKeyCode, modifiers = 0) {
@@ -96,7 +103,22 @@ async function click(selector) {
 }
 async function keyboardSelect(selector, value) {
   await page.send('Page.bringToFront');
-  const index = await page.evaluate(`(() => { const e=document.querySelector(${JSON.stringify(selector)}); e.scrollIntoView({block:'nearest'}); e.focus(); return [...e.options].findIndex(option=>option.value===${JSON.stringify(value)}); })()`);
+  await wait(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    return element instanceof HTMLSelectElement && !element.disabled && element.getClientRects().length > 0 &&
+      getComputedStyle(element).visibility !== 'hidden' && !element.closest('[inert],[hidden]') &&
+      [...element.options].some(option => option.value === ${JSON.stringify(value)});
+  })()`, `ready keyboard picker ${selector}`);
+  const index = await page.evaluate(`(() => {
+    const element = document.querySelector(${JSON.stringify(selector)});
+    element.scrollIntoView({ block: 'nearest' });
+    element.focus();
+    if (document.activeElement !== element) throw Error('Keyboard picker did not receive focus: ' + JSON.stringify({
+      selector: ${JSON.stringify(selector)}, disabled: element.disabled, value: element.value,
+      focus: document.activeElement?.tagName,
+    }));
+    return [...element.options].findIndex(option => option.value === ${JSON.stringify(value)});
+  })()`);
   assert.ok(index >= 0, `select option ${selector}: ${value}`);
   await key('Home', 'Home', 36);
   await frame();

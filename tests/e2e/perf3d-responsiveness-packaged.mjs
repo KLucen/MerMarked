@@ -108,6 +108,17 @@ async function snapshot(file = fixture) {
 }
 
 const measurements=[];
+async function sampleEnvironment(){
+  // Read the detected state outside the timed actions; never change AX features.
+  return main.evaluate(`(()=>{
+    const {app,BrowserWindow,screen}=process.mainModule.require('electron');
+    const window=BrowserWindow.getAllWindows().find(window=>!window.isDestroyed());
+    return {capturedAt:new Date().toISOString(),accessibilitySupportEnabled:app.accessibilitySupportEnabled,
+      accessibilitySupportFeatures:app.getAccessibilitySupportFeatures?.()??null,
+      refreshRateHz:window?screen.getDisplayMatching(window.getBounds()).displayFrequency:null,
+      window:window?{focused:window.isFocused(),visible:window.isVisible(),minimized:window.isMinimized()}:null};
+  })()`);
+}
 async function assertVisibleWindow(){
   assert.equal(await main.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().some(w=>w.isVisible()&&!w.isMinimized())'),true,'measurement window must be visible');
   assert.equal(await page.evaluate('document.visibilityState'),'visible','measurement page must be visible');
@@ -155,6 +166,7 @@ async function measure(name, action, condition) {
 }
 try {
   page=await connect(port,'page'); main=await connect(port+200,'node');
+  const environmentSnapshots={before:await sampleEnvironment(),after:null};
   if(process.env.MERMARKD_QA_RENDERER_URL) await page.send('Page.navigate',{url:process.env.MERMARKD_QA_RENDERER_URL});
   await main.evaluate(`(()=>{const ipc=process.mainModule.require('electron').ipcMain;const original=ipc._invokeHandlers.get('annotations:load');
     globalThis.__annotationTrace=[];globalThis.__mainGaps=[];let previous=performance.now();setInterval(()=>{const now=performance.now();globalThis.__mainGaps.push(now-previous);previous=now;},10);
@@ -252,7 +264,8 @@ try {
     analysisToReplyMs:t.analysisStartedAt===undefined?null:performance.timeOrigin+t.reply-t.analysisStartedAt-t.analysisMs};})()`);
   const annotationTrace=await main.evaluate('({loads:globalThis.__annotationTrace,maxMainGapMs:Math.max(...globalThis.__mainGaps)})');
   const annotationsReadyMs=scale?await page.evaluate('window.__readingTrace.annotationsReady-window.__readingTrace.started'):null;
-  const result={label:process.env.MERMARKD_PERF_LABEL??'current',sourceBytes:bytes.length,headings:headingCount,annotations:scale?500:0,annotationsReadyMs,readingTrace,workerTrace,inputTrace,annotationTrace,measurements};
+  environmentSnapshots.after=await sampleEnvironment();
+  const result={label:process.env.MERMARKD_PERF_LABEL??'current',sourceBytes:bytes.length,headings:headingCount,annotations:scale?500:0,annotationsReadyMs,readingTrace,workerTrace,inputTrace,annotationTrace,measurements,environmentSnapshots};
   await writeFile(path.join(qa,'perf3d-'+result.label+'.json'),JSON.stringify(result,null,2));
   console.log(JSON.stringify(result,null,2));
 } catch(error) {

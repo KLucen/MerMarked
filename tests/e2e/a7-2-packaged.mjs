@@ -238,6 +238,7 @@ const sentinelOrigin = `http://127.0.0.1:${sentinelAddress.port}`;
 const workspace = await mkdtemp(path.join(os.tmpdir(), 'mermarkd-a7-2-e2e-'));
 const appData = path.join(workspace, 'appdata');
 const localAppData = path.join(workspace, 'localappdata');
+const userData = path.join(workspace, 'user-data');
 const documentPath = path.join(workspace, 'a7-2-semantics.md');
 const sidecarPath = `${documentPath}.annotations.yaml`;
 const canvasPath = `${documentPath}.mermarkd.json`;
@@ -273,7 +274,7 @@ const initialDigests = {
   canvas: digest(await readFile(canvasPath)),
 };
 const port = 9900 + Math.floor(Math.random() * 90);
-const child = await spawn(executable, [`--remote-debugging-port=${port}`], {
+const child = await spawn(executable, [`--remote-debugging-port=${port}`, `--user-data-dir=${userData}`], {
   cwd: root,
   env: { ...process.env, APPDATA: appData, LOCALAPPDATA: localAppData },
   stdio: 'ignore',
@@ -603,6 +604,9 @@ try {
       child.kill('SIGKILL');
     }
   }
-  await rm(workspace, { recursive: true, force: true });
+  const resolvedWorkspace = path.resolve(workspace);
+  assert.equal(path.dirname(resolvedWorkspace), path.resolve(os.tmpdir()), 'cleanup stays in the temporary directory');
+  assert.ok(path.basename(resolvedWorkspace).startsWith('mermarkd-a7-2-e2e-'), 'cleanup targets this generated workspace');
+  await rm(resolvedWorkspace, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   await new Promise((resolve) => sentinel.close(resolve));
 }

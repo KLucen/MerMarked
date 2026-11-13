@@ -16,6 +16,33 @@ test('local Markdown edits preserve surrounding BOM/CRLF content and share undo/
   assert.equal(redone.current.content.includes('\r\n'), true);
 });
 
+test('undo restores the modified source range for insertion, replacement, and deletion', () => {
+  const content = '前😀正文后';
+  const start = content.indexOf('正文');
+  const cases = [
+    { name: 'insertion', selection: { start: content.length, end: content.length }, replacement: '你' },
+    { name: 'replacement', selection: { start, end: start + 2 }, replacement: '新正文' },
+    { name: 'deletion', selection: { start, end: start + 2 }, replacement: '' },
+  ];
+  for (const edit of cases) {
+    const session = createMarkdownEditSession(content);
+    const original = structuredClone(session);
+    const edited = applyMarkdownTextEdit(session, { expectedRevision: session.revision, ...edit });
+    const undone = undoMarkdownEdit(edited);
+    assert.equal(undone.current.content, content, edit.name);
+    assert.deepEqual(undone.current.selection, edit.selection, edit.name);
+    assert.notEqual(edited.past.at(-1), session.current, edit.name);
+    assert.notEqual(edited.past.at(-1)?.selection, edit.selection, edit.name);
+    const redone = redoMarkdownEdit(undone);
+    assert.equal(redone.current.content, edited.current.content, edit.name);
+    assert.deepEqual(redone.current.selection, edited.current.selection, edit.name);
+    const undoneAgain = undoMarkdownEdit(redone);
+    assert.equal(undoneAgain.current.content, content, edit.name);
+    assert.deepEqual(undoneAgain.current.selection, edit.selection, edit.name);
+    assert.deepEqual(session, original, edit.name);
+  }
+});
+
 test('stale revisions, surrogate splits and invalid selections are rejected', () => {
   const session = createMarkdownEditSession('😀 text');
   assert.throws(() => applyMarkdownTextEdit(session, { expectedRevision: 1, selection: { start: 0, end: 0 }, replacement: 'x' }));

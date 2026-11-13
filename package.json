@@ -36,6 +36,7 @@
     "test:e2e:ux6a": "node tests/e2e/ux6a-draft-protection-packaged.mjs",
     "test:e2e:ux6b": "node tests/e2e/ux6b-document-flow-packaged.mjs",
     "test:e2e:ux7": "node tests/e2e/ux7-editing-guidance-packaged.mjs",
+    "test:e2e:source-composition": "node tests/e2e/source-composition-race.mjs",
     "test:e2e:ux8": "node tests/e2e/ux8-card-reading-packaged.mjs",
     "test:e2e:perf2": "node tests/e2e/perf2-background-reading-packaged.mjs",
     "test:e2e:perf3a": "node tests/e2e/perf3a-reader-search-packaged.mjs",

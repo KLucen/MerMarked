@@ -2220,6 +2220,7 @@ function App() {
           recoveringDraft={editorController.busy}
           latestSourceBackupId={editorController.editor.latestSourceBackupId}
           onChange={editorController.changeEditorText}
+          onActivityChange={reportReaderActivity}
           sharedEditSession={editorController.editSession}
           onUndo={editorController.undo}
           onRedo={editorController.redo}
