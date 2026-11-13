@@ -15,6 +15,8 @@
 
 下一步核对增强 AX 路径的大文档长帧与单次拖动异常，并处理卸载残留支持范围。用户已确认目前只有当前单屏电脑，物理跨屏 DPI 与没有开发工具的干净 Windows 环境验收等待设备条件。公开发布的许可、签名与渠道另验，QA1 与 P0 尚未整体退出。
 
+本批已推送至 `origin/codex/qa1-closeout`，创建并附加 [PR #20](https://github.com/KLucen/MerMarked/pull/20)，目标 main，待审未合并。产品运行时 `cc386b0`、执行文件核验 `5b4093f` 与性能环境记录 `4a2d4b0` 分别可追溯，完整验收和剩余门槛随 PR 交付。
+
 ## 2026-11-08 · UX8 卡片阅读与导航（已推送，PR #19 待审）
 
 本批最初从 `028c210` 实施，现已纳入合并 UX7A 的主线 `80bfc2e`，分支为 `codex/ux8-card-reading`。范围与验收见 [UX8_ACCEPTANCE.md](UX8_ACCEPTANCE.md)，决定见 ADR-052。

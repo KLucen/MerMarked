@@ -2036,3 +2036,5 @@ F本地Setup154,836,992字节，SHA-256为71D76E2ACCA80D3D19711322902DC9253484CD
 原B pending四次完整通过，第五次在已完成pending切换后的一次拖动保存异常坐标，第二拖动hit-test失败，整份exit1。未定位坐标来源，保留manifest、失败日志及部分壁钟，未推断人为操作。相同脚本与产品以独立C前缀重跑五次完整通过，源码实际就绪7/7/7/7/9ms，交互帧8/8/13/8/8ms。C四组GC/应用进程内存循环完成，当前5MiB阅读renderer堆63.3→63.4→63.5MiB，保留应用working/private及旧包对照；不据三轮证明无泄漏。未并行构建、普通样本、profiler或GC探针。
 
 本批软件修复与可用本机验证已有具体交付。增强AX性能、单次拖动异常和卸载残留仍需后续定位；用户确认只有当前单屏电脑，物理跨屏DPI和无开发工具的干净Windows环境尚不可验收，软件DPR不能替代。公开发布的签名、许可证和渠道另验，QA1/P0不提前标完成。三项用户原有修改继续排除提交。
+
+2026-11-13 GitHub交付：验收记录fe4d7e8及全部实现经SSH dry-run与push上传到origin/codex/qa1-closeout。创建并附加[PR #20](https://github.com/KLucen/MerMarked/pull/20)，目标main，官方API核对分支、精确head、open及未合并。连接器仍要求重新认证，沿用本机GCM已有KLucen认证调用官方API，没有新建凭证、扩大权限或修改全局网络配置。创建后未出现GitHub check-run或status context，本批验证指本地实际执行的检查，不声称云端CI通过。仅源码/测试/验收文档上传；私人profile、备份、日志和本地测试安装包未发布。
