@@ -270,16 +270,12 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       const oldIds = new Set(loaded.model?.cards.map((card) => card.id) ?? []);
       const hasNewCards = reconciled.bindings.some((binding) => !oldIds.has(binding.id));
       const sourceChanged = Boolean(loaded.model && loaded.model.source.sha256 !== sha256);
-      const boundCards = initial.cards.filter((card) => reconciled.bindings.some((binding) => binding.id === card.id));
-      const allCardsAtOrigin = boundCards.length > 0 && boundCards.every((card) => card.position.x === 0 && card.position.y === 0);
-      const rootIds = new Set(reconciled.bindings.filter((binding) => binding.sectionIndex === null || tree.sections[binding.sectionIndex]?.parentIndex === null).map((binding) => binding.id));
-      const rootAtCorner = boundCards.some((card) => rootIds.has(card.id) && card.position.x < 32 && card.position.y < 32);
-      const needsArrangement = loaded.model === null || hasNewCards || (sourceChanged && reconciled.unresolvedCardIds.length > 0) || allCardsAtOrigin || rootAtCorner;
+      const needsArrangement = loaded.model === null || hasNewCards || (sourceChanged && reconciled.unresolvedCardIds.length > 0);
       if (needsArrangement) initial = await arrangeCanvasV2(tree, initial, reconciled.bindings);
       const initialScene = buildCanvasSceneV2(document.content, tree, initial, reconciled.bindings, cardContent);
       const viewportValid = loaded.model !== null && isCanvasViewportVisible(loaded.model.viewport, initialScene.cards);
       if (loaded.model && !viewportValid && !needsArrangement) loadWarningText ??= '已保存的画布视口不再覆盖当前卡片，已自动定位到当前布局。';
-      if (loaded.model && needsArrangement && (sourceChanged || hasNewCards || rootAtCorner)) loadWarningText ??= '检测到卡片位置未初始化或文档结构已变化，已自动整理当前章节。';
+      if (loaded.model && needsArrangement && (sourceChanged || hasNewCards)) loadWarningText ??= '文档结构已变化，已自动整理当前章节。';
       if (generation.current !== current) return;
       sourceVersion.current = loaded.sourceVersion ?? 1;
       if (loaded.model && !needsArrangement) pendingInitialViewport.current = {
@@ -296,7 +292,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   }, [document.path, document.content, document.bomByteLength, dirty, loadRevision, preparedSource]);
 
   useEffect(() => {
-    if (!cardContent || !initialLayout.current || !model || bindings.some((binding) => !minimumHeights[binding.id])) return;
+    if (!cardContent || !initialLayout.current || !model || !scene || scene.cards.some((card) => !card.hidden && !minimumHeights[card.id])) return;
     initialLayout.current = false;
     const current = generation.current;
     void arrangeCanvasV2(tree, model, bindings, minimumHeights).then((next) => {
@@ -311,7 +307,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
           setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : '');
         }); }, 50);
     }).catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('初始布局失败，请重新载入画布。'); } });
-  }, [bindings, dirty, minimumHeights, model, tree, cardContent]);
+  }, [bindings, dirty, minimumHeights, model, tree, cardContent, scene]);
 
   const persist = useCallback(async (next: CanvasStateV2, remember = true, { showOnSuccess = false } = {}) => {
     if (!model || readOnly || saveInFlight.current) return false;

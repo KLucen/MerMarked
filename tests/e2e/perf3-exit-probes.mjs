@@ -37,7 +37,7 @@ for (const task of tasks) {
     MERMARKD_PERF_MIB: String(task.mib), MERMARKD_PERF_LABEL: task.label };
   for (const key of ['MERMARKD_PERF_PROFILE', 'MERMARKD_PERF_PROFILE_CARDS', 'MERMARKD_PERF_INPUT_PROFILE', 'MERMARKD_PERF_TRACE_STAGE',
     'MERMARKD_PERF_HIDE_GRID', 'MERMARKD_PERF_GC_PROBE', 'MERMARKD_PERF_PENDING_SOURCE', 'MERMARKD_PERF_VERIFY_LIFECYCLE',
-    'MERMARKD_PERF_VERIFY_CANVAS_WORKER', 'MERMARKD_PERF_REPEAT_OPEN', 'MERMARKD_QA_RENDERER_URL']) delete env[key];
+    'MERMARKD_PERF_VERIFY_CANVAS_WORKER', 'MERMARKD_PERF_REPEAT_OPEN', 'MERMARKD_QA_RENDERER_URL', 'MERMARKD_PERF_AX_MODE', 'MERMARKD_PERF_AX_TRACE']) delete env[key];
   env[mode === 'pending' ? 'MERMARKD_PERF_PENDING_SOURCE' : 'MERMARKD_PERF_GC_PROBE'] = '1';
   const record = { ...task, startedAt: new Date().toISOString(), status: 'running', log: path.join(qa, `${prefix}-${task.label}.log`) };
   manifest.runs.push(record); await save();
