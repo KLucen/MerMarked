@@ -1999,3 +1999,40 @@ F本地Setup154,836,992字节，SHA-256为71D76E2ACCA80D3D19711322902DC9253484CD
 ### GitHub交付
 
 最终验收记录提交 `e47a1a2`，连同实现 `dfa8275`、主线整合 `d13c79a`，已通过 SSH dry-run 与推送上传至 `origin/codex/ux8-card-reading`。使用本机 GCM 已有 KLucen 认证调用官方 API，成功创建并附加 [PR #19](https://github.com/KLucen/MerMarked/pull/19)，目标 main，待审未合并。创建回执核验了分支、提交、目标分支与状态。收尾复核确认28项日志SHA-256、318项单测和产物哈希与文档一致，开发服务已停止。
+
+## 2026-11-08 至 2026-11-13 · QA1 收口验证与修复
+
+### 目标和实现
+
+继续设计复核第7批QA1。基于已合并UX8 / PR #19，分支codex/qa1-closeout。真实WeType输入发现中间拼音进入共享历史，021c84a先聚合组合输入；d76c02e修复撤销光标范围。确定调度随后证明setTimeout(0)、229与结束后的isComposing仍有缺口，cc386b0改用CodeMirror公共测量完成后的当前状态发布，并用generation与实例生命周期取消旧回调，输入法确认键不进入普通Enter。ADR-053记录边界，未增加第二份历史、IPC或持久化格式。
+
+实际安装版2180×634 PNG被隐藏窗口限制成2050×634，原守卫正确拒绝裁切文件。f72101a使用专用导出窗口的精确DPR与Page.captureScreenshot全场景clip，捕获后再次核对解码尺寸，PDF保持printToPDF；12000px/40MP限制不变。A8.3扩大到8228×1024，核心测试补精确面积边界，ADR-054记录。
+
+测试侧82a5cf1补画布选项就绪和焦点前提，af4b1cf强制独立绝对user-data路径并核验主进程，b1f7734补Windows临时profile安全重试，5b4093f支持指定QA可执行文件并核验process.execPath。三份早期脚本只改APPDATA环境变量导致默认profile被测试改动，先保留测试后副本，再按捕获备份恢复原57文件的长度/摘要/mtime，新增两份缓存移到验收目录。恢复后严格隔离回归与安装生命周期均核验原57文件不变。未修改用户Markdown正文；备份与私人profile未提交仓库。
+
+### 最终构建和窗口
+
+- 独立干净检出cc386b0，在C:/Users/KLucen/.codex/worktrees/mermarkd-qa1-ime-final执行npm ci、npm run typecheck、npm test、npm run make，全退出0，319/319单测。依赖锁不变，Electron44.4.1来自已核验ZIP，原网络超时与参数错误日志保留。
+- 生产ASAR 4069732字节，SHA256 86596030FA1E4B1B40DEEB02FBF50384145E459BB35E4A398EABBB695E938033；Setup154838016字节，SHA256 0BE1657EFB48BE2BF9293B8B4836D2BBFA494528572BE123996B51CAA900EF04。回执out/qa/qa1-ime-final-build-manifest.json。
+- 测试提交5b4093f只快进测试脚本，ASAR不变。qa1-ime-bound-a-regression-manifest.json记录28/28，覆盖UX8/7/6B、A6、A7.1/2/3b/4/5、A8.2/3/4/5、B1、UX1–5、PERF1、UX6A、PERF2、PERF3A/B/C/D/E/G。A8.3三格式8228×1024完整边界及dirty冻结通过。
+- npm run test:e2e:source-composition的独立原型控制公开测量调度，用真实SourceSurface/MarkdownEditorView/核心历史。旧源码三项red，新源码八项green，证据out/qa/source-composition-race/qa1-ime-race-{red,green-c}.json。不代替物理输入。
+- 实际Vite使用既有renderer配置、127.0.0.1:5178、strictPort与force，最终UX7与UX8均退出0，qa1-ime-final-vite-{ux7,ux8}.log，服务已停。临时源码诊断已移除。
+- 真实WeType通过computer-use原生按键在唯一隔离窗口验收，qa1-ime-fixed-report.json绑定同一8659 ASAR，34个原生keydown。源码与阅读候选、取消、CtrlS零写入、一次撤销及原光标、重做、跨模式历史、显式保存的BOM/CRLF及缺失sidecar零创建全过。四张原生jpg截图及摘要列在回执中，本轮无人工输入或最小化中断。
+
+### 安装升级卸载和原失败
+
+实际原始0.1.0 Setup安装、默认快捷方式根启动器、升级0.1.1-qa1再到0.1.2-qa1均已执行。测试版本只改package/lock三个版本值，生产仍0.1.0。最终更新源cc386b0，ASAR45130D4F729256B2778FAAF0CACF5585702DC8BAC8CE3C792F5A8C8A9F406161。RELEASES、包长、摘要、嵌入版本、安装ASAR及updater独立核验。五个renderer JS与生产包内容完全相同。
+
+初次最终升级已退出0，但升级后检查与独立窗口回归重叠，因有测试进程拒绝标为verified。保存原started/finished及错误，全部窗口结束后仅做新的只读身份/进程/profile核验，通过后另存reverified回执，没有重复执行升级器。后续安装生命周期与窗口测试串行。
+
+正常入口、同一持续数据的便签/标签/三张卡片及箭头、三文件bytes/mtime、2180×634 PNG，安装版UX7/UX8和四档软件DPR均通过。日志qa1-default-launch-after-ime、qa1-installed-flow-after-ime、qa1-installed-ime-{ux7,ux8,dpr}。一次标为安装版的旧UX7失败实际未采用指定exe，跑的是根工作区旧UX8 C3E8 ASAR；qa1-installed-updated-ux7.log和qa1-ime-final-ux7-first.log保留失败并更正归属，不计为新包失败或通过。5b4093f的process.execPath核验已覆盖此缺口。
+
+最终真实卸载退出0，2秒/20秒后无MerMarkd进程、ASAR、卸载注册项或两处快捷方式，原Roaming57文件完整保持。安装目录仍有.dead、Update.exe、app-0.1.2-qa1/squirrel.exe及v8_context_snapshot.bin四文件，共4541241字节，包含根/子目录共六项；没有手工清理，不称零残留。回执out/qa/qa1-install/manifest.json及qa1-lifecycle-uninstall.log。
+
+### 当前剩余
+
+正式性能A/B各40份完成，全部原值及环境范围见QA1_PERF_METRICS.json。A组有44项预算超限，未删除或作废。组后新进程检测nativeAPIs/webContents/extendedProperties，官方node_repl reset结束原生检查客户端后新进程仅nativeAPIs，同包单次恢复预算；A未逐份采features，只能支持相关性，增强AX路径性能仍未解决。4a2d4b0仅增加每份计时前后的实际环境快照，不改动作或预算。B40达到预算，80快照均nativeAPIs/240Hz/可见未最小化，79聚焦、一份终末失焦，未推断计时中焦点。5MiB首次/重复打开自动化中位数2047/1948ms，切卡片实际246ms，返回阅读47ms。
+
+原B pending四次完整通过，第五次在已完成pending切换后的一次拖动保存异常坐标，第二拖动hit-test失败，整份exit1。未定位坐标来源，保留manifest、失败日志及部分壁钟，未推断人为操作。相同脚本与产品以独立C前缀重跑五次完整通过，源码实际就绪7/7/7/7/9ms，交互帧8/8/13/8/8ms。C四组GC/应用进程内存循环完成，当前5MiB阅读renderer堆63.3→63.4→63.5MiB，保留应用working/private及旧包对照；不据三轮证明无泄漏。未并行构建、普通样本、profiler或GC探针。
+
+本批软件修复与可用本机验证已有具体交付。增强AX性能、单次拖动异常和卸载残留仍需后续定位；用户确认只有当前单屏电脑，物理跨屏DPI和无开发工具的干净Windows环境尚不可验收，软件DPR不能替代。公开发布的签名、许可证和渠道另验，QA1/P0不提前标完成。三项用户原有修改继续排除提交。
