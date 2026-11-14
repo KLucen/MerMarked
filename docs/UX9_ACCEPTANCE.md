@@ -83,6 +83,6 @@ React Flow 节点 DOM transform 使用世界坐标，嵌套卡的预期值须递
 
 在同一干净 worktree 使用实际 renderer Vite 配置，`127.0.0.1:5178 --strictPort --force`，依次执行 UX9、UX8、UX7，全部退出 0。`out/qa/ux9-final-vite-manifest.json` 记录 `2026-11-14T10:16:19.7778914Z` 至 `10:17:11.6214474Z`、同一源/ASAR、三份日志摘要及 `serverStopped: true`；使用实际 Node 可执行路径启动并清理自有进程树，避免 nvm shim 留子进程。Vite UX9 同样九项通过。
 
-[UX9_EVIDENCE.json](UX9_EVIDENCE.json) 保留两轮旧版对照、A/B 构建、A 的实际失败、B 和 Vite 全部九项结果、31 套回执及 14 张通过截图的摘要。所有验证为本地执行，不据此宣称云端 CI、真实原生输入法、辅助客户端性能或安装生命周期的新包验收。GitHub 交付待回执；QA1/P0 剩余项保持。
+[UX9_EVIDENCE.json](UX9_EVIDENCE.json) 保留两轮旧版对照、A/B 构建、A 的实际失败、B 和 Vite 全部九项结果、31 套回执及 14 张通过截图的摘要。所有验证为本地执行，不据此宣称云端 CI、真实原生输入法、辅助客户端性能或安装生命周期的新包验收。实现 `7b6318d`、修正 `8425753` 与验收 `a52b678` 已上传并附加 [PR #22](https://github.com/KLucen/MerMarked/pull/22)，目标 main，待审未合并；QA1/P0 剩余项保持。
 
 三项用户原有修改 `src/renderer/index-3b82dd4d61e8.html`、`tests/fixtures/reader/mixed-layout.md`、其 `.mermarkd.json` 不属于本批测试素材，不能修改、清理或随本批提交。

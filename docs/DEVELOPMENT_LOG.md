@@ -2076,3 +2076,5 @@ QA2布局修复本地退出条件已过，增强特性受控诊断已完成；QA
 同一worktree实际renderer Vite配置127.0.0.1:5178、strictPort/force，UX9/UX8/UX7均exit0，UX9亦九项全过。out/qa/ux9-final-vite-manifest.json记录实际命令、三日志SHA和serverStopped:true，使用真实Node可执行路径并结束自有进程树避免nvm shim残留。窗口均已结束，增量嵌套、搜索420、阅读定位420等截图已视觉复核。原始A失败和B/Vite14张通过截图均保留在out/qa。
 
 node out/qa/ux9-collect-evidence.mjs核对31条日志SHA、三条Vite日志SHA、报告/包体/脚本文本身份与三项用户保护值，输出docs/UX9_EVIDENCE.json，108313bytes，原值及失败均保留。本批本机软件退出条件已通过；QA1原生辅助客户端性能、原单次拖动异常、卸载残留及设备/发布门槛保持，不用合成组合事件替代新的真实IME，也不声称本批重做安装生命周期或正式性能cohort。三项用户原文件不变且排除提交，私有profile、原始日志及本地安装包不上传。GitHub交付另记回执。
+
+2026-11-14 GitHub交付：本机KLucen已有GCM认证和SSH预检成功，源码7b6318d、窄窗修正8425753及验收a52b678推送origin/codex/ux9-layout-navigation。已创建并附加[PR #22](https://github.com/KLucen/MerMarked/pull/22)，目标main，创建回执head a52b67870ebb02e95eecee075654dd7d652fb7ad、open、非draft、未合并；交付状态随分支更新，最终精确head由官方API和远端ref核验。连接器本次仍要求重新认证，沿用已有凭据调用官方API，没有新增权限或修改全局配置。独立文档复核和31日志/3Vite日志/14截图/3用户保护文件SHA核对通过。仅代码、测试与验收记录上传，原始大日志、测试profile和本地Setup未公开发布。
