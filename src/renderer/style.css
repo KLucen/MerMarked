@@ -405,7 +405,14 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-toolbar [data-canvas-status]:not(:empty) { position: absolute; top: calc(100% + 8px); right: 12px; z-index: 9; padding: 7px 10px; max-width: min(500px, calc(100vw - 24px)); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-control); box-shadow: 0 3px 12px #142b4920; pointer-events: none; }
 .canvas-toolbar .spin { animation: canvas-spin .8s linear infinite; }
 @keyframes canvas-spin { to { transform: rotate(360deg); } }
-.canvas-search { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-left: 6px; min-width: 0; font-size: var(--text-caption); }
+.canvas-search { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-left: 6px; min-width: 0; font-size: var(--text-caption); position: relative; }
+.canvas-search-results { position: absolute; top: calc(100% + 6px); right: 0; width: min(420px, calc(100vw - 24px)); max-height: 260px; overflow: auto; z-index: 12; padding: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: 0 8px 24px #142b4920; }
+.canvas-search-results ul { list-style: none; margin: 0; padding: 0; }
+.canvas-search-results li button { display: grid; gap: 3px; width: 100%; min-width: 0; padding: 8px; text-align: left; border: 0; background: transparent; color: var(--text); }
+.canvas-search-results li button strong, .canvas-search-results li button small { white-space: normal; overflow-wrap: anywhere; }
+.canvas-search-results li button small, .canvas-search-results p { color: var(--text-muted); font-size: var(--text-caption); }
+.canvas-search-results li button[aria-current="true"], .canvas-search-results li button:focus-visible { background: var(--accent-soft); }
+.canvas-search-results p { margin: 6px 8px; }
 .canvas-search label { white-space: nowrap; }
 .canvas-search input { width: 140px; min-width: 0; }
 .canvas-toolbar .canvas-search output { flex: 0 1 auto; min-width: 0; text-align: left; color: var(--text-muted); }

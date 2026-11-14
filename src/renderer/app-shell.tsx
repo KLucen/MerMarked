@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DragEvent as ReactDragEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react';
-import { FilePlus2, FolderOpen, Maximize2, Minimize2, MoreHorizontal, PanelLeft, PanelRight, RotateCcw, Save, Search, X } from 'lucide-react';
+import { Crosshair, FilePlus2, FolderOpen, Maximize2, Minimize2, MoreHorizontal, PanelLeft, PanelRight, RotateCcw, Save, Search, X } from 'lucide-react';
 import type { OpenedMarkdownDocument } from '../types/reader-api';
 import { summarizeWorkspaceStatus, type WorkspaceStatuses } from './workspace-status';
 import { WorkspacePopover } from './workspace-popover';
@@ -62,6 +62,8 @@ export interface AppShellProps {
   readonly onOpen: () => void;
   readonly onDocumentRecovery?: () => void;
   readonly onModeChange?: (mode: AppMode) => void;
+  readonly onLocateSectionInCanvas?: () => void;
+  readonly canLocateSectionInCanvas?: boolean;
   readonly onReloadSource: () => void;
   readonly onOpenSearch: () => void;
   readonly onCloseSearch: () => void;
@@ -136,6 +138,8 @@ export function AppShell({
   onOpen,
   onDocumentRecovery,
   onModeChange,
+  onLocateSectionInCanvas,
+  canLocateSectionInCanvas = false,
   onReloadSource,
   onOpenSearch,
   onCloseSearch,
@@ -338,6 +342,11 @@ export function AppShell({
         {activeMode === 'reader' && <button ref={searchTrigger} type="button" className="workspace-icon-button"
           onClick={onOpenSearch} aria-label="查找正文" title="查找正文（Ctrl+F）" aria-expanded={search.open} aria-controls="reader-searchbar">
           <Search size={17} aria-hidden="true" />
+        </button>}
+        {activeMode === 'reader' && onLocateSectionInCanvas && <button type="button" className="workspace-icon-button"
+          data-reader-locate-card="true" disabled={!canLocateSectionInCanvas} onClick={onLocateSectionInCanvas}
+          aria-label="在卡片中定位本节" title="在卡片中定位本节">
+          <Crosshair size={17} aria-hidden="true" />
         </button>}
         {onSave && <div className="workspace-save-actions" role="group" aria-label="文档保存操作">
           <button type="button" className="workspace-save-button" data-workspace-save="true" aria-label="保存正文" aria-keyshortcuts="Control+S" onClick={onSave} disabled={!canSave || (!dirty && !document.temporary) || saving}

@@ -735,6 +735,7 @@ function App() {
     const epoch = ++documentEpoch.current;
     setOpenedDocument(opened);
     setActiveMode('reader');
+    setOutlineFocusRequest(0);
     readerPosition.current = null;
     restoreReaderPosition.current = false;
     readerSectionRequest.current = null;
@@ -1943,11 +1944,11 @@ function App() {
   }, []);
 
   const changeMode = useCallback(async (mode: AppMode, readerSection?: number) => {
-    if (!openedDocument || mode === activeMode) return;
+    if (!openedDocument || mode === activeMode) return false;
     if (readerInputActivity.current.composing || readerInputActivity.current.committing || mutationInFlight.current) {
-      setMessage('请先完成当前输入或保存，再切换视图。', 'alert'); return;
+      setMessage('请先完成当前输入或保存，再切换视图。', 'alert'); return false;
     }
-    if (readerDraftDirty) { setMessage('请先提交当前段落输入，再切换视图。', 'alert'); return; }
+    if (readerDraftDirty) { setMessage('请先提交当前段落输入，再切换视图。', 'alert'); return false; }
     // A preview requested from the old mode must not reopen a panel later.
     canvasStructureRequest.current += 1;
     if (activeMode === 'reader') {
@@ -1957,22 +1958,41 @@ function App() {
     closeReaderSearch();
     setReattachTargetId(null);
     restoreReaderPosition.current = mode === 'reader';
+    // CanvasView is remounted on return. A past explicit location request must
+    // not override the saved viewport during an ordinary later mode switch.
+    if (mode !== 'cards') setOutlineFocusRequest(0);
     if (mode === 'reader') {
       readerSectionRequest.current = readerSection !== undefined && readerDocument
         ? { documentKey: noteDocumentKey.current, content: readerDocument.content, index: readerSection }
         : null;
       setActiveMode('reader');
-      return;
+      return true;
     }
     if (mode === 'cards') {
       setActiveMode('cards');
       window.scrollTo({ top: 0, behavior: 'auto' });
-      return;
+      return true;
     }
     setActiveMode('editor');
     window.scrollTo({ top: 0, behavior: 'auto' });
     if (!editorController.editor) await editorController.open();
+    return true;
   }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, openedDocument, readerDocument, readerDraftDirty, setMessage]);
+
+  const canLocateSectionInCanvas = activeMode === 'reader' && readingReady && activeSection !== null &&
+    sectionTree?.sections[activeSection]?.index === activeSection && !opening && !editorController.busy &&
+    !editorController.opening && !annotationSaving && !readerDraftDirty && !recoveryOpen && !leaveGuard.locked;
+  const locateReaderSectionInCanvas = useCallback(async () => {
+    if (!canLocateSectionInCanvas || !readerDocument || !openedDocument || activeSection === null) return;
+    const target = { documentKey: noteDocumentKey.current, path: openedDocument.path,
+      content: readerDocument.content, index: activeSection };
+    if (!await changeMode('cards')) return;
+    const current = canvasStructureContext.current;
+    if (target.documentKey !== noteDocumentKey.current || current.document?.path !== target.path ||
+        current.content !== target.content) return;
+    setActiveSection(target.index);
+    setOutlineFocusRequest(request => request + 1);
+  }, [activeSection, canLocateSectionInCanvas, changeMode, openedDocument, readerDocument]);
 
   const readCanvasSection = useCallback((index: number) => {
     void changeMode('reader', index);
@@ -2140,6 +2160,8 @@ function App() {
         currentIndex: readerSearchIndex, total: readerSearch.result?.matches.length ?? 0,
         truncated: readerSearch.result?.truncated ?? false, status: readerSearch.status }}
       onOpen={() => void openMarkdown()} onModeChange={(mode) => void changeMode(mode)}
+      onLocateSectionInCanvas={() => void locateReaderSectionInCanvas()}
+      canLocateSectionInCanvas={canLocateSectionInCanvas}
       onSave={saveSource}
       canSave={Boolean(editorController.editor?.editable)}
       onSaveAs={openedDocument?.temporary ? saveSource : undefined}

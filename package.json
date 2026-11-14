@@ -38,6 +38,7 @@
     "test:e2e:ux7": "node tests/e2e/ux7-editing-guidance-packaged.mjs",
     "test:e2e:source-composition": "node tests/e2e/source-composition-race.mjs",
     "test:e2e:qa2": "node tests/e2e/qa2-layout-recovery-packaged.mjs",
+    "test:e2e:ux9": "node tests/e2e/ux9-layout-navigation-packaged.mjs",
     "test:qa:accessibility-observed": "node tests/e2e/qa2-accessibility-observed-packaged.mjs",
     "test:e2e:ux8": "node tests/e2e/ux8-card-reading-packaged.mjs",
     "test:e2e:perf2": "node tests/e2e/perf2-background-reading-packaged.mjs",

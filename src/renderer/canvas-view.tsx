@@ -5,7 +5,7 @@ import { useCanvasToolbarMenus } from './use-canvas-toolbar-menus';
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { applyNodeChanges, Background, BackgroundVariant, Handle, MarkerType, Position, ReactFlow, ReactFlowProvider, useReactFlow, useStore, useViewport } from '@xyflow/react';
 import type { Connection, Edge, Node, NodeProps, NodeTypes } from '@xyflow/react';
-import { ArrowDownToLine, ArrowUpToLine, BookOpen, ChevronDown, ChevronUp, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpToLine, BookOpen, ChevronDown, ChevronUp, Crosshair, FileDown, FilePenLine, Focus, ImageDown, LayoutGrid, Link2, MoreHorizontal, Plus, Redo2, RefreshCw, RotateCcw, Save, Trash2, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { preparedCanvasContent, prepareCanvasFromProjection, type PreparedCanvas } from '../core/canvas-preparation';
 import type { CanvasCardContentCache } from '../core/canvas-card-content';
 import type { SectionTree } from '../core/sections';
@@ -24,6 +24,7 @@ import type {
 } from '../core/canvas-structure-candidates';
 import type { CanvasBinding } from '../core/canvas-state';
 import { arrangeCanvasV2, CANVAS_CARD_SIZE_LIMITS, CANVAS_DEFAULT_CARD_SIZE, projectCanvasStateV2ToV1 } from '../core/canvas-state-v2';
+import { placeNewCanvasCardsV2 } from '../core/canvas-incremental-layout';
 import type { CanvasBodyDisplay, CanvasStateV2 } from '../core/canvas-state-v2';
 import type { OpenedMarkdownDocument, SectionStructurePreview } from '../types/reader-api';
 import type { SectionTransformOperation } from '../core/section-transform';
@@ -181,6 +182,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   const [sidecarHash, setSidecarHash] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [layoutPending, setLayoutPending] = useState(true);
+  const [placementFailed, setPlacementFailed] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
   const [loadWarning, setLoadWarning] = useState<string | null>(null);
   const [message, setMessage] = useState('正在加载画布…');
@@ -191,6 +193,7 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [query, setQuery] = useState('');
+  const [searchResultsOpen, setSearchResultsOpen] = useState(false);
   const [searchMatchId, setSearchMatchId] = useState<string | null>(null);
   const [searchLocation, setSearchLocation] = useState<{ id: string; generation: number } | null>(null);
   const [history, setHistory] = useState<CanvasStateV2[]>([]);
@@ -206,8 +209,9 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   const [structureTarget, setStructureTarget] = useState('');
   const generation = useRef(0);
   const saveInFlight = useRef(false);
-  const initialLayout = useRef(false);
-  const pendingInitialViewport = useRef<{ generation: number; viewport: CanvasStateV2['viewport']; valid: boolean } | null>(null);
+  const initialLayout = useRef<'full' | 'incremental' | 'temporary' | null>(null);
+  const knownCardIds = useRef<ReadonlySet<string>>(new Set());
+  const pendingInitialViewport = useRef<{ generation: number; viewport: CanvasStateV2['viewport']; model: CanvasStateV2 } | null>(null);
   const sourceVersion = useRef<1 | 2>(1);
   const dragStart = useRef<{ nodeId: string; sectionIndex: number | null; position: { x: number; y: number }; screenRect?: { x: number; y: number; width: number; height: number }; pointer?: { x: number; y: number }; parentId?: string } | null>(null);
   const nestDwell = useRef<OverlapDwellState | null>(null);
@@ -224,8 +228,10 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   const scene = useMemo(() => model && cardContent ? buildCanvasSceneV2(document.content, tree, model, bindings, cardContent) : null,
     [bindings, document.content, model, tree, cardContent]);
   const nodesReady = Boolean(scene && nodes.length === scene.cards.length);
-  const nodeReadOnly = !cardContent || dirty || Boolean(document.recoveryPending) || busy || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
+  const nodeReadOnly = !cardContent || placementFailed || dirty || Boolean(document.recoveryPending) || busy || Boolean(readError) || Boolean(exporting) || Boolean(structurePreview) || structureBusy;
   const readOnly = nodeReadOnly || !nodesReady || layoutPending;
+  const canRearrangeTemporary = placementFailed && model && nodesReady && !layoutPending && !dirty &&
+    !document.recoveryPending && !busy && !exporting && !structurePreview && !structureBusy;
 
   useEffect(() => {
     if (!scene || nodeLimit >= scene.cards.length) return;
@@ -249,10 +255,10 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   useEffect(() => {
     const current = ++generation.current;
     const task = new CanvasPreparationTask(() => new Worker(new URL('./canvas-preparation.worker.ts', import.meta.url), { type: 'module' }));
-    setProjection(null); setBindings([]); setNodes([]); setNodeLimit(CANVAS_NODE_BATCH); initialLayout.current = false;
+    setProjection(null); setBindings([]); setNodes([]); setNodeLimit(CANVAS_NODE_BATCH); initialLayout.current = null;
     pendingInitialViewport.current = null;
-    setModel(null); setLayoutPending(true); setReadError(null); setLoadWarning(null); setBusy(false); setMessage('正在加载画布…'); setHistory([]); setFuture([]); setMinimumHeights({}); setSelectedLink(null); setSelectedCardId(null);
-    setQuery(''); setSearchMatchId(null); setSearchLocation(null); setExportMessage(null);
+    setModel(null); setLayoutPending(true); setPlacementFailed(false); setReadError(null); setLoadWarning(null); setBusy(false); setMessage('正在加载画布…'); setHistory([]); setFuture([]); setMinimumHeights({}); setSelectedLink(null); setSelectedCardId(null);
+    setQuery(''); setSearchResultsOpen(false); setSearchMatchId(null); setSearchLocation(null); setExportMessage(null);
     void (async () => {
       const loadedResult = await window.mermarkd.loadCanvasV2();
       if (generation.current !== current) return;
@@ -268,21 +274,28 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       let loadWarningText = sidecarInvalid ? '画布文件无法安全载入，已使用当前 Markdown 重新生成临时布局，原文件未修改。' : null;
       let initial = reconciled.model;
       const oldIds = new Set(loaded.model?.cards.map((card) => card.id) ?? []);
+      knownCardIds.current = oldIds;
       const hasNewCards = reconciled.bindings.some((binding) => !oldIds.has(binding.id));
       const sourceChanged = Boolean(loaded.model && loaded.model.source.sha256 !== sha256);
-      const needsArrangement = loaded.model === null || hasNewCards || (sourceChanged && reconciled.unresolvedCardIds.length > 0);
+      const needsArrangement = loaded.model === null;
+      const needsPlacement = !needsArrangement && hasNewCards;
+      let placementUnavailable = false;
       if (needsArrangement) initial = await arrangeCanvasV2(tree, initial, reconciled.bindings);
-      const initialScene = buildCanvasSceneV2(document.content, tree, initial, reconciled.bindings, cardContent);
-      const viewportValid = loaded.model !== null && isCanvasViewportVisible(loaded.model.viewport, initialScene.cards);
-      if (loaded.model && !viewportValid && !needsArrangement) loadWarningText ??= '已保存的画布视口不再覆盖当前卡片，已自动定位到当前布局。';
-      if (loaded.model && needsArrangement && (sourceChanged || hasNewCards)) loadWarningText ??= '文档结构已变化，已自动整理当前章节。';
+      else if (needsPlacement) {
+        try { initial = placeNewCanvasCardsV2(document.content, tree, initial, reconciled.bindings, oldIds); }
+        catch { placementUnavailable = true; }
+      }
+      if (sourceChanged && reconciled.unresolvedCardIds.length > 0) loadWarningText ??= '部分章节无法安全匹配，原有记录和箭头已保留待修复；其余卡片坐标保持。';
+      if (needsPlacement) loadWarningText ??= '已为新增章节安排位置，原有卡片坐标已保留；保存视图以保留更新。';
+      if (placementUnavailable) loadWarningText = '新增章节暂时无法安排位置，原文件未修改。可选择重新整理临时布局，再决定是否保存。';
       if (generation.current !== current) return;
       sourceVersion.current = loaded.sourceVersion ?? 1;
       if (loaded.model && !needsArrangement) pendingInitialViewport.current = {
-        generation: current, viewport: loaded.model.viewport, valid: viewportValid,
+        generation: current, viewport: loaded.model.viewport, model: initial,
       };
       setProjection({ path: document.path, source: document.content, bom: document.bomByteLength, dirty, revision: loadRevision, content: cardContent });
-      initialLayout.current = needsArrangement;
+      initialLayout.current = needsArrangement ? 'full' : needsPlacement && !placementUnavailable ? 'incremental' : null;
+      setPlacementFailed(placementUnavailable);
       setModel(initial); setBindings(reconciled.bindings); setUnresolvedIds(reconciled.unresolvedCardIds);
       setUnresolvedLinkIds(reconciled.unresolvedLinkIds); setSidecarHash(loaded.sidecarSha256); setLoadWarning(loadWarningText);
       setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : needsArrangement ? '正在整理画布布局…' : '');
@@ -293,8 +306,20 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
 
   useEffect(() => {
     if (!cardContent || !initialLayout.current || !model || !scene || scene.cards.some((card) => !card.hidden && !minimumHeights[card.id])) return;
-    initialLayout.current = false;
+    const mode = initialLayout.current;
+    initialLayout.current = null;
     const current = generation.current;
+    if (mode === 'incremental') {
+      try {
+        const next = placeNewCanvasCardsV2(document.content, tree, model, bindings, knownCardIds.current, minimumHeights);
+        if (pendingInitialViewport.current) pendingInitialViewport.current.model = next;
+        setModel(next);
+      } catch {
+        setPlacementFailed(true);
+        setLoadWarning('新增章节暂时无法安排位置，原文件未修改。可选择重新整理临时布局，再决定是否保存。');
+      }
+      return;
+    }
     void arrangeCanvasV2(tree, model, bindings, minimumHeights).then((next) => {
       if (generation.current !== current) return;
       setModel(next);
@@ -304,10 +329,11 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
           const viewport = flow.getViewport();
           setModel((previous) => previous ? { ...previous, viewport } : previous);
           setLayoutPending(false);
+          if (mode === 'temporary') setLoadWarning('已重新整理临时布局，请检查后保存视图。');
           setMessage(dirty ? '未保存结构预览 · 画布写入已暂停' : '');
         }); }, 50);
     }).catch(() => { if (generation.current === current) { setLayoutPending(false); setReadError('初始布局失败，请重新载入画布。'); } });
-  }, [bindings, dirty, minimumHeights, model, tree, cardContent, scene]);
+  }, [bindings, dirty, document.content, minimumHeights, model, tree, cardContent, scene]);
 
   const persist = useCallback(async (next: CanvasStateV2, remember = true, { showOnSuccess = false } = {}) => {
     if (!model || readOnly || saveInFlight.current) return false;
@@ -475,22 +501,26 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
 
   useLayoutEffect(() => {
     const pending = pendingInitialViewport.current;
-    if (!pending || pending.generation !== generation.current || !scene || nodes.length !== scene.cards.length) return;
+    if (!pending || pending.generation !== generation.current || initialLayout.current || pending.model !== model || !scene || nodes.length !== scene.cards.length) return;
     // React Flow reports actual measurements through onNodesChange. Consume
     // that update directly instead of polling one frame later. A new scene
     // may still be projecting its dimensions, so reject the previous geometry.
     if (nodes.some((node, index) => node.id !== scene.cards[index].id ||
       node.style?.width !== scene.cards[index].width || node.style.height !== scene.cards[index].height ||
       (!node.hidden && (!node.measured?.width || !node.measured?.height || !minimumHeights[node.id])))) return;
+    const bounds = flowHost.current?.getBoundingClientRect();
+    if (!bounds || flowWidth <= 0 || flowHeight <= 0 || Math.abs(bounds.width - flowWidth) >= 1 || Math.abs(bounds.height - flowHeight) >= 1) return;
     pendingInitialViewport.current = null;
-    const done = pending.valid ? flow.setViewport(pending.viewport) : flow.fitView({ padding: 0.15 });
+    const viewportValid = isCanvasViewportVisible(pending.viewport, scene.cards, flowWidth, flowHeight);
+    if (!viewportValid) setLoadWarning(previous => previous ?? '已保存的画布视口不再覆盖当前卡片，已自动定位到当前布局。');
+    const done = viewportValid ? flow.setViewport(pending.viewport) : flow.fitView({ padding: 0.15 });
     void done.then(() => {
       if (generation.current !== pending.generation) return;
       const viewport = flow.getViewport();
       setModel(previous => previous ? { ...previous, viewport } : previous);
       setLayoutPending(false);
     });
-  }, [flow, minimumHeights, nodes, scene]);
+  }, [flow, flowWidth, flowHeight, minimumHeights, model, nodes, placementFailed, scene]);
 
   useEffect(() => {
     setNodes((previous) => previous.map((node) => ({ ...node, data: {
@@ -531,13 +561,20 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
       ? { ...card, size: { ...current, [dimension]: clamped } } : card) });
   }, [currentCard, currentModelCard?.size, model, persist, readOnly]);
   useEffect(() => {
-    if (!focusRequest || lastFocusRequest.current === focusRequest || layoutPending) return;
+    if (!focusRequest || lastFocusRequest.current === focusRequest || layoutPending || !nodesReady || !scene || pendingInitialViewport.current) return;
+    if (nodes.some((item, index) => item.id !== scene.cards[index]?.id || item.style?.width !== scene.cards[index]?.width ||
+      item.style?.height !== scene.cards[index]?.height || (!item.hidden && (!item.measured?.width || !item.measured.height)))) return;
+    const bounds = flowHost.current?.getBoundingClientRect();
+    if (!bounds || Math.abs(bounds.width - flowWidth) >= 1 || Math.abs(bounds.height - flowHeight) >= 1) return;
     let node = nodes.find((item) => item.data.sectionIndex === activeSection);
     while (node?.hidden && node.parentId) node = nodes.find((item) => item.id === node!.parentId);
     if (!node || node.hidden) return;
     lastFocusRequest.current = focusRequest;
+    setSelectedCardId(node.id); setSelectedLink(null);
+    setStructureSource(node.data.sectionIndex === null ? '' : String(node.data.sectionIndex));
+    if (node.data.sectionIndex !== activeSection) setMessage('本节位于已收起分支，已定位到可见父章节。');
     void flow.fitView({ nodes: [{ id: node.id }], padding: 0.4 });
-  }, [activeSection, flow, focusRequest, layoutPending, nodes]);
+  }, [activeSection, flow, flowWidth, flowHeight, focusRequest, layoutPending, nodes, nodesReady, scene]);
   const requestStructure = useCallback(async (operation: SectionTransformOperation): Promise<boolean> => {
     if (readOnly || saveInFlight.current) return false;
     const current = generation.current;
@@ -565,7 +602,23 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
   const searchMatchIndex = searchMatches.findIndex(card => card.cardId === searchMatchId);
   const searchMatch = searchMatches[searchMatchIndex];
   const canNavigateSearch = Boolean(scene && nodesReady && !layoutPending && !busy && !readError &&
-    !draggingId && !exporting && !structurePreview && !structureBusy);
+    !document.recoveryPending && !draggingId && !exporting && !structurePreview && !structureBusy);
+
+  useEffect(() => {
+    const find = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || event.keyCode === 229 || event.shiftKey || event.altKey ||
+        !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'f' || document.recoveryPending ||
+        structurePreview || structureBusy || busy || exporting ||
+        [...window.document.querySelectorAll('[aria-modal="true"]')].some(element => element.getClientRects().length)) return;
+      if (!searchInput.current) return;
+      event.preventDefault();
+      searchInput.current.focus({ preventScroll: true });
+      searchInput.current.select();
+      setSearchResultsOpen(true);
+    };
+    window.addEventListener('keydown', find);
+    return () => window.removeEventListener('keydown', find);
+  }, [busy, document.recoveryPending, exporting, structureBusy, structurePreview]);
 
   // Follow the existing scene projection for a collapsed result. Locating it
   // selects its visible ancestor without changing the model or link endpoints.
@@ -594,6 +647,11 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
     const id = searchMatches[index].cardId;
     setSearchMatchId(id);
     setSearchLocation({ id, generation: generation.current });
+    setSearchResultsOpen(false);
+  };
+  const clearSearch = () => {
+    setQuery(''); setSearchMatchId(null); setSearchLocation(null); setSearchResultsOpen(false);
+    searchInput.current?.focus({ preventScroll: true });
   };
   const revealSearchMatch = async () => {
     if (!searchMatch?.hidden || !model || !scene || !canNavigateSearch || readOnly) return;
@@ -671,17 +729,28 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
             onClick={() => void exportCanvas('pdf')}>{exporting === 'pdf' ? <RefreshCw className="spin" size={17} /> : <FileDown size={17} />}<span>PDF</span></button>
         </div>
       </details>
-      <div className="canvas-search" role="search" aria-label="查找卡片">
-        <label htmlFor="canvas-search-input">查找卡片</label>
+      <div className="canvas-search" role="search" aria-label="查找卡片"
+        onBlur={event => {
+          if (!(event.relatedTarget instanceof window.Node) || !event.currentTarget.contains(event.relatedTarget)) setSearchResultsOpen(false);
+        }}
+        onKeyDown={event => {
+          if (event.key !== 'Escape' || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+          event.preventDefault(); event.stopPropagation(); clearSearch();
+        }}>
+        <label htmlFor="canvas-search-input">搜索章节标题</label>
         <input id="canvas-search-input" ref={searchInput} data-canvas-search-input="true" value={query}
+          aria-keyshortcuts="Control+F" title="搜索章节标题（Ctrl+F）"
           aria-describedby={searchTerm ? 'canvas-search-status' : undefined}
-          onChange={event => { setQuery(event.target.value); setSearchMatchId(null); setSearchLocation(null); }}
+          onFocus={() => setSearchResultsOpen(true)}
+          onChange={event => { setQuery(event.target.value); setSearchResultsOpen(true); setSearchMatchId(null); setSearchLocation(null); }}
           onKeyDown={event => {
-            if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+            if (event.key !== 'Enter' || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
             event.preventDefault();
             moveSearch(event.shiftKey ? -1 : 1);
           }} />
         {searchTerm && <>
+          <button type="button" className="canvas-toolbar-icon" data-canvas-search-clear="true"
+            aria-label="清除章节搜索" title="清除（Escape）" onClick={clearSearch}><X size={15} aria-hidden="true" /></button>
           <button type="button" className="canvas-toolbar-icon" aria-label="上一项卡片匹配" title="上一项（Shift+Enter）"
             data-canvas-search-previous="true" disabled={!canNavigateSearch || !searchMatches.length}
             onClick={() => moveSearch(-1)}><ChevronUp size={15} aria-hidden="true" /></button>
@@ -697,6 +766,20 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
           {searchMatch?.hidden && <button type="button" className="canvas-toolbar-labeled" data-canvas-search-reveal="true"
             title="展开该卡片所在分支并保存折叠状态" disabled={!canNavigateSearch || readOnly}
             onClick={() => void revealSearchMatch()}>展开并保存</button>}
+          {searchResultsOpen && searchMatches.length > 0 && <div className="canvas-search-results" data-canvas-search-results="true">
+            <ul aria-label="章节标题搜索结果">{searchMatches.slice(0, 50).map(match => <li key={match.cardId}>
+              <button type="button" data-canvas-search-result={match.cardId} data-section-index={match.sectionIndex ?? ''}
+                disabled={!canNavigateSearch} aria-current={searchMatchId === match.cardId ? 'true' : undefined}
+                onClick={() => {
+                  if (!canNavigateSearch) return;
+                  setSearchMatchId(match.cardId); setSearchLocation({ id: match.cardId, generation: generation.current });
+                  searchInput.current?.focus({ preventScroll: true }); setSearchResultsOpen(false);
+                }}>
+                <strong>{match.title}</strong><small>{titleFor(match.cardId)}{match.hidden ? ' · 已收起' : ''}</small>
+              </button>
+            </li>)}</ul>
+            {searchMatches.length > 50 && <p>显示前 50 项；使用上一项、下一项可遍历全部结果。</p>}
+          </div>}
         </>}
       </div>
       <output role="status" data-canvas-status="true">{exporting ? `正在导出 ${exporting.toUpperCase()}…` : exportMessage ?? (draggingId && nestCandidate
@@ -705,7 +788,16 @@ function CanvasEditor({ document, preparedSource, dirty, activeSection, focusReq
           ? `${detachCandidate.status === 'ready' ? '松开' : '继续'}以预览移出父章节 · 已移出 ${Math.round(detachCandidate.escapeRatio * 100)}%`
           : busy ? '正在保存…' : message || (layoutPending ? '正在加载画布…' : ''))}</output>
     </div>
-    {loadWarning && <div className="canvas-warning canvas-warning-info" role="status">{loadWarning}</div>}
+    {loadWarning && <div className="canvas-warning canvas-warning-info" role="status">{loadWarning}
+      {placementFailed && <button type="button" data-canvas-placement-rearrange="true" disabled={!canRearrangeTemporary}
+        onClick={() => {
+          if (!canRearrangeTemporary) return;
+          pendingInitialViewport.current = null; initialLayout.current = 'temporary';
+          setPlacementFailed(false); setLayoutPending(true);
+          setLoadWarning('正在重新整理临时布局；完成后可检查，再选择保存视图。');
+          setModel(previous => previous ? { ...previous } : previous);
+        }}>重新整理临时布局</button>}
+    </div>}
     {readError && <div className="canvas-warning" role="alert">{readError}
       <button title="放弃当前未保存画布候选并重新载入" onClick={() => setLoadRevision((value) => value + 1)}><RefreshCw size={15} /> 重新载入画布</button>
     </div>}
