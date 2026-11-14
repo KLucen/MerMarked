@@ -10,6 +10,11 @@ import { reconcileCanvasState, serializeCanvasJson } from '../../src/core/canvas
 import { serializeAnnotationYaml } from '../../src/core/annotations.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const accessibilityMode = process.env.MERMARKD_PERF_AX_MODE ?? 'default';
+assert.ok(['default', 'observed'].includes(accessibilityMode), 'AX mode must be default or observed');
+const accessibilityTrace = process.env.MERMARKD_PERF_AX_TRACE === '1';
+assert.ok(!accessibilityTrace || (accessibilityMode === 'observed' && process.env.MERMARKD_PERF_PROFILE && process.env.MERMARKD_PERF_PROFILE_CARDS),
+  'AX trace requires the separate observed profiling run');
 const workspace = await mkdtemp(path.join(os.tmpdir(), 'mermarkd-perf3e-'));
 const fixture = path.join(workspace, '阅读与整理.md');
 const targetBytes = Number(process.env.MERMARKD_PERF_MIB ?? 1) * 1024 * 1024;
@@ -110,6 +115,29 @@ async function snapshot(file = fixture) {
 
 const measurements=[];
 const retainedHeap=[];
+let accessibilityTraceCategories = [];
+const startedTraceCategories = [];
+async function configureObservedAccessibility(){
+  // Explicit test-process opt-in only. Preserve every already enabled feature;
+  // the ordinary benchmark never calls either accessibility setter.
+  return main.evaluate(`(()=>{
+    const {app}=process.mainModule.require('electron');
+    if(typeof app.getAccessibilitySupportFeatures!=='function'||typeof app.setAccessibilitySupportFeatures!=='function')
+      throw Error('This diagnostic requires the supported Electron AX feature API.');
+    const beforeFeatures=app.getAccessibilitySupportFeatures();
+    const additions=['webContents','extendedProperties'];
+    const requestedFeatures=[...new Set([...beforeFeatures,...additions])];
+    app.setAccessibilitySupportFeatures(requestedFeatures);
+    const afterFeatures=app.getAccessibilitySupportFeatures();
+    if(!requestedFeatures.every(feature=>afterFeatures.includes(feature)))throw Error('The additive AX request was not preserved.');
+    return {mode:'observed',setterCalled:true,beforeFeatures,additions,requestedFeatures,afterFeatures};
+  })()`);
+}
+async function startTrace(categories){
+  const selected=[...new Set([...categories.split(','),...accessibilityTraceCategories])];
+  startedTraceCategories.push(selected);
+  await page.send('Tracing.start',{categories:selected.join(','),transferMode:'ReturnAsStream'});
+}
 async function sampleEnvironment(){
   // Read the detected state outside the timed actions; never change AX features.
   return main.evaluate(`(()=>{
@@ -197,7 +225,21 @@ async function measure(name, action, condition) {
 }
 try {
   page=await connect(port,'page'); main=await connect(port+200,'node');
-  const environmentSnapshots={before:await sampleEnvironment(),after:null};
+  const initialEnvironment=await sampleEnvironment();
+  const accessibilityConfiguration=accessibilityMode==='observed' ? await configureObservedAccessibility()
+    : {mode:'default',setterCalled:false,beforeFeatures:initialEnvironment.accessibilitySupportFeatures,
+      additions:[],requestedFeatures:null,afterFeatures:initialEnvironment.accessibilitySupportFeatures};
+  if(accessibilityMode==='observed') await frame();
+  const environmentSnapshots={before:accessibilityMode==='observed'?await sampleEnvironment():initialEnvironment,after:null};
+  if(accessibilityTrace){
+    const available=await page.send('Tracing.getCategories');
+    accessibilityTraceCategories=available.categories.filter(category=>/accessibility/i.test(category));
+  }
+  if(process.env.MERMARKD_PERF_AX_MODE!==undefined){
+    await writeFile(path.join(qa,`${artifactPrefix}-${process.env.MERMARKD_PERF_LABEL??'current'}-ax-start.json`),
+      JSON.stringify({initialEnvironment,accessibilityConfiguration,environmentBeforeTiming:environmentSnapshots.before,
+        accessibilityTraceCategories},null,2),{flag:'wx'});
+  }
   if(process.env.MERMARKD_PERF_PROFILE_CARDS) await page.send('Performance.enable');
   await main.evaluate('process.mainModule.require("electron").BrowserWindow.getAllWindows().forEach(window=>{window.show();window.focus();})');
   if(process.env.MERMARKD_QA_RENDERER_URL) await page.send('Page.navigate',{url:process.env.MERMARKD_QA_RENDERER_URL});
@@ -244,7 +286,7 @@ try {
   }
   if (process.env.MERMARKD_PERF_PROFILE) {
     await page.send('Profiler.enable'); await page.send('Profiler.start');
-    await page.send('Tracing.start',{categories:'devtools.timeline',transferMode:'ReturnAsStream'});
+    await startTrace('devtools.timeline');
   }
   await measure('open-reader',()=>process.env.MERMARKD_PERF_PENDING_SOURCE?Promise.resolve():click('[data-start-open]'),'document.querySelectorAll(".markdown-body h1").length==='+headingCount+' && document.querySelector("[data-reading-analysis]")?.dataset.readingAnalysis==="ready"');
   if (process.env.MERMARKD_PERF_PROFILE) {
@@ -275,7 +317,7 @@ try {
   }
   if(scale){
     if(process.env.MERMARKD_PERF_PROFILE_CARDS){await page.send('Profiler.enable');await page.send('Profiler.start');}
-    if(process.env.MERMARKD_PERF_PROFILE_CARDS) await page.send('Tracing.start',{categories:'devtools.timeline,toplevel,disabled-by-default-devtools.timeline,renderer.scheduler,cc,viz',transferMode:'ReturnAsStream'});
+    if(process.env.MERMARKD_PERF_PROFILE_CARDS) await startTrace('devtools.timeline,toplevel,disabled-by-default-devtools.timeline,renderer.scheduler,cc,viz');
     if(process.env.MERMARKD_PERF_PROFILE_CARDS) console.log('window diagnostics',await main.evaluate(`(()=>{const {app,BrowserWindow,screen}=process.mainModule.require('electron');const w=BrowserWindow.getAllWindows()[0];return {accessibility:app.accessibilitySupportEnabled,focused:w.isFocused(),visible:w.isVisible(),minimized:w.isMinimized(),refreshRate:screen.getDisplayMatching(w.getBounds()).displayFrequency};})()`));
     if(process.env.MERMARKD_PERF_PROFILE_CARDS) console.log('reader geometry',await page.evaluate(`window.__retainedBody=document.querySelector('.markdown-body');[...document.querySelectorAll('.workspace-content,.reading-layout,.reading-main,.markdown-body')].map(e=>({class:e.className,width:e.getBoundingClientRect().width}))`));
     if(process.env.MERMARKD_PERF_PROFILE_CARDS) await page.evaluate(`window.__canvasProgress=[];window.__canvasProgressObserver=new MutationObserver(()=>{
@@ -353,7 +395,7 @@ try {
       await sampleRetainedHeap('cards-1');
     }
     if(process.env.MERMARKD_PERF_PROFILE_CARDS){await page.send('Profiler.start');}
-    if(process.env.MERMARKD_PERF_PROFILE_CARDS) await page.send('Tracing.start',{categories:'devtools.timeline,disabled-by-default-devtools.timeline.invalidationTracking',transferMode:'ReturnAsStream'});
+    if(process.env.MERMARKD_PERF_PROFILE_CARDS) await startTrace('devtools.timeline,disabled-by-default-devtools.timeline.invalidationTracking');
     if(process.env.MERMARKD_PERF_PROFILE_CARDS) console.log('hidden geometry',await page.evaluate(`({retained:window.__retainedBody===document.querySelector('.markdown-body'),geometry:[...document.querySelectorAll('.workspace-content,.reading-layout,.reading-main,.markdown-body')].map(e=>({class:e.className,width:e.getBoundingClientRect().width}))})`));
     await measure('return-reader',()=>click('[data-mode="reader"]'),'CSS.highlights.get("mermarkd-amber")?.size===500');
     if(process.env.MERMARKD_PERF_PROFILE_CARDS){const {profile}=await page.send('Profiler.stop');await writeFile(path.join(qa,artifactPrefix+'-return-'+(process.env.MERMARKD_PERF_LABEL??'current')+'.cpuprofile'),JSON.stringify(profile));}
@@ -415,8 +457,9 @@ try {
   const annotationTrace=await main.evaluate('({loads:globalThis.__annotationTrace,maxMainGapMs:Math.max(...globalThis.__mainGaps)})');
   const annotationsReadyMs=scale?await page.evaluate('window.__initialReadingTrace.annotationsReady-window.__initialReadingTrace.started'):null;
   environmentSnapshots.after=await sampleEnvironment();
-  const result={label:process.env.MERMARKD_PERF_LABEL??'current',sourceBytes:bytes.length,headings:headingCount,annotations:scale?500:0,annotationsReadyMs,readingTrace,workerTrace,annotationTrace,measurements,retainedHeap,environmentSnapshots,
-    diagnosticOverrides:{hideGrid:Boolean(process.env.MERMARKD_PERF_HIDE_GRID),profile:Boolean(process.env.MERMARKD_PERF_PROFILE||process.env.MERMARKD_PERF_PROFILE_CARDS)}};
+  const result={label:process.env.MERMARKD_PERF_LABEL??'current',sourceBytes:bytes.length,headings:headingCount,annotations:scale?500:0,annotationsReadyMs,readingTrace,workerTrace,annotationTrace,measurements,retainedHeap,environmentSnapshots,accessibilityConfiguration,
+    traceConfiguration:{accessibilityCategoriesRequested:accessibilityTrace,accessibilityCategories:accessibilityTraceCategories,startedCategories:startedTraceCategories},
+    diagnosticOverrides:{hideGrid:Boolean(process.env.MERMARKD_PERF_HIDE_GRID),profile:Boolean(process.env.MERMARKD_PERF_PROFILE||process.env.MERMARKD_PERF_PROFILE_CARDS),accessibilityObserved:accessibilityMode==='observed'}};
   await writeFile(path.join(qa,artifactPrefix+'-'+result.label+'.json'),JSON.stringify(result,null,2));
   console.log(JSON.stringify(result,null,2));
 } catch(error) {
