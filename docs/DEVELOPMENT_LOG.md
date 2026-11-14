@@ -2038,3 +2038,21 @@ F本地Setup154,836,992字节，SHA-256为71D76E2ACCA80D3D19711322902DC9253484CD
 本批软件修复与可用本机验证已有具体交付。增强AX性能、单次拖动异常和卸载残留仍需后续定位；用户确认只有当前单屏电脑，物理跨屏DPI和无开发工具的干净Windows环境尚不可验收，软件DPR不能替代。公开发布的签名、许可证和渠道另验，QA1/P0不提前标完成。三项用户原有修改继续排除提交。
 
 2026-11-13 GitHub交付：验收记录fe4d7e8及全部实现经SSH dry-run与push上传到origin/codex/qa1-closeout。创建并附加[PR #20](https://github.com/KLucen/MerMarked/pull/20)，目标main，官方API核对分支、精确head、open及未合并。连接器仍要求重新认证，沿用本机GCM已有KLucen认证调用官方API，没有新建凭证、扩大权限或修改全局网络配置。创建后未出现GitHub check-run或status context，本批验证指本地实际执行的检查，不声称云端CI通过。仅源码/测试/验收文档上传；私人profile、备份、日志和本地测试安装包未发布。
+
+## 2026-11-13—14 · QA2 保存布局恢复与增强特性诊断
+
+基于已合并PR20的main 2e6a04f，分支codex/qa2-layout-recovery。产品实现def66de5303b00a1c4d527054df7f70450fbc834只修改CanvasView载入/测量门槛：有效保存坐标不再因为原点、重叠或负坐标而被猜成未初始化；初始化仍等待全部可见卡片实测，但不等待没有挂载的折叠后代。缺失模型、新卡片及无法匹配的源结构变化沿用初始化，显式整理保持。无schema、IPC、依赖或Markdown变更规则调整，决定见ADR-055。
+
+最终旧包对照使用QA1冻结ASAR86596030FA1E4B1B40DEEB02FBF50384145E459BB35E4A398EABBB695E938033。qa2-layout-old-red-c的11项为2通过、9失败；原点被移到80,80，重叠被整理，折叠相关场景则等待未挂载节点而超时。超时未走到后续保存断言，不描述为已证明保存失败。早期red-a/b及最终c均保留。候选与旧对照脚本因checkout CRLF/LF产生不同字节SHA，归一化文本完全一致，文档分别绑定真实摘要。
+
+干净detached worktree C:/Users/KLucen/.codex/worktrees/mermarkd-qa2-final按def66de5执行npm ci、npm run typecheck、npm test、npm run make，全退出0，319/319测试。Node24.20.0/npm11.19.0/Electron44.4.1，已核验ZIP，锁文件不变，源检出clean，原QA1冻结安装产物及主区index不变。manifest out/qa/qa2-final-build-manifest.json；生产ASAR4069561bytes、SHA256 5AC8B1A5646D11FCC947D613EC9BD967358BAF3B28751405F094AE68A9130AF6，生产版本仍0.1.0。
+
+& out/qa/qa2-full-regression.ps1 -ValidationRoot C:/Users/KLucen/.codex/worktrees/mermarkd-qa2-final -Prefix qa2-bound-a完成30/30，同包全部exit0，日志SHA逐份校验。包括新QA2、源码composition八项、UX8/7/6B、A6、A7.1/2/3b/4/5、A8.2/3/4/5、B1、UX1–5、PERF1、UX6A、PERF2、PERF3A/B/C/D/E/G。新布局专项11/11核实际世界坐标、尺寸、视口、折叠与箭头，模式往返/重启后保持，三文件bytes/mtime及原缺失状态不变；新增章节、折叠布局新增章节、失效视口临时定位和显式整理分别核验。相关dirty/源版本/外部冲突/事务恢复沿用实际日志边界，不扩大为所有歧义卡片均已新增覆盖。
+
+实际Vite沿renderer配置，127.0.0.1:5178/strictPort/force，执行QA2和UX8，11/11布局及UX8完整专项均exit0。out/qa/qa2-final-vite-manifest.json保留serverStopped:false：nvm父shim停止后实际node子进程仍监听。核对父29792、子37752和精确Vite命令后结束该测试进程树，另存qa2-final-vite-stop.json证明5178监听0/子进程不存在，不覆盖原回执。性能样本期间没有并行窗口、构建、Vite、CPU分析器或强制GC。
+
+在同一干净worktree指定绝对MERMARKD_QA_EXE和主区qa2-final-build-manifest.json，依次执行node tests/e2e/qa2-accessibility-observed-packaged.mjs timings qa2-ax-a与trace qa2-ax-trace-a，均exit0。十份普通计时功能完成，5MiB/200标题与实际卡片/500高亮；五对按轮交替，default从不调用setter，observed仅向既有nativeAPIs添加webContents/extendedProperties，20个前后快照均聚焦、可见未最小化、240Hz且特性集合稳定。所测预算0超限；普通/observed首次打开自动化中位2039/2099ms，重复2024/2190ms，切卡片实际246/260ms，搜索146/184ms，返回阅读82/87ms。没有复现QA1严重长帧，不宣布真实客户端问题解决。启用发生计时前；非操作系统冷缓存或真实屏幕阅读器验收。
+
+独立trace发现accessibility类别，三阶段trace+三份renderer CPUprofile+拖动main CPUprofile共七份产物。实际AX主线程事件约52–70ms，open/return缺toplevel不能确定外层任务，Worker1056/975ms事件不能当UI长帧，CPU(program)不能归因原生AX。无同步marker不能把不同样本时钟直接对齐。离线tests/e2e/qa2-accessibility-analysis.mjs重新核十份raw、十份start证据、七份profile的SHA与100动作字段覆盖及预算，输出QA2_AX_ANALYSIS.json；全部逐次结果与旧red由QA2_EVIDENCE.json随仓交付。40个预期ready null、90个feedback缺省字段保留，指标连续读取导致的不同截面不补改。
+
+QA2布局修复本地退出条件已过，增强特性受控诊断已完成；QA1/P0未整体退出。真实辅助客户端复现与查询成本、原单次拖动大跳、卸载残留继续跟踪；物理跨屏DPI、干净Windows等用户当前设备不可提供的验收与公开发布许可/签名/渠道分别保留。未重复声称新包已做QA1原生IME或安装生命周期验收。三项用户原修改hash保持并排除提交，私人profile、备份、原始trace、日志及本地安装包不上传。GitHub交付回执待补。

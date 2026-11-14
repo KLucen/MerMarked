@@ -1,5 +1,16 @@
 # MerMarkd 开发进度
 
+## 2026-11-13—14 · QA2 保存布局恢复与受控诊断
+
+基于已合并 [PR #20](https://github.com/KLucen/MerMarked/pull/20) / main `2e6a04f`，分支 `codex/qa2-layout-recovery`。本批先处理已确认的布局恢复缺陷，范围和退出条件见 [QA2_ACCEPTANCE.md](QA2_ACCEPTANCE.md)，不将原单次拖动异常与此缺陷视为同一原因。
+
+- 修复有效已保存画布因原点、重叠原点或负坐标被误判为“未初始化”而全图自动整理的问题；缺失布局、新卡片和无法匹配的结构变化处理，以及用户显式自动整理保持。决定见 ADR-055。
+- 修复初始化等待已折叠、未挂载子卡的尺寸反馈而持续加载。仍等待全部可见卡片实测，不为测量展开隐藏后代。
+- 旧包最终 11 项对照为 2 通过、9 失败；候选包和实际 Vite 的 11 项全部通过，覆盖 v1/v2、真实几何、有效/失效视口、折叠、箭头、尺寸、模式往返、进程重开及三文件 bytes/mtime。缺失 sidecar、新章节及显式整理分别回归。
+- 实现 `def66de5` 干净检出完成 npm ci、类型检查、319/319 单测和 make。ASAR SHA-256 `5AC8B1A5646D11FCC947D613EC9BD967358BAF3B28751405F094AE68A9130AF6`；同包 30 套回归及 Vite QA2/UX8 通过，开发服务已核验停止。
+- 同包五对 5 MiB / 200 卡片 / 500 高亮对照全部功能完成、所测操作预算无超限；普通五份实际为 nativeAPIs，另五份仅添加 webContents / extendedProperties，五对前后均稳定。独立 trace 确有约 52–70 ms 的阶段原生 AX 主线程事件，但未复现 QA1 严重长帧，不能据此声称已修复真实辅助客户端路径。全部计时、字段覆盖、事件与限制见 QA2_EVIDENCE.json / QA2_AX_ANALYSIS.json，旧失败保持。
+- 本批未修改产品 AX 设置、schema、IPC 或依赖。原单次拖动大跳、卸载残留、物理跨屏 DPI、干净 Windows 与发布门槛继续单独跟踪，QA1 / P0 尚未整体退出。GitHub 交付待最终记录。
+
 ## 2026-11-12—13 · QA1 本机验证与修复交付
 
 基于已合并 UX8 / [PR #19](https://github.com/KLucen/MerMarked/pull/19)，分支 `codex/qa1-closeout`。输入与导出修复、本机生命周期验证已有结果，QA1 尚未整体退出。完整构建身份、命令、原失败与证据见 [QA1_ACCEPTANCE.md](QA1_ACCEPTANCE.md) 及开发日志。
