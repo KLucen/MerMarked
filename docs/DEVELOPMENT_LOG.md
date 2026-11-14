@@ -2056,3 +2056,5 @@ F本地Setup154,836,992字节，SHA-256为71D76E2ACCA80D3D19711322902DC9253484CD
 独立trace发现accessibility类别，三阶段trace+三份renderer CPUprofile+拖动main CPUprofile共七份产物。实际AX主线程事件约52–70ms，open/return缺toplevel不能确定外层任务，Worker1056/975ms事件不能当UI长帧，CPU(program)不能归因原生AX。无同步marker不能把不同样本时钟直接对齐。离线tests/e2e/qa2-accessibility-analysis.mjs重新核十份raw、十份start证据、七份profile的SHA与100动作字段覆盖及预算，输出QA2_AX_ANALYSIS.json；全部逐次结果与旧red由QA2_EVIDENCE.json随仓交付。40个预期ready null、90个feedback缺省字段保留，指标连续读取导致的不同截面不补改。
 
 QA2布局修复本地退出条件已过，增强特性受控诊断已完成；QA1/P0未整体退出。真实辅助客户端复现与查询成本、原单次拖动大跳、卸载残留继续跟踪；物理跨屏DPI、干净Windows等用户当前设备不可提供的验收与公开发布许可/签名/渠道分别保留。未重复声称新包已做QA1原生IME或安装生命周期验收。三项用户原修改hash保持并排除提交，私人profile、备份、原始trace、日志及本地安装包不上传。GitHub交付回执待补。
+
+2026-11-14 GitHub交付：SSH dry-run和push通过，产品def66de5与验收820ac9b上传到origin/codex/qa2-layout-recovery。沿用本机GCM已有KLucen认证调用官方API，创建并附加[PR #21](https://github.com/KLucen/MerMarked/pull/21)，目标main；创建回执精确head820ac9b03c62346fc78eefc52ee267c557bd0815、open、非draft、未合并。本次没有新建凭证、扩大权限或修改全局网络配置。独立只读复核已确认文档指标与两份证据一致，产品patch无可操作缺陷；交付状态记录后将再次推送并核对最终head。仅代码、测试及验收记录进入PR；三项用户原修改、私人profile、备份、本地安装包和原始大trace保持本地。
