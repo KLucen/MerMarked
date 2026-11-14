@@ -406,7 +406,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .canvas-toolbar .spin { animation: canvas-spin .8s linear infinite; }
 @keyframes canvas-spin { to { transform: rotate(360deg); } }
 .canvas-search { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin-left: 6px; min-width: 0; font-size: var(--text-caption); position: relative; }
-.canvas-search-results { position: absolute; top: calc(100% + 6px); right: 0; width: min(420px, calc(100vw - 24px)); max-height: 260px; overflow: auto; z-index: 12; padding: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: 0 8px 24px #142b4920; }
+.canvas-search-results { position: absolute; top: calc(100% + 6px); right: 0; width: min(420px, 100%, calc(100vw - 24px)); max-height: 260px; overflow: auto; z-index: 12; padding: 5px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-panel); box-shadow: 0 8px 24px #142b4920; }
 .canvas-search-results ul { list-style: none; margin: 0; padding: 0; }
 .canvas-search-results li button { display: grid; gap: 3px; width: 100%; min-width: 0; padding: 8px; text-align: left; border: 0; background: transparent; color: var(--text); }
 .canvas-search-results li button strong, .canvas-search-results li button small { white-space: normal; overflow-wrap: anywhere; }
@@ -735,10 +735,12 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
   .workspace-save-button > span { display: none; }
   .workspace-topbar-actions > .workspace-icon-button, .workspace-topbar-actions > .open-drop-target { display: none; }
   .workspace-topbar-actions > .workspace-icon-button[aria-controls="reader-searchbar"] { display: inline-flex; }
+  .workspace-topbar-actions > .workspace-icon-button[data-reader-locate-card] { display: inline-flex; }
   .source-editor-header { align-items: stretch; }
 }
 @media (max-width: 420px) {
   .topbar .modebar { gap: var(--space-2); }
+  .workspace-task-trigger > span { display: none; }
   .workspace-popover-trigger { padding-inline: 5px; }
   .workspace-popover-trigger > span { max-width: 82px; }
 }
