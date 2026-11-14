@@ -2058,3 +2058,21 @@ F本地Setup154,836,992字节，SHA-256为71D76E2ACCA80D3D19711322902DC9253484CD
 QA2布局修复本地退出条件已过，增强特性受控诊断已完成；QA1/P0未整体退出。真实辅助客户端复现与查询成本、原单次拖动大跳、卸载残留继续跟踪；物理跨屏DPI、干净Windows等用户当前设备不可提供的验收与公开发布许可/签名/渠道分别保留。未重复声称新包已做QA1原生IME或安装生命周期验收。三项用户原修改hash保持并排除提交，私人profile、备份、原始trace、日志及本地安装包不上传。GitHub交付回执待补。
 
 2026-11-14 GitHub交付：SSH dry-run和push通过，产品def66de5与验收820ac9b上传到origin/codex/qa2-layout-recovery。沿用本机GCM已有KLucen认证调用官方API，创建并附加[PR #21](https://github.com/KLucen/MerMarked/pull/21)，目标main；创建回执精确head820ac9b03c62346fc78eefc52ee267c557bd0815、open、非draft、未合并。本次没有新建凭证、扩大权限或修改全局网络配置。独立只读复核已确认文档指标与两份证据一致，产品patch无可操作缺陷；交付状态记录后将再次推送并核对最终head。仅代码、测试及验收记录进入PR；三项用户原修改、私人profile、备份、本地安装包和原始大trace保持本地。
+
+## 2026-11-14 · UX9 新章节增量布局与跨模式定位
+
+基于已合并QA2/PR21的main ab3239d，分支codex/ux9-layout-navigation。实现7b6318d新增纯核心placeNewCanvasCardsV2和8项核心测试，只安置新绑定卡片，保留已知及orphan旧记录的相对位置、正文偏好、尺寸、折叠、原箭头和视口。仅首次无模型或用户显式全排；身份匹配规则不放宽，未匹配旧记录继续待修复，避免追加空行造成最后正文待修复后把其他已匹配卡片也全排。算法按当前树后序、v2正文/子树边界及可见实测预留位置，隐藏后代不依赖DOM；固定候选无空间时拒绝，不挪旧卡。拒绝时暂停写入，用户可主动整理临时布局，再检查和显式保存。相对坐标与因源码父级变更产生的世界位置变化、父组外框增长及可能重叠均在ADR-056说明。
+
+导航复用当前源版本的章节索引和一次focus请求：阅读顶栏可定位本节，隐藏目标选可见祖先且保留原activeSection；普通切换与换文档清理旧请求，先完成视口恢复与节点测量才定位。画布CtrlF聚焦/选中查询，标明只搜章节标题，按需显示最多50条含完整路径的结果，上一项/下一项遍历全部；清除、合成组合/229和恢复模态边界回归。搜索/定位/临时整理不调用persist，实际用户拖动和显式保存才沿原窄IPC提交JSON。无schema、IPC、依赖或锁文件变更，版本仍0.1.0。
+
+最初旧版red-a的搜索断言将DOM世界坐标与模型相对坐标混用，(-180,-45)+(52,326)=(-128,281)本为正确渲染；错误归属测试，保留原报告，不算产品缺陷。脚本修正后以独立red-b跑最终9项，旧QA2 ASAR5AC8B1A5646D11FCC947D613EC9BD967358BAF3B28751405F094AE68A9130AF6均在各自早期差异失败；未执行的后续保存/重开/保护步骤不计失败。red-b脚本38513A00806E5F926A2BD058ADC8F4081B538B1E213DB40B987B4131030947DF，checkout CRLF版本464E1AD6C6E3DA740318D7757242191E57360E916FC8174634E7B27222CB5A21，已核归一化文本完全相同。
+
+初始候选A：干净detached mermarkd-ux9-final检出7b6318d，npm ci、typecheck、327/327 tests、make均exit0；ASAR4078313bytes/DEFF0CD6B48AB7F1F9FC699ADA61DB2D11113B0AFF6739DFCD0A66D73FD597CD。ux9-bound-a专项7布局case通过，但搜索800px列表越左边界、reader420px定位按钮被旧窄窗CSS隐藏，整轮exit1并停止后续31套；原manifest、report和失败截图保留。修正8425753将浮层限制为搜索容器内宽，窄窗保留定位图标，420px侧栏按钮收起文字且aria名称保持。
+
+最终候选B：out/qa/ux9-final-b-build-manifest.json绑定8425753c2315c77e45629c0079209992c708696a和实际独立worktree C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final-b-b。npm ci、npm run typecheck、npm test、npm run make全部exit0，327/327，源clean/lockfile不变/主区index和冻结QA1产物保护通过。Node24.20.0、npm11.19.0、核验Electron44.4.1 ZIP；最终ASAR4078454bytes、SHA256 4FAFBB7F33636C3C7B91A7E33792D5FE87565A6F47AD1BAB985DEAD2CD7CDD2A，Setup154840064bytes、SHA256 2D8222C8F5C9C0FC78DBC6F1A5B83BCE54B36DDDC4AA40F328389DA89EF50AA1。
+
+& out/qa/ux9-full-regression.ps1 -ValidationRoot C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final-b-b -Prefix ux9-bound-b完成31/31；含UX9九项、QA2、source-composition、UX8/7/6B、A6、A7.1/2/3b/4/5、A8.2/3/4/5、B1、UX1–5、PERF1、UX6A、PERF2、PERF3A/B/C/D/E/G。三文件bytes/mtime、显式保存仅canvas、负坐标/自定义尺寸/折叠/原箭头/未匹配身份、重开、临时恢复与显式全排分别核验。旧源/dirty/外部冲突/三文件事务/导出与源码历史等按原套件合同通过，不扩大为未覆盖的任意变换。
+
+同一worktree实际renderer Vite配置127.0.0.1:5178、strictPort/force，UX9/UX8/UX7均exit0，UX9亦九项全过。out/qa/ux9-final-vite-manifest.json记录实际命令、三日志SHA和serverStopped:true，使用真实Node可执行路径并结束自有进程树避免nvm shim残留。窗口均已结束，增量嵌套、搜索420、阅读定位420等截图已视觉复核。原始A失败和B/Vite14张通过截图均保留在out/qa。
+
+node out/qa/ux9-collect-evidence.mjs核对31条日志SHA、三条Vite日志SHA、报告/包体/脚本文本身份与三项用户保护值，输出docs/UX9_EVIDENCE.json，108313bytes，原值及失败均保留。本批本机软件退出条件已通过；QA1原生辅助客户端性能、原单次拖动异常、卸载残留及设备/发布门槛保持，不用合成组合事件替代新的真实IME，也不声称本批重做安装生命周期或正式性能cohort。三项用户原文件不变且排除提交，私有profile、原始日志及本地安装包不上传。GitHub交付另记回执。

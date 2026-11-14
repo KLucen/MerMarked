@@ -1,0 +1,2583 @@
+{
+  "kind": "UX9-incremental-layout-and-navigation-evidence",
+  "recordedAt": "2026-11-14T10:17:27.831Z",
+  "scope": "Pure layout mutations, actual packaged/Vite navigation and separate-file persistence. No native IME, assistive-client, timing budget, installation or overall QA1/P0 acceptance.",
+  "runtimeSourceCommit": "8425753c2315c77e45629c0079209992c708696a",
+  "asar": {
+    "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+    "bytes": 4078454,
+    "sha256": "4FAFBB7F33636C3C7B91A7E33792D5FE87565A6F47AD1BAB985DEAD2CD7CDD2A"
+  },
+  "builds": {
+    "candidateA": {
+      "identity": {
+        "name": "ux9-final-build-manifest.json",
+        "bytes": 10039,
+        "sha256": "24550976ef80afcf94324253616f28b5434b3f31f3dc9844967a05e2a947b9a8"
+      },
+      "data": {
+        "sourceCommit": "7b6318d26c6f1e0d7c7edb7a2e4c97a1c6cc57e0",
+        "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final",
+        "kind": "clean-detached-final-ux9-layout-navigation-build",
+        "startedUtc": "2026-11-14T10:05:37.0421390Z",
+        "status": "passed",
+        "node": "v24.20.0",
+        "npm": "11.19.0",
+        "mainIndexBefore": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+          "bytes": 30785,
+          "sha256": "6ABBE08EE5A115A2017327280F8E55B1911C6D067D4BF039D37B5AE929730A59"
+        },
+        "electronZip": {
+          "path": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b\\electron-v44.4.1-win32-x64.zip",
+          "bytes": 158290103,
+          "sha256": "34BC07977D6C43B6514B956A5F2E3292255DAA3838A49E6110F3FE19FFAFB83F"
+        },
+        "processEnvironment": {
+          "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+        },
+        "steps": [
+          {
+            "name": "worktree",
+            "command": "git -C C:\\Users\\KLucen\\Desktop\\MerMarkd worktree add --detach C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final 7b6318d26c6f1e0d7c7edb7a2e4c97a1c6cc57e0",
+            "executable": "git",
+            "arguments": [
+              "-C",
+              "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+              "worktree",
+              "add",
+              "--detach",
+              "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final",
+              "7b6318d26c6f1e0d7c7edb7a2e4c97a1c6cc57e0"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:05:38.0648167Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-worktree.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:05:38.3448541Z",
+            "durationSeconds": 0.28,
+            "logSha256": "852A6822ACE4A1D38F252EBAA77DC3633CA615DA1F2795F6AF965368B2B8B25D",
+            "logBytes": 607
+          },
+          {
+            "name": "ci",
+            "command": "npm.cmd ci",
+            "executable": "npm.cmd",
+            "arguments": [
+              "ci"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:05:38.5908131Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-ci.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:05:48.0304188Z",
+            "durationSeconds": 9.44,
+            "logSha256": "A6C2D6D1DB08AE5D065E1F08506A66D132092A24C4232BCAC4AF724A5861AC78",
+            "logBytes": 1947
+          },
+          {
+            "name": "typecheck",
+            "command": "npm.cmd run typecheck",
+            "executable": "npm.cmd",
+            "arguments": [
+              "run",
+              "typecheck"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:05:48.0335600Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-typecheck.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:05:51.3523691Z",
+            "durationSeconds": 3.319,
+            "logSha256": "7B491DB82C57B8110571A567D40AE0AD07C4080057BEAFFE7E5DF9A5B61C88C8",
+            "logBytes": 403
+          },
+          {
+            "name": "test",
+            "command": "npm.cmd test",
+            "executable": "npm.cmd",
+            "arguments": [
+              "test"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:05:51.3551023Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-test.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:05:57.3369733Z",
+            "durationSeconds": 5.982,
+            "logSha256": "A11F97F52204360A7DBF660B7B27DDFA936E37A5CCE55E915A4E59B6CD9E2260",
+            "logBytes": 59430
+          },
+          {
+            "name": "make",
+            "command": "npm.cmd run make",
+            "executable": "npm.cmd",
+            "arguments": [
+              "run",
+              "make"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:05:57.3395107Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-make.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:06:57.8951163Z",
+            "durationSeconds": 60.556,
+            "logSha256": "E95B6B85A4CE7BDCB71C0B19258E81CFF234798D3D2D2C898A6BB0660A40BBF0",
+            "logBytes": 2220
+          }
+        ],
+        "limitations": [
+          "Build only. No app window started, installation, lifecycle cleanup, packaged E2E, or native export validation performed by this build task."
+        ],
+        "frozenValidationBefore": [
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+            "bytes": 4068827,
+            "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+            "bytes": 154837504,
+            "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+            "bytes": 79,
+            "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+            "bytes": 154081906,
+            "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+          }
+        ],
+        "worktreeCreation": "created detached",
+        "initialSourceStatus": [],
+        "initialSourceClean": true,
+        "initialLock": {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\package-lock.json",
+          "bytes": 373672,
+          "sha256": "6E3FF39AE568D411DDB8631117C87F2932B8E254AB5F3F69C8646DB3BA43603E"
+        },
+        "sourceTree": "757f255d793916acd52882ce2529c3b04fe7500c",
+        "testCount": 327,
+        "testPass": 327,
+        "testFail": 0,
+        "finalSourceStatus": [],
+        "finalSourceClean": true,
+        "finalLock": {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\package-lock.json",
+          "bytes": 373672,
+          "sha256": "6E3FF39AE568D411DDB8631117C87F2932B8E254AB5F3F69C8646DB3BA43603E"
+        },
+        "lockUnchanged": true,
+        "artifacts": [
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+            "bytes": 4078313,
+            "sha256": "DEFF0CD6B48AB7F1F9FC699ADA61DB2D11113B0AFF6739DFCD0A66D73FD597CD"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+            "bytes": 154840064,
+            "sha256": "5B2F84D8351197AD7A38CA99A9633548DDF56E9EE4D5B01CD0C679BD0C36FFFF"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\out\\make\\squirrel.windows\\x64\\RELEASES",
+            "bytes": 79,
+            "sha256": "B032D68BAACCBAE2DE578CE60227E1F470B8494ED34DA8765E88CC4E59E53AD0"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+            "bytes": 154084433,
+            "sha256": "EC4A4B153624EEFF631A4ECFB2C3357E1BB564A3B39FD94CFAE784735DD2DA05"
+          }
+        ],
+        "releasesContent": "5A6CE2DFBEFFC9BAD61FAFE6B9B5B2A429679D2E MerMarkd-0.1.0-full.nupkg 154084433",
+        "frozenValidationAfter": [
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+            "bytes": 4068827,
+            "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+            "bytes": 154837504,
+            "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+            "bytes": 79,
+            "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+            "bytes": 154081906,
+            "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+          }
+        ],
+        "frozenValidationUnchanged": true,
+        "mainIndexAfter": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+          "bytes": 30785,
+          "sha256": "6ABBE08EE5A115A2017327280F8E55B1911C6D067D4BF039D37B5AE929730A59"
+        },
+        "mainIndexUnchanged": true,
+        "finishedUtc": "2026-11-14T10:06:58.8820179Z"
+      }
+    },
+    "finalB": {
+      "identity": {
+        "name": "ux9-final-b-build-manifest.json",
+        "bytes": 10102,
+        "sha256": "fa18a32740339e04cc0120022f81aefb9a5f82ea7992c406b5fd46c0c9c1b5e4"
+      },
+      "data": {
+        "sourceCommit": "8425753c2315c77e45629c0079209992c708696a",
+        "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b",
+        "kind": "clean-detached-final-ux9-layout-navigation-build",
+        "startedUtc": "2026-11-14T10:09:56.8938978Z",
+        "status": "passed",
+        "node": "v24.20.0",
+        "npm": "11.19.0",
+        "mainIndexBefore": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+          "bytes": 30785,
+          "sha256": "1B28BA65D2CFC2DEABB8D1DA3505697D7368900373136A7836540317D69E7059"
+        },
+        "electronZip": {
+          "path": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b\\electron-v44.4.1-win32-x64.zip",
+          "bytes": 158290103,
+          "sha256": "34BC07977D6C43B6514B956A5F2E3292255DAA3838A49E6110F3FE19FFAFB83F"
+        },
+        "processEnvironment": {
+          "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+        },
+        "steps": [
+          {
+            "name": "worktree",
+            "command": "git -C C:\\Users\\KLucen\\Desktop\\MerMarkd worktree add --detach C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b 8425753c2315c77e45629c0079209992c708696a",
+            "executable": "git",
+            "arguments": [
+              "-C",
+              "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+              "worktree",
+              "add",
+              "--detach",
+              "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b",
+              "8425753c2315c77e45629c0079209992c708696a"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:09:58.0433825Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-b-worktree.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:09:58.3141470Z",
+            "durationSeconds": 0.271,
+            "logSha256": "292ABE9D705AB9EC06AEB86875A1004FDF19BC6B5A807D980461BFE3CE290837",
+            "logBytes": 608
+          },
+          {
+            "name": "ci",
+            "command": "npm.cmd ci",
+            "executable": "npm.cmd",
+            "arguments": [
+              "ci"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:09:58.5684975Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-b-ci.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:10:07.7753082Z",
+            "durationSeconds": 9.207,
+            "logSha256": "FEE9B8AF488917BCA44D86C0294186E594E1BB13382E9EF724D8329A592C0577",
+            "logBytes": 1952
+          },
+          {
+            "name": "typecheck",
+            "command": "npm.cmd run typecheck",
+            "executable": "npm.cmd",
+            "arguments": [
+              "run",
+              "typecheck"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:10:07.7784720Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-b-typecheck.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:10:11.1580344Z",
+            "durationSeconds": 3.38,
+            "logSha256": "3EBBA92E6B4E22D0B97689971F0FCF9E7F74818999917BE535821DD22740DAD3",
+            "logBytes": 406
+          },
+          {
+            "name": "test",
+            "command": "npm.cmd test",
+            "executable": "npm.cmd",
+            "arguments": [
+              "test"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:10:11.1610204Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-b-test.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:10:17.5652176Z",
+            "durationSeconds": 6.404,
+            "logSha256": "CA577AA4E406ADA13760412A190043088EA8EA39C8DECBA9DB2755F260D5E691",
+            "logBytes": 59906
+          },
+          {
+            "name": "make",
+            "command": "npm.cmd run make",
+            "executable": "npm.cmd",
+            "arguments": [
+              "run",
+              "make"
+            ],
+            "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b",
+            "processEnvironment": {
+              "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+            },
+            "startedUtc": "2026-11-14T10:10:17.5684608Z",
+            "status": "passed",
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-b-make.log",
+            "exitCode": 0,
+            "completedUtc": "2026-11-14T10:11:18.2332549Z",
+            "durationSeconds": 60.665,
+            "logSha256": "E07C23966DC9E4D7078D17AA6E7B9DDCCC59ABEDC6EBCA9AE11607D96916692C",
+            "logBytes": 2228
+          }
+        ],
+        "limitations": [
+          "Build only. No app window started, installation, lifecycle cleanup, packaged E2E, or native export validation performed by this build task."
+        ],
+        "frozenValidationBefore": [
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+            "bytes": 4068827,
+            "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+            "bytes": 154837504,
+            "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+            "bytes": 79,
+            "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+            "bytes": 154081906,
+            "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+          }
+        ],
+        "worktreeCreation": "created detached",
+        "initialSourceStatus": [],
+        "initialSourceClean": true,
+        "initialLock": {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\package-lock.json",
+          "bytes": 373672,
+          "sha256": "6E3FF39AE568D411DDB8631117C87F2932B8E254AB5F3F69C8646DB3BA43603E"
+        },
+        "sourceTree": "98213b9364af63f52693883e2d4f1466e17a1e76",
+        "testCount": 327,
+        "testPass": 327,
+        "testFail": 0,
+        "finalSourceStatus": [],
+        "finalSourceClean": true,
+        "finalLock": {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\package-lock.json",
+          "bytes": 373672,
+          "sha256": "6E3FF39AE568D411DDB8631117C87F2932B8E254AB5F3F69C8646DB3BA43603E"
+        },
+        "lockUnchanged": true,
+        "artifacts": [
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+            "bytes": 4078454,
+            "sha256": "4FAFBB7F33636C3C7B91A7E33792D5FE87565A6F47AD1BAB985DEAD2CD7CDD2A"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+            "bytes": 154840064,
+            "sha256": "2D8222C8F5C9C0FC78DBC6F1A5B83BCE54B36DDDC4AA40F328389DA89EF50AA1"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\make\\squirrel.windows\\x64\\RELEASES",
+            "bytes": 79,
+            "sha256": "34F3346CA6818120FEC19D6D672365636113D0219451D3023FC1EE1B7A68CB7A"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+            "bytes": 154084340,
+            "sha256": "6788E512C1ABBED56E6EB1EC501B1A4CC348DE8BB3C0AECA1BEA254F7CE1DBD1"
+          }
+        ],
+        "releasesContent": "BD2E9BA41B2FB72E8233F514D8A44EA70040AF93 MerMarkd-0.1.0-full.nupkg 154084340",
+        "frozenValidationAfter": [
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+            "bytes": 4068827,
+            "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+            "bytes": 154837504,
+            "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+            "bytes": 79,
+            "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+            "bytes": 154081906,
+            "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+          }
+        ],
+        "frozenValidationUnchanged": true,
+        "mainIndexAfter": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+          "bytes": 30785,
+          "sha256": "1B28BA65D2CFC2DEABB8D1DA3505697D7368900373136A7836540317D69E7059"
+        },
+        "mainIndexUnchanged": true,
+        "finishedUtc": "2026-11-14T10:11:19.2037476Z"
+      }
+    }
+  },
+  "reports": {
+    "oldRedA": {
+      "identity": {
+        "name": "ux9-old-red-a.json",
+        "bytes": 19161,
+        "sha256": "44e798277d9c88971ac367d24dfca0d364b9a663ebca238d7a5f3efa2fccd4c6"
+      },
+      "data": {
+        "status": "failed",
+        "startedAt": "2026-11-14T09:57:46.559Z",
+        "executable": "C:/Users/KLucen/.codex/worktrees/mermarkd-qa2-final/out/MerMarkd-win32-x64/MerMarkd.exe",
+        "scriptSha256": "3eb62936f0d3c0e54e5bf39e6eb85fdddf17d4e435ed765d6ede1b54272786ce",
+        "asarSha256": "5ac8b1a5646d11fcc947d613ec9bd967358baf3b28751405f094ae68a9130af6",
+        "cases": [
+          {
+            "name": "v1-new-root",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its relative coordinates\n+ actual - expected\n\n  [\n+   80,\n+   80\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:151:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:209:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:207:6",
+            "actual": {
+              "viewport": {
+                "x": 17.590200424194336,
+                "y": 175.90199279785156,
+                "zoom": 0.5676230192184448
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 80,
+                  "width": 400,
+                  "height": 464,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 272,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 400,
+                  "height": 464,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 272,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-4",
+                  "x": 848,
+                  "y": 188,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "7939a4a7-6947-45aa-ae8d-aa8f26632ac7",
+                  "x": 1184,
+                  "y": 188,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "v2-new-root",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its relative coordinates\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:151:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:209:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:207:6",
+            "actual": {
+              "viewport": {
+                "x": 17.590200424194336,
+                "y": 137.30299377441406,
+                "zoom": 0.5676230192184448
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "card-4",
+                  "x": 848,
+                  "y": 216,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                },
+                {
+                  "id": "c384331a-1d80-472d-bf6d-eac044237eed",
+                  "x": 1184,
+                  "y": 256,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "new-nested",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its relative coordinates\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:151:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:209:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:207:6",
+            "actual": {
+              "viewport": {
+                "x": 19.384599685668945,
+                "y": 150.57699584960938,
+                "zoom": 0.532692015171051
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 736,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 800,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 824,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "card-4",
+                  "x": 1184,
+                  "y": 216,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                },
+                {
+                  "id": "ceb115e4-ae31-4803-980e-17f98e7e662c",
+                  "x": 440,
+                  "y": 364,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "new-folded-child",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its relative coordinates\n+ actual - expected\n\n  [\n+   80,\n+   80\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:151:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:209:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:207:6",
+            "actual": {
+              "viewport": {
+                "x": 19.384599685668945,
+                "y": 159.10000610351562,
+                "zoom": 0.532692015171051
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 80,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 320,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 121,
+                  "width": 428,
+                  "height": 320,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-4",
+                  "x": 1184,
+                  "y": 200,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-2 to card-4",
+                  "text": "保留的同名章节关系（隐藏端点）"
+                }
+              ]
+            }
+          },
+          {
+            "name": "new-subtree",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its relative coordinates\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:151:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:209:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:207:6",
+            "actual": {
+              "viewport": {
+                "x": 18.79789924621582,
+                "y": 143.0399932861328,
+                "zoom": 0.5525270104408264
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "card-4",
+                  "x": 848,
+                  "y": 216,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                },
+                {
+                  "id": "cb35c94a-eba0-4ed5-9129-6d3f13048223",
+                  "x": 1184,
+                  "y": 148,
+                  "width": 400,
+                  "height": 464,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "3f9696cf-4ae5-4acb-bbd9-c7773266c4aa",
+                  "x": 1208,
+                  "y": 340,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "unmatched-tail-preserves-known-layout-and-link",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: unmatched tail does not trigger full arrangement of proven matches\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:250:14\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:245:3",
+            "actual": {
+              "viewport": {
+                "x": 17.590200424194336,
+                "y": 137.30299377441406,
+                "zoom": 0.5676230192184448
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "941e7a6f-7f75-4d53-a049-03c22683ada8",
+                  "x": 848,
+                  "y": 256,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "a37eabcc-0cf8-49e4-8ee9-693e82a1aa80",
+                  "x": 1184,
+                  "y": 256,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": []
+            }
+          },
+          {
+            "name": "canvas-search-shortcuts-path-results-and-guards",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: initial search fixture: known group keeps its relative coordinates\n+ actual - expected\n\n  [\n+   -128,\n+   281\n-   52,\n-   326\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:151:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:265:28\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:263:3",
+            "actual": {
+              "viewport": {
+                "x": 205,
+                "y": 92,
+                "zoom": 0.5
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": -180,
+                  "y": -45,
+                  "width": 482,
+                  "height": 654,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": -128,
+                  "y": 281,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 950,
+                  "y": 92,
+                  "width": 428,
+                  "height": 320,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-4",
+                  "x": 1650,
+                  "y": 48,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-2 to card-4",
+                  "text": "保留的同名章节关系（隐藏端点）"
+                }
+              ]
+            }
+          },
+          {
+            "name": "reader-locate-exact-chapter-and-passive-return",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: visible enabled control at pointer: [data-reader-locate-card=\"true\"]\n    at click (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:63:10)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:309:27\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:166:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:306:3",
+            "actual": null
+          }
+        ],
+        "boundary": "Real renderer geometry, document navigation and separate-file persistence. No native IME, AX client, performance or installation acceptance.",
+        "finishedAt": "2026-11-14T09:57:58.100Z"
+      }
+    },
+    "oldRedB": {
+      "identity": {
+        "name": "ux9-old-red-b.json",
+        "bytes": 22389,
+        "sha256": "e10f868812b965f82df111c278207773c2fa91fd1251083481f2c058fbb30686"
+      },
+      "data": {
+        "status": "failed",
+        "startedAt": "2026-11-14T10:04:35.339Z",
+        "executable": "C:/Users/KLucen/.codex/worktrees/mermarkd-qa2-final/out/MerMarkd-win32-x64/MerMarkd.exe",
+        "scriptSha256": "38513a00806e5f926a2bd058adc8f4081b538b1e213db40b987b4131030947df",
+        "asarSha256": "5ac8b1a5646d11fcc947d613ec9bd967358baf3b28751405f094ae68a9130af6",
+        "cases": [
+          {
+            "name": "v1-new-root",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its world coordinates; persisted relative coordinates are checked on save\n+ actual - expected\n\n  [\n+   80,\n+   80\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:163:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:243:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:241:6",
+            "actual": {
+              "viewport": {
+                "x": 17.590200424194336,
+                "y": 175.90199279785156,
+                "zoom": 0.5676230192184448
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 80,
+                  "width": 400,
+                  "height": 464,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 272,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 400,
+                  "height": 464,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 272,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "card-4",
+                  "x": 848,
+                  "y": 188,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "78a4536c-8275-4cd7-8e3b-6d97c8fda219",
+                  "x": 1184,
+                  "y": 188,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "v2-new-root",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its world coordinates; persisted relative coordinates are checked on save\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:163:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:243:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:241:6",
+            "actual": {
+              "viewport": {
+                "x": 17.590200424194336,
+                "y": 137.30299377441406,
+                "zoom": 0.5676230192184448
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "card-4",
+                  "x": 848,
+                  "y": 216,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                },
+                {
+                  "id": "cd67be47-424f-48be-b982-494255b2b11f",
+                  "x": 1184,
+                  "y": 256,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "new-nested",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its world coordinates; persisted relative coordinates are checked on save\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:163:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:243:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:241:6",
+            "actual": {
+              "viewport": {
+                "x": 19.384599685668945,
+                "y": 150.57699584960938,
+                "zoom": 0.532692015171051
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 736,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 800,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 824,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "card-4",
+                  "x": 1184,
+                  "y": 216,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                },
+                {
+                  "id": "5f7e962a-0f7f-4fd8-ad48-f24a12dc9cb6",
+                  "x": 440,
+                  "y": 364,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "new-folded-child",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its world coordinates; persisted relative coordinates are checked on save\n+ actual - expected\n\n  [\n+   80,\n+   80\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:163:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:243:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:241:6",
+            "actual": {
+              "viewport": {
+                "x": 19.384599685668945,
+                "y": 159.10000610351562,
+                "zoom": 0.532692015171051
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 80,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 320,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 121,
+                  "width": 428,
+                  "height": 320,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-4",
+                  "x": 1184,
+                  "y": 200,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-2 to card-4",
+                  "text": "保留的同名章节关系（隐藏端点）"
+                }
+              ]
+            }
+          },
+          {
+            "name": "new-subtree",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: open: known group keeps its world coordinates; persisted relative coordinates are checked on save\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at assertKnownGeometry (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:163:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:243:43\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:241:6",
+            "actual": {
+              "viewport": {
+                "x": 18.79789924621582,
+                "y": 143.0399932861328,
+                "zoom": 0.5525270104408264
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "card-4",
+                  "x": 848,
+                  "y": 216,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                },
+                {
+                  "id": "be6a191b-c711-4ded-8774-26efea413a49",
+                  "x": 1184,
+                  "y": 148,
+                  "width": 400,
+                  "height": 464,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "55ac612d-72fb-4028-8948-8796fc92af0b",
+                  "x": 1208,
+                  "y": 340,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-3 to card-4",
+                  "text": "保留的同名章节关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "unmatched-tail-preserves-known-layout-and-link",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: unmatched tail does not trigger full arrangement of proven matches\n+ actual - expected\n\n  [\n+   80,\n+   96\n-   -180,\n-   -45\n  ]\n\n    at file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:285:14\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:279:3",
+            "actual": {
+              "viewport": {
+                "x": 17.590200424194336,
+                "y": 137.30299377441406,
+                "zoom": 0.5676230192184448
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": 80,
+                  "y": 96,
+                  "width": 454,
+                  "height": 568,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": 104,
+                  "y": 336,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 464,
+                  "y": 80,
+                  "width": 482,
+                  "height": 600,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-3",
+                  "x": 488,
+                  "y": 336,
+                  "width": 442,
+                  "height": 328,
+                  "contentX": 30,
+                  "contentY": 53,
+                  "bodyWidth": 396,
+                  "bodyHeight": 248
+                },
+                {
+                  "id": "748d5929-d7b7-4623-a55a-b7883bd00df0",
+                  "x": 848,
+                  "y": 256,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                },
+                {
+                  "id": "f85162ec-59c4-4347-a584-de8d20223353",
+                  "x": 1184,
+                  "y": 256,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": []
+            }
+          },
+          {
+            "name": "exhausted-bounds-explicit-temporary-rearrange",
+            "status": "failed",
+            "error": "Error: Timed out: bounded placement refusal offers an enabled temporary rearrange; {\"mode\":\"cards\",\"text\":\"阅读\\n源码\\n卡片\\nexhausted-coordinate-bounds.md\\n批注 · 需要检查位置\\n保存正文\\n属性\\n文档导航\\n目录\\n最近文件\\n章节目录\\n5\\n边界一\\n边界二\\n边界三\\n边界四\\n新增边界根章节\\n适应\\n定位\\n更多\\n保存视图\\n导出\\n查找卡片\\n文档结构已变化，已自动整理当前章节。\\n坐标边界关系\\n边界一\\n\\n第一边界正文。\\n\\n边界二\\n\\n第二边界正文。\\n\\n边界三\\n\\n第三边界正文。\\n\\n边界四\\n\\n第四边界正文。\\n\\n新增边界根章节\\n\\n新增正文。\",\"active\":\"<button type=\\\"button\\\" class=\\\"mode-tab current\\\" data-mode=\\\"cards\\\" aria-current=\\\"page\\\">卡片</button>\"}\n    at wait (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:54:9)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:301:5\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:298:3",
+            "actual": {
+              "viewport": {
+                "x": 22.98590087890625,
+                "y": 239.85899353027344,
+                "zoom": 0.4876759946346283
+              },
+              "cards": [
+                {
+                  "id": "corner-0",
+                  "x": 80,
+                  "y": 80,
+                  "width": 424,
+                  "height": 304,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 384,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "corner-1",
+                  "x": 416,
+                  "y": 80,
+                  "width": 424,
+                  "height": 304,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 384,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "corner-2",
+                  "x": 752,
+                  "y": 80,
+                  "width": 424,
+                  "height": 304,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 384,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "corner-3",
+                  "x": 1088,
+                  "y": 80,
+                  "width": 424,
+                  "height": 304,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 384,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "bffe3e49-14da-4382-b024-2730af80c603",
+                  "x": 1424,
+                  "y": 104,
+                  "width": 360,
+                  "height": 256,
+                  "contentX": 16,
+                  "contentY": 38,
+                  "bodyWidth": 328,
+                  "bodyHeight": 176
+                }
+              ],
+              "edges": [
+                {
+                  "id": "boundary-link",
+                  "label": "Edge from corner-0 to corner-3",
+                  "text": "坐标边界关系"
+                }
+              ]
+            }
+          },
+          {
+            "name": "canvas-search-shortcuts-path-results-and-guards",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: The input did not match the regular expression /搜索章节标题/. Input:\n\n'查找卡片'\n\n    at file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:335:12\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:332:3",
+            "actual": {
+              "viewport": {
+                "x": 205,
+                "y": 92,
+                "zoom": 0.5
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": -180,
+                  "y": -45,
+                  "width": 482,
+                  "height": 654,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": -128,
+                  "y": 281,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 950,
+                  "y": 92,
+                  "width": 428,
+                  "height": 320,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-4",
+                  "x": 1650,
+                  "y": 48,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-2 to card-4",
+                  "text": "保留的同名章节关系（隐藏端点）"
+                }
+              ]
+            }
+          },
+          {
+            "name": "reader-locate-exact-chapter-and-passive-return",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: visible enabled control at pointer: [data-reader-locate-card=\"true\"]\n    at click (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:63:10)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:378:27\n    at async scenario (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/ux9-layout-navigation-packaged.mjs:375:3",
+            "actual": null
+          }
+        ],
+        "boundary": "Real renderer geometry, document navigation and separate-file persistence. No native IME, AX client, performance or installation acceptance.",
+        "finishedAt": "2026-11-14T10:05:04.117Z"
+      }
+    },
+    "candidateA": {
+      "identity": {
+        "name": "ux9-bound-a-ux9.json",
+        "bytes": 5068,
+        "sha256": "e61b367c3214e0fa1df6de7df12a8411adec62b25210eab546ee2a153e9ccec0"
+      },
+      "data": {
+        "status": "failed",
+        "startedAt": "2026-11-14T10:07:21.177Z",
+        "executable": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+        "scriptSha256": "464e1ad6c6e3da740318d7757242191e57360e916fc8174634e7b27222cb5a21",
+        "asarSha256": "deff0cd6b48ab7f1f9fc699ada61db2d11113b0aff6739dfcd0a66d73fd597cd",
+        "cases": [
+          {
+            "name": "v1-new-root",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "v2-new-root",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "new-nested",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true,
+            "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final\\out\\qa\\ux9-bound-a-ux9-incremental-nested.png"
+          },
+          {
+            "name": "new-folded-child",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "new-subtree",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "unmatched-tail-preserves-known-layout-and-link",
+            "status": "passed",
+            "matchedPositionsRetained": true,
+            "orphanRecordRetained": true,
+            "orphanEndpointNotRebound": true,
+            "explicitSaveCanvasOnly": true
+          },
+          {
+            "name": "exhausted-bounds-explicit-temporary-rearrange",
+            "status": "passed",
+            "boundedRefusalReadOnly": true,
+            "knownCoordinatesRetainedOnFailure": true,
+            "temporaryRearrangeZeroWrites": true,
+            "explicitSaveCanvasOnly": true,
+            "stableReopen": true
+          },
+          {
+            "name": "canvas-search-shortcuts-path-results-and-guards",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: [data-canvas-search-results] remains within 800px\n\nfalse !== true\n\n    at file:///C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final/tests/e2e/ux9-layout-navigation-packaged.mjs:369:114\n    at async scenario (file:///C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final/tests/e2e/ux9-layout-navigation-packaged.mjs:332:3",
+            "actual": {
+              "viewport": {
+                "x": -1337.6099853515625,
+                "y": -44.462501525878906,
+                "zoom": 1.5593700408935547
+              },
+              "cards": [
+                {
+                  "id": "card-0",
+                  "x": -180,
+                  "y": -45,
+                  "width": 482,
+                  "height": 654,
+                  "contentX": 24,
+                  "contentY": 44,
+                  "bodyWidth": 360,
+                  "bodyHeight": 224
+                },
+                {
+                  "id": "card-1",
+                  "x": -128,
+                  "y": 281,
+                  "width": 414,
+                  "height": 312,
+                  "contentX": 26,
+                  "contentY": 47,
+                  "bodyWidth": 372,
+                  "bodyHeight": 232
+                },
+                {
+                  "id": "card-2",
+                  "x": 950,
+                  "y": 92,
+                  "width": 428,
+                  "height": 320,
+                  "contentX": 28,
+                  "contentY": 50,
+                  "bodyWidth": 384,
+                  "bodyHeight": 240
+                },
+                {
+                  "id": "card-4",
+                  "x": 1650,
+                  "y": 48,
+                  "width": 456,
+                  "height": 336,
+                  "contentX": 32,
+                  "contentY": 56,
+                  "bodyWidth": 408,
+                  "bodyHeight": 256
+                }
+              ],
+              "edges": [
+                {
+                  "id": "retained-link",
+                  "label": "Edge from card-2 to card-4",
+                  "text": "保留的同名章节关系（隐藏端点）"
+                }
+              ]
+            }
+          },
+          {
+            "name": "reader-locate-exact-chapter-and-passive-return",
+            "status": "failed",
+            "error": "AssertionError [ERR_ASSERTION]: reader location action remains accessible in the narrow header\n\nfalse !== true\n\n    at file:///C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final/tests/e2e/ux9-layout-navigation-packaged.mjs:391:12\n    at async scenario (file:///C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final/tests/e2e/ux9-layout-navigation-packaged.mjs:200:31)\n    at async file:///C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final/tests/e2e/ux9-layout-navigation-packaged.mjs:375:3",
+            "actual": null
+          }
+        ],
+        "boundary": "Real renderer geometry, document navigation and separate-file persistence. No native IME, AX client, performance or installation acceptance.",
+        "finishedAt": "2026-11-14T10:07:50.831Z"
+      }
+    },
+    "candidateB": {
+      "identity": {
+        "name": "ux9-bound-b-ux9.json",
+        "bytes": 3036,
+        "sha256": "5b50789fc10310319db7e2c69f79faa98dfeb04e47c8cf0ea7282924207e1d7b"
+      },
+      "data": {
+        "status": "passed",
+        "startedAt": "2026-11-14T10:11:29.294Z",
+        "executable": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+        "scriptSha256": "464e1ad6c6e3da740318d7757242191e57360e916fc8174634e7b27222cb5a21",
+        "asarSha256": "4fafbb7f33636c3c7b91a7e33792d5fe87565a6f47ad1bab985dead2cd7cdd2a",
+        "cases": [
+          {
+            "name": "v1-new-root",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "v2-new-root",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "new-nested",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true,
+            "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\qa\\ux9-bound-b-ux9-incremental-nested.png"
+          },
+          {
+            "name": "new-folded-child",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "new-subtree",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "unmatched-tail-preserves-known-layout-and-link",
+            "status": "passed",
+            "matchedPositionsRetained": true,
+            "orphanRecordRetained": true,
+            "orphanEndpointNotRebound": true,
+            "explicitSaveCanvasOnly": true
+          },
+          {
+            "name": "exhausted-bounds-explicit-temporary-rearrange",
+            "status": "passed",
+            "boundedRefusalReadOnly": true,
+            "knownCoordinatesRetainedOnFailure": true,
+            "temporaryRearrangeZeroWrites": true,
+            "explicitSaveCanvasOnly": true,
+            "stableReopen": true
+          },
+          {
+            "name": "canvas-search-shortcuts-path-results-and-guards",
+            "status": "passed",
+            "shortcutAndSelection": true,
+            "explicitTitleScope": true,
+            "sourceOrderPaths": true,
+            "compositionGuardSyntheticOnly": true,
+            "recoveryModalFocusGuard": true,
+            "foldedNavigationZeroWrites": true,
+            "narrowWidths": [
+              800,
+              420
+            ]
+          },
+          {
+            "name": "reader-locate-exact-chapter-and-passive-return",
+            "status": "passed",
+            "exactDuplicateIdentity": true,
+            "hiddenVisibleAncestor": true,
+            "foldRetained": true,
+            "ordinaryReturnViewportRestored": true,
+            "threeFilesUnchanged": true
+          }
+        ],
+        "boundary": "Real renderer geometry, document navigation and separate-file persistence. No native IME, AX client, performance or installation acceptance.",
+        "finishedAt": "2026-11-14T10:12:00.416Z"
+      }
+    },
+    "vite": {
+      "identity": {
+        "name": "ux9-final-vite-ux9.json",
+        "bytes": 3031,
+        "sha256": "565e36064062a0952a600d883a9fbf6a4588fad3f172c59ca5bc53f401c063f9"
+      },
+      "data": {
+        "status": "passed",
+        "startedAt": "2026-11-14T10:16:21.587Z",
+        "executable": "C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final-b-b/out/MerMarkd-win32-x64/MerMarkd.exe",
+        "scriptSha256": "464e1ad6c6e3da740318d7757242191e57360e916fc8174634e7b27222cb5a21",
+        "asarSha256": "4fafbb7f33636c3c7b91a7e33792d5fe87565a6f47ad1bab985dead2cd7cdd2a",
+        "cases": [
+          {
+            "name": "v1-new-root",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "v2-new-root",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "new-nested",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true,
+            "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b\\out\\qa\\ux9-final-vite-ux9-incremental-nested.png"
+          },
+          {
+            "name": "new-folded-child",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "new-subtree",
+            "status": "passed",
+            "knownPresentationRetained": true,
+            "threeFilePassiveBoundary": true,
+            "explicitSaveCanvasOnly": true,
+            "stableSavedReopen": true
+          },
+          {
+            "name": "unmatched-tail-preserves-known-layout-and-link",
+            "status": "passed",
+            "matchedPositionsRetained": true,
+            "orphanRecordRetained": true,
+            "orphanEndpointNotRebound": true,
+            "explicitSaveCanvasOnly": true
+          },
+          {
+            "name": "exhausted-bounds-explicit-temporary-rearrange",
+            "status": "passed",
+            "boundedRefusalReadOnly": true,
+            "knownCoordinatesRetainedOnFailure": true,
+            "temporaryRearrangeZeroWrites": true,
+            "explicitSaveCanvasOnly": true,
+            "stableReopen": true
+          },
+          {
+            "name": "canvas-search-shortcuts-path-results-and-guards",
+            "status": "passed",
+            "shortcutAndSelection": true,
+            "explicitTitleScope": true,
+            "sourceOrderPaths": true,
+            "compositionGuardSyntheticOnly": true,
+            "recoveryModalFocusGuard": true,
+            "foldedNavigationZeroWrites": true,
+            "narrowWidths": [
+              800,
+              420
+            ]
+          },
+          {
+            "name": "reader-locate-exact-chapter-and-passive-return",
+            "status": "passed",
+            "exactDuplicateIdentity": true,
+            "hiddenVisibleAncestor": true,
+            "foldRetained": true,
+            "ordinaryReturnViewportRestored": true,
+            "threeFilesUnchanged": true
+          }
+        ],
+        "boundary": "Real renderer geometry, document navigation and separate-file persistence. No native IME, AX client, performance or installation acceptance.",
+        "finishedAt": "2026-11-14T10:16:56.926Z"
+      }
+    }
+  },
+  "scriptEquivalence": {
+    "normalizedTextEqual": true,
+    "root": {
+      "name": "ux9-layout-navigation-packaged.mjs",
+      "bytes": 35473,
+      "sha256": "38513a00806e5f926a2bd058adc8f4081b538b1e213db40b987b4131030947df"
+    },
+    "cleanCheckout": {
+      "name": "ux9-layout-navigation-packaged.mjs",
+      "bytes": 35879,
+      "sha256": "464e1ad6c6e3da740318d7757242191e57360e916fc8174634e7b27222cb5a21"
+    }
+  },
+  "regressions": {
+    "candidateA": {
+      "identity": {
+        "name": "ux9-bound-a-regression-manifest.json",
+        "bytes": 846,
+        "sha256": "d812d30ace431aa5763834c0d09f27e6b11ed02bec149e711f6e57bbc51f0e31"
+      },
+      "data": {
+        "commit": "7b6318d26c6f1e0d7c7edb7a2e4c97a1c6cc57e0",
+        "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final",
+        "asarSha256": "DEFF0CD6B48AB7F1F9FC699ADA61DB2D11113B0AFF6739DFCD0A66D73FD597CD",
+        "startedUtc": "2026-11-14T10:07:20.2214715Z",
+        "status": "failed",
+        "runs": [
+          {
+            "name": "ux9",
+            "command": "npm run test:e2e:ux9",
+            "startedUtc": "2026-11-14T10:07:20.2445132Z",
+            "exitCode": 1,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-a-ux9.log",
+            "logSha256": "AA228771AD38014F9B8A812234FB9BF221641403BFCE894B7BBFA138F33A5B3A",
+            "finishedUtc": "2026-11-14T10:07:50.8693051Z"
+          }
+        ],
+        "error": "Regression failed. See C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-a-ux9.log",
+        "finishedUtc": "2026-11-14T10:07:50.8806593Z"
+      }
+    },
+    "finalB": {
+      "identity": {
+        "name": "ux9-bound-b-regression-manifest.json",
+        "bytes": 12256,
+        "sha256": "5da980ceb0ce9947ceee81a73719a328ba12588721e9ca36457d462ce184da9e"
+      },
+      "data": {
+        "commit": "8425753c2315c77e45629c0079209992c708696a",
+        "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-ux9-final-b-b",
+        "asarSha256": "4FAFBB7F33636C3C7B91A7E33792D5FE87565A6F47AD1BAB985DEAD2CD7CDD2A",
+        "startedUtc": "2026-11-14T10:11:28.3213421Z",
+        "status": "passed",
+        "runs": [
+          {
+            "name": "ux9",
+            "command": "npm run test:e2e:ux9",
+            "startedUtc": "2026-11-14T10:11:28.3417147Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux9.log",
+            "logSha256": "BB1B123B6DF563C37AC26F20B66D972713223A3691D82B1331BD095CCC2F42E2",
+            "finishedUtc": "2026-11-14T10:12:00.5890586Z"
+          },
+          {
+            "name": "qa2",
+            "command": "npm run test:e2e:qa2",
+            "startedUtc": "2026-11-14T10:12:00.6001067Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-qa2.log",
+            "logSha256": "CFA60CDB34011111D89F9D5EF9670A327A34B72DAED1FE9A1F7BB4D2A753B351",
+            "finishedUtc": "2026-11-14T10:12:26.2238274Z"
+          },
+          {
+            "name": "source-composition",
+            "command": "npm run test:e2e:source-composition",
+            "startedUtc": "2026-11-14T10:12:26.2312061Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-source-composition.log",
+            "logSha256": "EFC82BAA7156BC4235C34EA9EEB6BDCE94080C832578287B32DB6F2B080ACB4D",
+            "finishedUtc": "2026-11-14T10:12:31.2362784Z"
+          },
+          {
+            "name": "ux8",
+            "command": "npm run test:e2e:ux8",
+            "startedUtc": "2026-11-14T10:12:31.2441950Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux8.log",
+            "logSha256": "99F68AC068DB7380BB610CF3C4F48FC7EB2F13C7BABD9F3BD2315BE20B63E06B",
+            "finishedUtc": "2026-11-14T10:12:36.0761771Z"
+          },
+          {
+            "name": "ux7",
+            "command": "npm run test:e2e:ux7",
+            "startedUtc": "2026-11-14T10:12:36.0831938Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux7.log",
+            "logSha256": "CD7A93BB157DB7AE25848E3D50E70F8BF01CDAFA4FBDAC20FA1A23DDE9C7B272",
+            "finishedUtc": "2026-11-14T10:12:44.0128313Z"
+          },
+          {
+            "name": "ux6b",
+            "command": "npm run test:e2e:ux6b",
+            "startedUtc": "2026-11-14T10:12:44.0200342Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux6b.log",
+            "logSha256": "E3493F6FE7DF2FA8D09795270F11880B51062420C17983350405D8B94989DB85",
+            "finishedUtc": "2026-11-14T10:12:59.3209623Z"
+          },
+          {
+            "name": "a6",
+            "command": "npm run test:e2e:a6",
+            "startedUtc": "2026-11-14T10:12:59.3274553Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a6.log",
+            "logSha256": "2DE5954828439ABB53F2680D22951867BA92A99FDC6791B63150CB70BBFD7E3E",
+            "finishedUtc": "2026-11-14T10:13:04.4688971Z"
+          },
+          {
+            "name": "a7-1",
+            "command": "npm run test:e2e:a7-1",
+            "startedUtc": "2026-11-14T10:13:04.4759544Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a7-1.log",
+            "logSha256": "7A885E2FB4DFD313A37E39B3C8E1D12F7D6A9A75E4C108F3AE7A7E880BFB32C4",
+            "finishedUtc": "2026-11-14T10:13:10.0195329Z"
+          },
+          {
+            "name": "a7-2",
+            "command": "npm run test:e2e:a7-2",
+            "startedUtc": "2026-11-14T10:13:10.0265031Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a7-2.log",
+            "logSha256": "99E050BDCB021EBCA95A2B4AF3DAD2168B4D6D4E6ED9D5056B6F13F04D4D926C",
+            "finishedUtc": "2026-11-14T10:13:13.7646304Z"
+          },
+          {
+            "name": "a7-3b",
+            "command": "npm run test:e2e:a7-3b",
+            "startedUtc": "2026-11-14T10:13:13.7729564Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a7-3b.log",
+            "logSha256": "6D2BCADFD26C4F52D2F1FEAF0A4C2F624EB582C2B9662DBA3C6D1405A802F939",
+            "finishedUtc": "2026-11-14T10:13:18.8135526Z"
+          },
+          {
+            "name": "a7-4",
+            "command": "npm run test:e2e:a7-4",
+            "startedUtc": "2026-11-14T10:13:18.8203766Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a7-4.log",
+            "logSha256": "AB60507D72F4793050C42003A806949C052280E3E8618FBA7FFD435AC323393C",
+            "finishedUtc": "2026-11-14T10:13:23.2002587Z"
+          },
+          {
+            "name": "a7-5",
+            "command": "npm run test:e2e:a7-5",
+            "startedUtc": "2026-11-14T10:13:23.2067915Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a7-5.log",
+            "logSha256": "B02465B19FC12771A40B2EC634CB30CDA381D20E8423DAD1AB22EA2AF20E2CBD",
+            "finishedUtc": "2026-11-14T10:13:26.7977729Z"
+          },
+          {
+            "name": "a8-2",
+            "command": "npm run test:e2e:a8-2",
+            "startedUtc": "2026-11-14T10:13:26.8041789Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a8-2.log",
+            "logSha256": "1D8EF13FF203B6A462FF0FE8347034C26C08DE4A320FA391F48AA155BBC0F81D",
+            "finishedUtc": "2026-11-14T10:13:31.5568296Z"
+          },
+          {
+            "name": "a8-3",
+            "command": "npm run test:e2e:a8-3",
+            "startedUtc": "2026-11-14T10:13:31.5640335Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a8-3.log",
+            "logSha256": "53F30C8303BD17AA574F98B767CA5D6471A57F0C0E9D049AFF87E28A4819C4E5",
+            "finishedUtc": "2026-11-14T10:13:35.9044504Z"
+          },
+          {
+            "name": "a8-4",
+            "command": "npm run test:e2e:a8-4",
+            "startedUtc": "2026-11-14T10:13:35.9113198Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a8-4.log",
+            "logSha256": "6061F4D37307C5D973977B04B0790E4300827BD2C761CD4B86F61AFFE71DAEF3",
+            "finishedUtc": "2026-11-14T10:13:42.3479611Z"
+          },
+          {
+            "name": "a8-5",
+            "command": "npm run test:e2e:a8-5",
+            "startedUtc": "2026-11-14T10:13:42.3550206Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-a8-5.log",
+            "logSha256": "51F3069149FF5D0DED91FBA6AFE3CB895C5547FE846CFA693FCF0EF4BA7BE351",
+            "finishedUtc": "2026-11-14T10:13:48.2387539Z"
+          },
+          {
+            "name": "b1",
+            "command": "npm run test:e2e:b1",
+            "startedUtc": "2026-11-14T10:13:48.2459542Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-b1.log",
+            "logSha256": "5EA0FEFA5C045FBE7C601B49178760B0E0D7158AA1A23C129422D72634C1A66F",
+            "finishedUtc": "2026-11-14T10:13:52.1668691Z"
+          },
+          {
+            "name": "ux1",
+            "command": "npm run test:e2e:ux1",
+            "startedUtc": "2026-11-14T10:13:52.1732580Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux1.log",
+            "logSha256": "918BB4494154717073685C897AA50EB0726CB2D58F11C6D408AE173DE0553B5C",
+            "finishedUtc": "2026-11-14T10:13:56.7482465Z"
+          },
+          {
+            "name": "ux2",
+            "command": "npm run test:e2e:ux2",
+            "startedUtc": "2026-11-14T10:13:56.7589137Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux2.log",
+            "logSha256": "D27B66A09D2D5B2DE4111D419CE486A21B600B676380682FABA8C2BBFB9BBA15",
+            "finishedUtc": "2026-11-14T10:14:06.3936462Z"
+          },
+          {
+            "name": "ux3",
+            "command": "npm run test:e2e:ux3",
+            "startedUtc": "2026-11-14T10:14:06.4067436Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux3.log",
+            "logSha256": "617AE514E401141F6EA11F3AB4BCEBB065D2D61D2A844E278E10C50142749CAC",
+            "finishedUtc": "2026-11-14T10:14:21.6401132Z"
+          },
+          {
+            "name": "ux4",
+            "command": "npm run test:e2e:ux4",
+            "startedUtc": "2026-11-14T10:14:21.6473566Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux4.log",
+            "logSha256": "A164914B309C6F62A43C230FCC287497E18DE5C08860F3FE6B97C02FC5E8B1DB",
+            "finishedUtc": "2026-11-14T10:14:31.3950249Z"
+          },
+          {
+            "name": "ux5",
+            "command": "npm run test:e2e:ux5",
+            "startedUtc": "2026-11-14T10:14:31.4017688Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux5.log",
+            "logSha256": "243E9077EEC27FA561EC1F26C8B4B6F21AD1B5D4CB9E7F338961B7E51A724AF7",
+            "finishedUtc": "2026-11-14T10:14:38.9612117Z"
+          },
+          {
+            "name": "perf1",
+            "command": "npm run test:e2e:perf1",
+            "startedUtc": "2026-11-14T10:14:38.9677517Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf1.log",
+            "logSha256": "A964D62BB65242281ED2C298047962ACCFA0A043C7CE06F9B4B26879EE95AF70",
+            "finishedUtc": "2026-11-14T10:14:48.8130306Z"
+          },
+          {
+            "name": "ux6a",
+            "command": "npm run test:e2e:ux6a",
+            "startedUtc": "2026-11-14T10:14:48.8205299Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-ux6a.log",
+            "logSha256": "6D141AD8B6BFCBC65CAF672F1850037B5FA9614577AEDF69B761DF08412ECD23",
+            "finishedUtc": "2026-11-14T10:14:55.0670044Z"
+          },
+          {
+            "name": "perf2",
+            "command": "npm run test:e2e:perf2",
+            "startedUtc": "2026-11-14T10:14:55.0735366Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf2.log",
+            "logSha256": "5BB3889343ECA4357C9FFB79430EB731BCBB3081347F9E45FCFAFF1A33DE9F36",
+            "finishedUtc": "2026-11-14T10:15:00.6993448Z"
+          },
+          {
+            "name": "perf3a",
+            "command": "npm run test:e2e:perf3a",
+            "startedUtc": "2026-11-14T10:15:00.7059228Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf3a.log",
+            "logSha256": "53498A4172F8FCAC31AEE0A43BD440856429828D4999258F89D69D80D7274E3B",
+            "finishedUtc": "2026-11-14T10:15:12.5806748Z"
+          },
+          {
+            "name": "perf3b",
+            "command": "npm run test:e2e:perf3b",
+            "startedUtc": "2026-11-14T10:15:12.5875779Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf3b.log",
+            "logSha256": "060AA53C7CA8FFE14FD35F7CF577373A3F1D5BCC19B1A178C8A0E927068FAF9A",
+            "finishedUtc": "2026-11-14T10:15:16.7740782Z"
+          },
+          {
+            "name": "perf3c",
+            "command": "npm run test:e2e:perf3c",
+            "startedUtc": "2026-11-14T10:15:16.7804393Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf3c.log",
+            "logSha256": "D0E7A4776D876C1F513AF5D684F847A74DBF90FB35331DD0778BFB0EC0F01AA4",
+            "finishedUtc": "2026-11-14T10:15:21.5458478Z"
+          },
+          {
+            "name": "perf3d",
+            "command": "npm run test:e2e:perf3d",
+            "startedUtc": "2026-11-14T10:15:21.5531971Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf3d.log",
+            "logSha256": "85C893085D80F14B21D0E39ADD4FA3CB625B0B30B2FC0FBBCD8C92BB9807DAD7",
+            "finishedUtc": "2026-11-14T10:15:28.1756255Z"
+          },
+          {
+            "name": "perf3e",
+            "command": "npm run test:e2e:perf3e",
+            "startedUtc": "2026-11-14T10:15:28.1840820Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf3e.log",
+            "logSha256": "37A02C1267A1AD335420B4209A36308271D2402E8BD04F03384CBEBCE1DBABF9",
+            "finishedUtc": "2026-11-14T10:15:37.1691348Z"
+          },
+          {
+            "name": "perf3g",
+            "command": "npm run test:e2e:perf3g",
+            "startedUtc": "2026-11-14T10:15:37.1780354Z",
+            "exitCode": 0,
+            "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-bound-b-perf3g.log",
+            "logSha256": "CE572B3AE955F026FDFA1C299677360BCA8744FF06A4B041884716AE67B3597B",
+            "finishedUtc": "2026-11-14T10:15:54.5382776Z"
+          }
+        ],
+        "finishedUtc": "2026-11-14T10:15:54.5430549Z"
+      }
+    }
+  },
+  "vite": {
+    "identity": {
+      "name": "ux9-final-vite-manifest.json",
+      "bytes": 1562,
+      "sha256": "28031fd4783f852ff4e1239375ad1990a8cc9909ca6978dca91c72f57863c3ff"
+    },
+    "data": {
+      "startedUtc": "2026-11-14T10:16:19.7778914Z",
+      "worktree": "C:/Users/KLucen/.codex/worktrees/mermarkd-ux9-final-b-b",
+      "commit": "8425753c2315c77e45629c0079209992c708696a",
+      "asarSha256": "4FAFBB7F33636C3C7B91A7E33792D5FE87565A6F47AD1BAB985DEAD2CD7CDD2A",
+      "status": "passed",
+      "runs": [
+        {
+          "name": "ux9",
+          "startedUtc": "2026-11-14T10:16:20.6688833Z",
+          "command": "npm run test:e2e:ux9",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-vite-ux9.log",
+          "exitCode": 0,
+          "logSha256": "90934F2BB8AB6FB6CC9EF164D07562FD037BB7FFDC5DA4A766C7FE641C7C4491",
+          "finishedUtc": "2026-11-14T10:16:57.5147955Z"
+        },
+        {
+          "name": "ux8",
+          "startedUtc": "2026-11-14T10:16:57.5209946Z",
+          "command": "npm run test:e2e:ux8",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-vite-ux8.log",
+          "exitCode": 0,
+          "logSha256": "509D7584188FE79A3EB7E0D88B7A8725CCE0D9EDF718AEFE38BA96347E18B577",
+          "finishedUtc": "2026-11-14T10:17:02.3694119Z"
+        },
+        {
+          "name": "ux7",
+          "startedUtc": "2026-11-14T10:17:02.3717262Z",
+          "command": "npm run test:e2e:ux7",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\ux9-final-vite-ux7.log",
+          "exitCode": 0,
+          "logSha256": "CD7A93BB157DB7AE25848E3D50E70F8BF01CDAFA4FBDAC20FA1A23DDE9C7B272",
+          "finishedUtc": "2026-11-14T10:17:10.6239202Z"
+        }
+      ],
+      "serverProcessId": 41688,
+      "serverStopped": true,
+      "finishedUtc": "2026-11-14T10:17:11.6214474Z"
+    }
+  },
+  "screenshots": [
+    {
+      "name": "ux9-bound-b-ux9-incremental-nested.png",
+      "bytes": 66803,
+      "sha256": "0493877271d68a9c1b68f9058acd3c27955060520a34fc5108abb7a217f28d6b"
+    },
+    {
+      "name": "ux9-bound-b-ux9-reader-locate-420.png",
+      "bytes": 33451,
+      "sha256": "abe5e0d5604d0b3e94b18bb7f5370912e226f032e9c8e19006038b8c467f3536"
+    },
+    {
+      "name": "ux9-bound-b-ux9-reader-locate-folded.png",
+      "bytes": 69750,
+      "sha256": "192247821cf7f1113d5ae74104a24e71fe9446b6f73d44aa54b50d3e33496ba2"
+    },
+    {
+      "name": "ux9-bound-b-ux9-search-420.png",
+      "bytes": 46668,
+      "sha256": "dbe2380fd0bff0554c7ca258993952976806a5c464b3809e3665968853048a71"
+    },
+    {
+      "name": "ux9-bound-b-ux9-search-800.png",
+      "bytes": 68775,
+      "sha256": "9953569eb343cf2580d6cefd0f610d68ed6605ef0684b781896d1d2e56dd8bea"
+    },
+    {
+      "name": "ux9-bound-b-ux9-search-path-results.png",
+      "bytes": 85523,
+      "sha256": "97c3a8bafed145a034e6608c2e5b476a80a0750cc61b92d3898baa9bde7b1aec"
+    },
+    {
+      "name": "ux9-bound-b-ux9-temporary-bounds-recovery.png",
+      "bytes": 56641,
+      "sha256": "3e166b7ac512dc0a92b1f4d5ccdfa3fd9fe0ccd14427e1e2dceba81db5e58517"
+    },
+    {
+      "name": "ux9-final-vite-ux9-incremental-nested.png",
+      "bytes": 66814,
+      "sha256": "a7d85d4f98dda6d99a15257e24bae4fd274e8aaf2d5533807184dfcd396d8aec"
+    },
+    {
+      "name": "ux9-final-vite-ux9-reader-locate-420.png",
+      "bytes": 33451,
+      "sha256": "abe5e0d5604d0b3e94b18bb7f5370912e226f032e9c8e19006038b8c467f3536"
+    },
+    {
+      "name": "ux9-final-vite-ux9-reader-locate-folded.png",
+      "bytes": 69750,
+      "sha256": "192247821cf7f1113d5ae74104a24e71fe9446b6f73d44aa54b50d3e33496ba2"
+    },
+    {
+      "name": "ux9-final-vite-ux9-search-420.png",
+      "bytes": 46727,
+      "sha256": "f6a8a61f6f305c3c1fa5bb280f4dea7ce4385e763176103d3dbcdff554a5b92d"
+    },
+    {
+      "name": "ux9-final-vite-ux9-search-800.png",
+      "bytes": 68760,
+      "sha256": "c8645282573a1c2525ac666b0ba629807207b499ee59271e901d9cd7f8a6715a"
+    },
+    {
+      "name": "ux9-final-vite-ux9-search-path-results.png",
+      "bytes": 85523,
+      "sha256": "97c3a8bafed145a034e6608c2e5b476a80a0750cc61b92d3898baa9bde7b1aec"
+    },
+    {
+      "name": "ux9-final-vite-ux9-temporary-bounds-recovery.png",
+      "bytes": 56657,
+      "sha256": "652665153d36bdc81378c898c97444f7077b0cc29e9278b5669c4bf3f84f348a"
+    }
+  ],
+  "protectedFiles": [
+    {
+      "file": "src/renderer/index-3b82dd4d61e8.html",
+      "name": "index-3b82dd4d61e8.html",
+      "bytes": 351,
+      "sha256": "9ea97c911a3482916cd4ff4de75be500ac42f9b6e907d1c4d5f0ffd250c49196"
+    },
+    {
+      "file": "tests/fixtures/reader/mixed-layout.md",
+      "name": "mixed-layout.md",
+      "bytes": 2615,
+      "sha256": "c5d4f6f798e11a3550ddd494f020413020b8fde27fea89e46146be1c909aead1"
+    },
+    {
+      "file": "tests/fixtures/reader/mixed-layout.md.mermarkd.json",
+      "name": "mixed-layout.md.mermarkd.json",
+      "bytes": 5569,
+      "sha256": "d62caa49b9b81b665dcf636cc620e8a1d5229ee9e30a1a2a86d88cce0eef691f"
+    }
+  ],
+  "interpretations": [
+    "oldRedA search geometry mixed world and relative coordinates; that early failure is a test error, not a product defect.",
+    "oldRedB uses corrected assertions and records nine early failures. Later assertions not reached are not counted as failed behavior.",
+    "candidateA passed seven layout cases, then failed real 800px search overflow and hidden 420px reader locator checks. Failures and original package remain.",
+    "Known stored relative positions stay fixed; source hierarchy edits can change world space, and derived parent bounds can grow into other existing groups.",
+    "Unresolved identities and original link endpoints stay unresolved; new replacement cards do not inherit ambiguous endpoints.",
+    "Placement refusal and explicitly requested temporary arrangement write no content files; Save View is the separate canvas commit.",
+    "Checkout CRLF can change script byte hashes. Each executed report preserves its actual hash; source-text equivalence is checked separately."
+  ]
+}

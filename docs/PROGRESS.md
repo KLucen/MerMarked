@@ -1,5 +1,15 @@
 # MerMarkd 开发进度
 
+## 2026-11-14 · UX9 增量布局与章节定位（本机软件验证完成）
+
+基于已合并 [PR #21](https://github.com/KLucen/MerMarked/pull/21) 的 main `ab3239d`，分支 `codex/ux9-layout-navigation`。范围与退出条件见 [UX9_ACCEPTANCE.md](UX9_ACCEPTANCE.md)。
+
+- 已实现新增卡片的纯核心增量放置，保留已知及待修复旧卡片的相对坐标、显示偏好和原箭头端点。缺失布局才首次全排；身份未匹配继续待修复，避免借全排改变其他已匹配章节的位置。显式自动整理保持。
+- 已接入画布 Ctrl+F、明确标题范围、清除与按需章节路径结果；阅读顶栏可主动定位本节卡片，普通模式切换保留已保存视口。折叠目标定位可见祖先，不自动展开或保存。
+- 最终源 `8425753` 干净检出完成 npm ci、类型检查、327/327 单测和 make，ASAR SHA-256 `4FAFBB7F33636C3C7B91A7E33792D5FE87565A6F47AD1BAB985DEAD2CD7CDD2A`。同包 31 套回归与实际 Vite UX9 / UX8 / UX7 全部通过，测试服务和窗口已关闭。
+- 最终旧版九项对照失败、初始候选的 800 px 搜索越界和 420 px 定位入口隐藏均保留；修正后九项专项通过，三文件 bytes/mtime、临时拒绝/整理、显式保存与重开分别核验。原始结果和身份见 [UX9_EVIDENCE.json](UX9_EVIDENCE.json)。
+- 既有卡片保持的是当前 Markdown 父级下的相对坐标；源码改变父级会影响世界位置，新子卡也可能使父容器外框增大。本批未进行新的原生 IME、辅助客户端性能或安装生命周期验收，QA1 / P0 既有门槛继续保留。GitHub 交付待回执。
+
 ## 2026-11-13—14 · QA2 保存布局恢复与受控诊断
 
 基于已合并 [PR #20](https://github.com/KLucen/MerMarked/pull/20) / main `2e6a04f`，分支 `codex/qa2-layout-recovery`。本批先处理已确认的布局恢复缺陷，范围和退出条件见 [QA2_ACCEPTANCE.md](QA2_ACCEPTANCE.md)，不将原单次拖动异常与此缺陷视为同一原因。
@@ -11,7 +21,7 @@
 - 同包五对 5 MiB / 200 卡片 / 500 高亮对照全部功能完成、所测操作预算无超限；普通五份实际为 nativeAPIs，另五份仅添加 webContents / extendedProperties，五对前后均稳定。独立 trace 确有约 52–70 ms 的阶段原生 AX 主线程事件，但未复现 QA1 严重长帧，不能据此声称已修复真实辅助客户端路径。全部计时、字段覆盖、事件与限制见 QA2_EVIDENCE.json / QA2_AX_ANALYSIS.json，旧失败保持。
 - 本批未修改产品 AX 设置、schema、IPC 或依赖。原单次拖动大跳、卸载残留、物理跨屏 DPI、干净 Windows 与发布门槛继续单独跟踪，QA1 / P0 尚未整体退出。
 
-实现 `def66de5` 与验收记录 `820ac9b` 已推送至 `origin/codex/qa2-layout-recovery`，已创建并附加 [PR #21](https://github.com/KLucen/MerMarked/pull/21)，目标 main，待审未合并。本批布局修复本地退出条件通过，增强特性诊断完成；私人测试目录、原始日志和本地安装包未公开上传。
+实现 `def66de5` 与验收记录 `820ac9b` 已通过 [PR #21](https://github.com/KLucen/MerMarked/pull/21) 合并至 main，合并提交 `ab3239d`，作为 UX9 基线。本批布局修复本地退出条件通过，增强特性诊断完成；私人测试目录、原始日志和本地安装包未公开上传。
 
 ## 2026-11-12—13 · QA1 本机验证与修复交付
 
