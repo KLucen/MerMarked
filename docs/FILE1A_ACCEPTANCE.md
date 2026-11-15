@@ -37,3 +37,5 @@
 复现：`npm run typecheck`、`npm test`、`npm run make`、`npm run test:e2e:file1a`。隔离包通过 `MERMARKD_QA_EXE` 选择；专项输出以 `MERMARKD_QA_ARTIFACT_PREFIX` 避免覆盖。完整 32 套命令和 Vite 启停记录已附于证据。store 上限为 Markdown 32 MiB、YAML 1 MiB、JSON 4 MiB；只复制文件内容，不承诺保留 ACL、ADS、原文件时间戳或硬链接关系。
 
 下一步可继续 FILE1 的跨目录资源与副本切换方案，先固定附件授权、相对引用改写和失败恢复的预览合同，再实现；不将当前同目录入口扩大为完整可移植工作区。
+
+交付：分支 `codex/file1a-saved-copy` 已推送，创建并附加 [PR #23](https://github.com/KLucen/MerMarked/pull/23)，目标 main，待审未合并。运行时代码、测试同步和验收记录分别可追溯；最终回执另核对远端 HEAD。
