@@ -1,0 +1,758 @@
+{
+  "kind": "FILE1A-saved-document-copy-evidence",
+  "recordedAt": "2026-11-15T11:29:15.3821094Z",
+  "runtimeSourceCommit": "76fcd03e9641352cb20221b7fa807ff45723b944",
+  "verificationHead": "64c362f19d312b5a8637b58f573ab76a94ec1fdc",
+  "runtimeChangesSinceBuild": [],
+  "asar": {
+    "name": "app.asar",
+    "bytes": 4091867,
+    "sha256": "5A3BDF5D455EF919F3405623E80E164C4386D91F49EE995567BE565DD36FC61E"
+  },
+  "build": {
+    "identity": {
+      "name": "file1a-final-build-manifest.json",
+      "bytes": 10091,
+      "sha256": "4C8FD40FF25A9BDB36B2FCDAAC42FEABBFDD5FE606D398C0EAF5FB55B7ADEBCF"
+    },
+    "data": {
+      "sourceCommit": "76fcd03e9641352cb20221b7fa807ff45723b944",
+      "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final",
+      "kind": "clean-detached-final-file1a-saved-copy-build",
+      "startedUtc": "2026-11-15T11:07:41.6940314Z",
+      "status": "passed",
+      "node": "v24.20.0",
+      "npm": "11.19.0",
+      "mainIndexBefore": {
+        "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+        "bytes": 31457,
+        "sha256": "E5153BF678A507AFD7960C0B5B550486714EF8EFAC276FEEB47854A55C7EC976"
+      },
+      "electronZip": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b\\electron-v44.4.1-win32-x64.zip",
+        "bytes": 158290103,
+        "sha256": "34BC07977D6C43B6514B956A5F2E3292255DAA3838A49E6110F3FE19FFAFB83F"
+      },
+      "processEnvironment": {
+        "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+      },
+      "steps": [
+        {
+          "name": "worktree",
+          "command": "git -C C:\\Users\\KLucen\\Desktop\\MerMarkd worktree add --detach C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final 76fcd03e9641352cb20221b7fa807ff45723b944",
+          "executable": "git",
+          "arguments": [
+            "-C",
+            "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+            "worktree",
+            "add",
+            "--detach",
+            "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final",
+            "76fcd03e9641352cb20221b7fa807ff45723b944"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-15T11:07:42.5865835Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-worktree.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-15T11:07:42.8613195Z",
+          "durationSeconds": 0.275,
+          "logSha256": "F83F0DB8F5381BB6A411F6EFF23B7F83C0B34BCE3B198E716ECF908E942C9777",
+          "logBytes": 605
+        },
+        {
+          "name": "ci",
+          "command": "npm.cmd ci",
+          "executable": "npm.cmd",
+          "arguments": [
+            "ci"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-15T11:07:43.0762902Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-ci.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-15T11:07:51.1255791Z",
+          "durationSeconds": 8.049,
+          "logSha256": "C47D40DB14E479405B13CE4B304971B6D937A539423E48346DFF889A6CC5CCAD",
+          "logBytes": 1951
+        },
+        {
+          "name": "typecheck",
+          "command": "npm.cmd run typecheck",
+          "executable": "npm.cmd",
+          "arguments": [
+            "run",
+            "typecheck"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-15T11:07:51.1287271Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-typecheck.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-15T11:07:54.0904877Z",
+          "durationSeconds": 2.962,
+          "logSha256": "A39BDEC84583FE7EE098119FAF94A6CCCB4FD6FC6E1EE9E07F1AB4430860DC93",
+          "logBytes": 406
+        },
+        {
+          "name": "test",
+          "command": "npm.cmd test",
+          "executable": "npm.cmd",
+          "arguments": [
+            "test"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-15T11:07:54.093089Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-test.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-15T11:07:59.1576742Z",
+          "durationSeconds": 5.065,
+          "logSha256": "43F82B055FD7C6717E08D51B6C1235A29CA7BC8C68963B39480BC0D0348878EA",
+          "logBytes": 61991
+        },
+        {
+          "name": "make",
+          "command": "npm.cmd run make",
+          "executable": "npm.cmd",
+          "arguments": [
+            "run",
+            "make"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-15T11:07:59.1600732Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-make.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-15T11:08:52.9475713Z",
+          "durationSeconds": 53.787,
+          "logSha256": "28AFB0626D649FAFC6B78054A985BCA2B503AC89CC6322DC27640C31EB8C24CA",
+          "logBytes": 2226
+        }
+      ],
+      "limitations": [
+        "Build only. No app window started, installation, lifecycle cleanup, packaged E2E, or native export validation performed by this build task."
+      ],
+      "frozenValidationBefore": [
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+          "bytes": 4068827,
+          "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+          "bytes": 154837504,
+          "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+          "bytes": 79,
+          "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+          "bytes": 154081906,
+          "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+        }
+      ],
+      "worktreeCreation": "created detached",
+      "initialSourceStatus": [],
+      "initialSourceClean": true,
+      "initialLock": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\package-lock.json",
+        "bytes": 373672,
+        "sha256": "6E3FF39AE568D411DDB8631117C87F2932B8E254AB5F3F69C8646DB3BA43603E"
+      },
+      "sourceTree": "c4926cd0880c89ca5c9bf14e2e2ed75e419d728a",
+      "testCount": 349,
+      "testPass": 349,
+      "testFail": 0,
+      "finalSourceStatus": [],
+      "finalSourceClean": true,
+      "finalLock": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\package-lock.json",
+        "bytes": 373672,
+        "sha256": "6E3FF39AE568D411DDB8631117C87F2932B8E254AB5F3F69C8646DB3BA43603E"
+      },
+      "lockUnchanged": true,
+      "artifacts": [
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+          "bytes": 4091867,
+          "sha256": "5A3BDF5D455EF919F3405623E80E164C4386D91F49EE995567BE565DD36FC61E"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+          "bytes": 154844672,
+          "sha256": "596498321255FECA7E52585DFD3698D9F4F3AECB8D13DBB57F6B6DED50B75C8D"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\out\\make\\squirrel.windows\\x64\\RELEASES",
+          "bytes": 79,
+          "sha256": "E55F06C1B2FED85C4BEEFCB48DC6302AEDAF04FE308B1F08074183F3D06B72A3"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+          "bytes": 154089189,
+          "sha256": "7AF7058278F3491E3B694686A37E2FFCA060C8322130984FD625E5CDCD8213E1"
+        }
+      ],
+      "releasesContent": "4F9715E375E6EFBFA7A95C2EF73D4EBAB6A38272 MerMarkd-0.1.0-full.nupkg 154089189",
+      "frozenValidationAfter": [
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+          "bytes": 4068827,
+          "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+          "bytes": 154837504,
+          "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+          "bytes": 79,
+          "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+          "bytes": 154081906,
+          "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+        }
+      ],
+      "frozenValidationUnchanged": true,
+      "mainIndexAfter": {
+        "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+        "bytes": 31457,
+        "sha256": "E5153BF678A507AFD7960C0B5B550486714EF8EFAC276FEEB47854A55C7EC976"
+      },
+      "mainIndexUnchanged": true,
+      "finishedUtc": "2026-11-15T11:08:53.8300195Z"
+    }
+  },
+  "packagedRegression": {
+    "identity": {
+      "name": "file1a-final-e-regression-manifest.json",
+      "bytes": 14843,
+      "sha256": "F7F18D7EB3FC10BCABF6C22E79F9919619BEC30ADC9F694772EA4783F337407E"
+    },
+    "data": {
+      "commit": "64c362f19d312b5a8637b58f573ab76a94ec1fdc",
+      "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final",
+      "asarSha256": "5A3BDF5D455EF919F3405623E80E164C4386D91F49EE995567BE565DD36FC61E",
+      "startedUtc": "2026-11-15T11:24:11.2349044Z",
+      "status": "passed",
+      "runs": [
+        {
+          "name": "file1a",
+          "command": "npm run test:e2e:file1a",
+          "startedUtc": "2026-11-15T11:14:49.4777581Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-file1a.log",
+          "logSha256": "38908A40EAB28AE2101704136884EE9CE90341B61414306C38E856217C3BEF70",
+          "finishedUtc": "2026-11-15T11:15:01.4846195Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "ux9",
+          "command": "npm run test:e2e:ux9",
+          "startedUtc": "2026-11-15T11:15:01.4953179Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-ux9.log",
+          "logSha256": "89B712A1C6DA8872284BA92329E585F3C2F6ABD48F16CE1DC16A92781C89EA0E",
+          "finishedUtc": "2026-11-15T11:15:28.9202967Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "qa2",
+          "command": "npm run test:e2e:qa2",
+          "startedUtc": "2026-11-15T11:15:28.9313598Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-qa2.log",
+          "logSha256": "7D426D269A38CE8B4CC0D4CD5B29E94B8A76B589E7A450EB1136421ED93B5B88",
+          "finishedUtc": "2026-11-15T11:15:51.6299029Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "source-composition",
+          "command": "npm run test:e2e:source-composition",
+          "startedUtc": "2026-11-15T11:15:51.6371623Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-source-composition.log",
+          "logSha256": "EFC82BAA7156BC4235C34EA9EEB6BDCE94080C832578287B32DB6F2B080ACB4D",
+          "finishedUtc": "2026-11-15T11:15:56.0315223Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "ux8",
+          "command": "npm run test:e2e:ux8",
+          "startedUtc": "2026-11-15T11:15:56.038172Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-ux8.log",
+          "logSha256": "D807EB1AF03149439AFB4CD8E8BB2C52405979B2F153B4603AA8E4BC119A986C",
+          "finishedUtc": "2026-11-15T11:16:00.4094688Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "ux7",
+          "command": "npm run test:e2e:ux7",
+          "startedUtc": "2026-11-15T11:16:00.4163336Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-ux7.log",
+          "logSha256": "CD7A93BB157DB7AE25848E3D50E70F8BF01CDAFA4FBDAC20FA1A23DDE9C7B272",
+          "finishedUtc": "2026-11-15T11:16:07.5360299Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "ux6b",
+          "command": "npm run test:e2e:ux6b",
+          "startedUtc": "2026-11-15T11:16:07.5503553Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-ux6b.log",
+          "logSha256": "E3493F6FE7DF2FA8D09795270F11880B51062420C17983350405D8B94989DB85",
+          "finishedUtc": "2026-11-15T11:16:21.9192846Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a6",
+          "command": "npm run test:e2e:a6",
+          "startedUtc": "2026-11-15T11:16:21.9256469Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a6.log",
+          "logSha256": "C5498D8E21AD923A0B81BAD6B203BC942A14A97035ABE632D5E75815CF332614",
+          "finishedUtc": "2026-11-15T11:16:26.1493536Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a7-1",
+          "command": "npm run test:e2e:a7-1",
+          "startedUtc": "2026-11-15T11:16:26.1568787Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a7-1.log",
+          "logSha256": "0481A037ECF0EF81CDF8D889D420484523E7D847D5F01111C5B10BBFF6F2EDB8",
+          "finishedUtc": "2026-11-15T11:16:31.4762529Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a7-2",
+          "command": "npm run test:e2e:a7-2",
+          "startedUtc": "2026-11-15T11:16:31.4831528Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a7-2.log",
+          "logSha256": "B5F0688B9827E3BC177F1BAB0FEF8C16AE91D5077C14383A13143B52A822B155",
+          "finishedUtc": "2026-11-15T11:16:34.7222267Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a7-3b",
+          "command": "npm run test:e2e:a7-3b",
+          "startedUtc": "2026-11-15T11:16:34.7283602Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a7-3b.log",
+          "logSha256": "5F411BE309D4B1604CBE6DB884304925CF17E1642B1666FC9EC0E4772F6DA0BE",
+          "finishedUtc": "2026-11-15T11:16:39.3686837Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a7-4",
+          "command": "npm run test:e2e:a7-4",
+          "startedUtc": "2026-11-15T11:16:39.3760319Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a7-4.log",
+          "logSha256": "FF913E20CD0C96AF8EBFFDEBDB49CFEEDC345C494178D97DA5FD9F11E76BB4CB",
+          "finishedUtc": "2026-11-15T11:16:43.0591839Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a7-5",
+          "command": "npm run test:e2e:a7-5",
+          "startedUtc": "2026-11-15T11:16:43.0660221Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a7-5.log",
+          "logSha256": "EF8E91F676FE8822FED3A224C2043229075E3A52EF34FE8BBC561228CF502C97",
+          "finishedUtc": "2026-11-15T11:16:46.3950668Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a8-2",
+          "command": "npm run test:e2e:a8-2",
+          "startedUtc": "2026-11-15T11:16:46.402849Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a8-2.log",
+          "logSha256": "1D8EF13FF203B6A462FF0FE8347034C26C08DE4A320FA391F48AA155BBC0F81D",
+          "finishedUtc": "2026-11-15T11:16:50.6267806Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a8-3",
+          "command": "npm run test:e2e:a8-3",
+          "startedUtc": "2026-11-15T11:16:50.633687Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a8-3.log",
+          "logSha256": "53F30C8303BD17AA574F98B767CA5D6471A57F0C0E9D049AFF87E28A4819C4E5",
+          "finishedUtc": "2026-11-15T11:16:54.467704Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a8-4",
+          "command": "npm run test:e2e:a8-4",
+          "startedUtc": "2026-11-15T11:16:54.4751976Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a8-4.log",
+          "logSha256": "6B4C827B3496BB7B607A992B8BD7298EAA480C121FF564F50787B8932F69D08B",
+          "finishedUtc": "2026-11-15T11:17:00.5326462Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "a8-5",
+          "command": "npm run test:e2e:a8-5",
+          "startedUtc": "2026-11-15T11:17:00.5401427Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-a8-5.log",
+          "logSha256": "E0D071FB54FDFB15BC85EE4FAC4953F2021F1099887C74E000FA76734D565200",
+          "finishedUtc": "2026-11-15T11:17:05.5445992Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "b1",
+          "command": "npm run test:e2e:b1",
+          "startedUtc": "2026-11-15T11:17:05.5512139Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-b1.log",
+          "logSha256": "5EA0FEFA5C045FBE7C601B49178760B0E0D7158AA1A23C129422D72634C1A66F",
+          "finishedUtc": "2026-11-15T11:17:08.7750047Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "ux1",
+          "command": "npm run test:e2e:ux1",
+          "startedUtc": "2026-11-15T11:17:08.781668Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-ux1.log",
+          "logSha256": "918BB4494154717073685C897AA50EB0726CB2D58F11C6D408AE173DE0553B5C",
+          "finishedUtc": "2026-11-15T11:17:12.6205591Z",
+          "reusedFrom": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-c-regression-manifest.json"
+        },
+        {
+          "name": "ux2",
+          "command": "npm run test:e2e:ux2",
+          "startedUtc": "2026-11-15T11:24:11.2909927Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-ux2.log",
+          "logSha256": "D27B66A09D2D5B2DE4111D419CE486A21B600B676380682FABA8C2BBFB9BBA15",
+          "finishedUtc": "2026-11-15T11:24:21.0208842Z"
+        },
+        {
+          "name": "ux3",
+          "command": "npm run test:e2e:ux3",
+          "startedUtc": "2026-11-15T11:24:21.0335581Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-ux3.log",
+          "logSha256": "617AE514E401141F6EA11F3AB4BCEBB065D2D61D2A844E278E10C50142749CAC",
+          "finishedUtc": "2026-11-15T11:24:28.4882438Z"
+        },
+        {
+          "name": "ux4",
+          "command": "npm run test:e2e:ux4",
+          "startedUtc": "2026-11-15T11:24:28.4972902Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-ux4.log",
+          "logSha256": "05B7DC3DE64B4728B4851D5F752FAD85816AF97B5DB1ED56A7A35A6819AA0F83",
+          "finishedUtc": "2026-11-15T11:24:38.2265209Z"
+        },
+        {
+          "name": "ux5",
+          "command": "npm run test:e2e:ux5",
+          "startedUtc": "2026-11-15T11:24:38.2350846Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-ux5.log",
+          "logSha256": "F465466CD8C99AB86F4492EE00726948B8F82F85713F13F36973EDB3FDD0EE6D",
+          "finishedUtc": "2026-11-15T11:24:45.7427262Z"
+        },
+        {
+          "name": "perf1",
+          "command": "npm run test:e2e:perf1",
+          "startedUtc": "2026-11-15T11:24:45.7503898Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf1.log",
+          "logSha256": "45A7503AEFA9EA9B89AA631D87FFC9703C1519007F697C8F7CDABD4B3E616976",
+          "finishedUtc": "2026-11-15T11:24:51.9544886Z"
+        },
+        {
+          "name": "ux6a",
+          "command": "npm run test:e2e:ux6a",
+          "startedUtc": "2026-11-15T11:24:51.9622166Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-ux6a.log",
+          "logSha256": "6D141AD8B6BFCBC65CAF672F1850037B5FA9614577AEDF69B761DF08412ECD23",
+          "finishedUtc": "2026-11-15T11:24:58.2525856Z"
+        },
+        {
+          "name": "perf2",
+          "command": "npm run test:e2e:perf2",
+          "startedUtc": "2026-11-15T11:24:58.2599379Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf2.log",
+          "logSha256": "E39AD48D98F9883AC7D1965E12013BB3FF4AFE9D6A1F9B1F65D5551F74E247B5",
+          "finishedUtc": "2026-11-15T11:25:03.922366Z"
+        },
+        {
+          "name": "perf3a",
+          "command": "npm run test:e2e:perf3a",
+          "startedUtc": "2026-11-15T11:25:03.9299709Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf3a.log",
+          "logSha256": "1C3572D26BC693BF0C0FAF4D7C9F73BD0502415F58BCDE40172FC2C5AE620357",
+          "finishedUtc": "2026-11-15T11:25:16.6428886Z"
+        },
+        {
+          "name": "perf3b",
+          "command": "npm run test:e2e:perf3b",
+          "startedUtc": "2026-11-15T11:25:16.6517613Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf3b.log",
+          "logSha256": "945E81F93F4496D6079E04F0A750B3697D800FFDF9834813B7E77FEA0F0ABEB5",
+          "finishedUtc": "2026-11-15T11:25:20.9811202Z"
+        },
+        {
+          "name": "perf3c",
+          "command": "npm run test:e2e:perf3c",
+          "startedUtc": "2026-11-15T11:25:20.9891092Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf3c.log",
+          "logSha256": "B8D5A1FCC2284FDD524366934068390ADF6BCDB4851BC280CADCD0146856FBE2",
+          "finishedUtc": "2026-11-15T11:25:25.7450034Z"
+        },
+        {
+          "name": "perf3d",
+          "command": "npm run test:e2e:perf3d",
+          "startedUtc": "2026-11-15T11:25:25.7519905Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf3d.log",
+          "logSha256": "7055BAAAF3DA35AA037C82D8268EBEFFEE93B26F0CFE5F9F8740D2D8A3E6D1BB",
+          "finishedUtc": "2026-11-15T11:25:32.7418824Z"
+        },
+        {
+          "name": "perf3e",
+          "command": "npm run test:e2e:perf3e",
+          "startedUtc": "2026-11-15T11:25:32.7518721Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf3e.log",
+          "logSha256": "DAE2F276B49F2AF3D41C3A23D0728D15A19477B61F3C6B6EFF237835337BC46A",
+          "finishedUtc": "2026-11-15T11:25:42.1159769Z"
+        },
+        {
+          "name": "perf3g",
+          "command": "npm run test:e2e:perf3g",
+          "startedUtc": "2026-11-15T11:25:42.1237788Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-e-perf3g.log",
+          "logSha256": "037F46B1501A6B93C7D212A7BAEADD1E0E6A727582BE79967019DE58A8889002",
+          "finishedUtc": "2026-11-15T11:25:59.888295Z"
+        }
+      ],
+      "finishedUtc": "2026-11-15T11:25:59.8912625Z"
+    }
+  },
+  "copySuite": {
+    "identity": {
+      "name": "file1a-final-c-file1a.json",
+      "bytes": 3138,
+      "sha256": "6B8652DE8C4B4BF475D767BFF1A457245C8F119CDA6F72130FECACE4BDA1F5ED"
+    },
+    "data": {
+      "status": "passed",
+      "startedAt": "2026-11-15T11:14:50.14Z",
+      "executable": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+      "scriptSha256": "6d217bc9d9402f22edcbd818b221fa26aa78447260df686d7e056192b087be49",
+      "asarSha256": "5a3bdf5d455ef919f3405623e80e164c4386d91f49ee995567be565dd36fc61e",
+      "cases": [
+        {
+          "name": "saved-copy-bytes-state-and-shared-image",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:50.145Z",
+          "originalSessionRetained": true,
+          "exactThreeFiles": true,
+          "pendingAnchorRetained": true,
+          "copiedFoldAndArrow": true,
+          "sharedImageDecoded": true,
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\out\\qa\\file1a-final-c-file1a-copied-canvas.png",
+          "finishedAt": "2026-11-15T11:14:52.335Z"
+        },
+        {
+          "name": "missing-companions-remain-missing",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:52.335Z",
+          "missingStateRetained": true,
+          "finishedAt": "2026-11-15T11:14:53.256Z"
+        },
+        {
+          "name": "cancel-zero-writes",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:53.256Z",
+          "canceledZeroWrites": true,
+          "finishedAt": "2026-11-15T11:14:54.193Z"
+        },
+        {
+          "name": "all-three-target-kinds-protected",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:54.193Z",
+          "threeTargetKindsProtected": true,
+          "finishedAt": "2026-11-15T11:14:55.23Z"
+        },
+        {
+          "name": "cross-directory-and-invalid-companion",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:55.23Z",
+          "sameDirectoryEnforced": true,
+          "invalidCompanionNotOmitted": true,
+          "finishedAt": "2026-11-15T11:14:56.239Z"
+        },
+        {
+          "name": "dirty-source-protection",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:56.239Z",
+          "rendererAndMainDirtyGuards": true,
+          "inputRetained": true,
+          "finishedAt": "2026-11-15T11:14:57.611Z"
+        },
+        {
+          "name": "source-composition-protection",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:57.611Z",
+          "chromiumCompositionRetained": true,
+          "dialogNotOpened": true,
+          "finishedAt": "2026-11-15T11:14:58.825Z"
+        },
+        {
+          "name": "narrow-copy-menu",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:14:58.825Z",
+          "width": 420,
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1a-final\\out\\qa\\file1a-final-c-file1a-copy-menu-420.png",
+          "finishedAt": "2026-11-15T11:15:00.102Z"
+        },
+        {
+          "name": "explicit-recovery-preserves-old-snapshot",
+          "status": "passed",
+          "startedAt": "2026-11-15T11:15:00.102Z",
+          "realProcessExit": 73,
+          "skipRecoveryZeroWrites": true,
+          "explicitOldSnapshotRestored": true,
+          "finishedAt": "2026-11-15T11:15:01.388Z"
+        }
+      ],
+      "boundary": "Packaged renderer/IPC/filesystem; native dialog responses mocked in isolated main. Chromium composition only, no physical IME/dialog, AX, installation or timing acceptance.",
+      "finishedAt": "2026-11-15T11:15:01.388Z"
+    }
+  },
+  "vite": {
+    "identity": {
+      "name": "file1a-final-vite-manifest.json",
+      "bytes": 1964,
+      "sha256": "2D108B1ADCC2ECE7B9BB171CAF81B285D7A0C55E1C81A43C68719F349D00D36E"
+    },
+    "data": {
+      "startedUtc": "2026-11-15T11:26:11.8563729Z",
+      "worktree": "C:/Users/KLucen/.codex/worktrees/mermarkd-file1a-final",
+      "commit": "64c362f19d312b5a8637b58f573ab76a94ec1fdc",
+      "asarSha256": "5A3BDF5D455EF919F3405623E80E164C4386D91F49EE995567BE565DD36FC61E",
+      "status": "passed",
+      "runs": [
+        {
+          "name": "file1a",
+          "startedUtc": "2026-11-15T11:26:12.7422233Z",
+          "command": "npm run test:e2e:file1a",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-vite-file1a.log",
+          "exitCode": 0,
+          "logSha256": "2FA88E630A472D004068A81C7D66862B4CA2A051969D608F7EF6B46D33CCBFF2",
+          "finishedUtc": "2026-11-15T11:26:30.4993123Z"
+        },
+        {
+          "name": "ux9",
+          "startedUtc": "2026-11-15T11:26:30.5042908Z",
+          "command": "npm run test:e2e:ux9",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-vite-ux9.log",
+          "exitCode": 0,
+          "logSha256": "E4009DEA7DE2169E2F4F29C6166790EB8E80880DA32A829EA0F234A53386F65F",
+          "finishedUtc": "2026-11-15T11:27:11.6064874Z"
+        },
+        {
+          "name": "ux8",
+          "startedUtc": "2026-11-15T11:27:11.6087644Z",
+          "command": "npm run test:e2e:ux8",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-vite-ux8.log",
+          "exitCode": 0,
+          "logSha256": "FFE2A00F187398D913B2D7D5E874540D3616F12222C3CA37B8C1249C352FD1ED",
+          "finishedUtc": "2026-11-15T11:27:16.9315557Z"
+        },
+        {
+          "name": "ux7",
+          "startedUtc": "2026-11-15T11:27:16.9341343Z",
+          "command": "npm run test:e2e:ux7",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\file1a-final-vite-ux7.log",
+          "exitCode": 0,
+          "logSha256": "CD7A93BB157DB7AE25848E3D50E70F8BF01CDAFA4FBDAC20FA1A23DDE9C7B272",
+          "finishedUtc": "2026-11-15T11:27:24.8847969Z"
+        }
+      ],
+      "serverProcessId": 38700,
+      "serverStopped": true,
+      "finishedUtc": "2026-11-15T11:27:26.7997673Z"
+    }
+  },
+  "priorFailures": [
+    {
+      "name": "file1a-final-a-file1a.log",
+      "bytes": 1546,
+      "sha256": "4AB5FB056C1961D1FCBF27297133A26E47C25625F13389CC264900AE261DFE14"
+    },
+    {
+      "name": "file1a-final-c-ux2.log",
+      "bytes": 2792,
+      "sha256": "0272DAC84E9AAE3F2D285C46BDA33072D815BB8D155AE6A47165A39C4820EDE3"
+    },
+    {
+      "name": "file1a-final-d-ux2.log",
+      "bytes": 787,
+      "sha256": "EC47B4C4E5FD186401A0B80580AD5BA6EAB2E88F63099E4EFE156704D9CE2AFB"
+    }
+  ],
+  "protectedUserFilesUnchanged": 3,
+  "candidateProcessesRemaining": 0,
+  "limitations": [
+    "Dialogs mocked in isolated main; Chromium composition is not physical IME.",
+    "Same-directory saved bytes only; companions may remain unresolved; attachments shared.",
+    "No directory fsync or power-cut durability; pre-journal stage may remain.",
+    "No published target is removed; explicit recovery may fill missing Markdown.",
+    "No new assistive-client performance, installation lifecycle or physical DPI acceptance; FILE1/QA1/P0 not complete."
+  ],
+  "controlAndRetests": [
+    {
+      "name": "file1a-ux2-old-before.log",
+      "bytes": 105,
+      "sha256": "8604A51812EB764283F81C365DE0673C1A6E283AEADF79C37513BA5E14DEA57C"
+    },
+    {
+      "name": "file1a-ux2-candidate-after.log",
+      "bytes": 105,
+      "sha256": "8604A51812EB764283F81C365DE0673C1A6E283AEADF79C37513BA5E14DEA57C"
+    }
+  ]
+}
