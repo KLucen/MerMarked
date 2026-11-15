@@ -25,6 +25,7 @@ const api: MerMarkdApi = Object.freeze({
   openMarkdown: () => ipcRenderer.invoke('document:open'),
   newMarkdown: () => ipcRenderer.invoke('document:new'),
   closeMarkdown: () => ipcRenderer.invoke('document:close'),
+  createSavedDocumentCopy: () => ipcRenderer.invoke('document:create-saved-copy'),
   confirmLeaveDocument: () => ipcRenderer.invoke('workspace:confirm-leave-document'),
   openRecentMarkdown: (documentPath: string) => ipcRenderer.invoke('document:open-recent', documentPath),
   listRecentDocuments: () => ipcRenderer.invoke('document:recent-list'),

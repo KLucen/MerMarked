@@ -523,6 +523,7 @@ function App() {
     reportEditorStatus,
   );
   const dirtyPreview = Boolean(editorController.editor?.dirty);
+  const [documentCopying, setDocumentCopying] = useState(false);
   const [readerDraftDirty, setReaderDraftDirty] = useState(false);
   useEffect(() => { setReaderDraftDirty(false); }, [activeMode, openedDocument]);
   const saveSource = useCallback(() => {
@@ -2126,8 +2127,29 @@ function App() {
 
   const confirmDocumentRecovery = () => leaveGuard.run(confirmDocumentRecoveryUnchecked);
 
+  const createSavedDocumentCopy = async () => {
+    if (!openedDocument || openedDocument.temporary || documentCopying || opening || leaveGuard.locked) return;
+    if (dirtyPreview || localInputKinds.length || readerInputActivity.current.composing || readerInputActivity.current.committing ||
+        mutationInFlight.current || editorController.busy || editorController.opening || annotationSaving || recoveryOpen || annotationView?.pendingDraftCount) {
+      setMessage('请先保存正文、提交或处理批注输入并完成恢复，再创建已保存副本；当前内容仍保留。', 'alert'); return;
+    }
+    const originKey = noteDocumentKey.current;
+    mutationInFlight.current = true; setDocumentCopying(true); setMessage('正在创建已保存副本…');
+    try {
+      const result = await window.mermarkd.createSavedDocumentCopy();
+      if (originKey === noteDocumentKey.current) setMessage(result.message, result.status === 'conflict' ? 'alert' : 'status');
+    } catch {
+      if (originKey === noteDocumentKey.current) setMessage('副本尚未完成，原文件和当前输入保持；请检查后重试。', 'alert');
+    } finally {
+      mutationInFlight.current = false; setDocumentCopying(false);
+      requestAnimationFrame(() => {
+        if (originKey === noteDocumentKey.current) document.querySelector<HTMLButtonElement>('button[aria-label="文档菜单"]')?.focus({ preventScroll: true });
+      });
+    }
+  };
+
   return (
-    <AppShell interactionLocked={leaveGuard.locked} document={openedDocument} activeMode={activeMode} dirty={dirtyPreview || readerDraftDirty} saving={editorController.busy}
+    <AppShell interactionLocked={leaveGuard.locked || documentCopying} document={openedDocument} activeMode={activeMode} dirty={dirtyPreview || readerDraftDirty} saving={editorController.busy}
       opening={opening || editorController.opening} dropActive={dropActive} notice={notice}
       recentDocuments={recentDocuments}
       panels={panels} taskLabel={activeMode === 'cards' ? '属性' : '批注'}
@@ -2165,6 +2187,7 @@ function App() {
       onSave={saveSource}
       canSave={Boolean(editorController.editor?.editable)}
       onSaveAs={openedDocument?.temporary ? saveSource : undefined}
+      onCreateSavedCopy={openedDocument && !openedDocument.temporary ? () => void createSavedDocumentCopy() : undefined}
       onDiscardChanges={() => { canvasStructureRequest.current += 1; setCanvasStructurePreview(null); void editorController.discardChanges(); }}
       workspaceStatuses={workspaceStatuses}
       annotationDetails={<div className="annotation-summary" role="region" aria-label="批注状态与操作">

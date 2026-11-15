@@ -1,5 +1,14 @@
 # MerMarkd 开发进度
 
+## 2026-11-15 · FILE1A 同目录已保存副本（验证中）
+
+基于已合并 PR #22 / main `5ccea0d`，分支 `codex/file1a-saved-copy`。范围与退出条件见 [FILE1A_ACCEPTANCE.md](FILE1A_ACCEPTANCE.md)，数据决定见 ADR-057。
+
+- 接入文档菜单、无参数 preload / main IPC，以及独立 filesystem store；原文与实际存在的 sidecar 逐字节复制到同目录新名，资源共用，原文保持打开。
+- 目标独占创建、原文复核、私有 staging 和日志、显式前向恢复；任何已发布目标不在失败清理中删除。旧副本恢复与当前快照复制明确区分。
+- 类型检查和 22 项 focused store 测试通过，实际子进程在两个发布阶段退出 73 后可恢复。最初 never 箭头返回类型造成六处类型收窄失败，改函数声明后通过；保留失败日志。窗口脚本新增未保存输入、Chromium 组合、窄窗、缺失 sidecar、取消、冲突和旧快照恢复用例，尚待最终包运行。
+- 当前会话沙箱因 registered runtime ownership is missing 无法启动，读取、源码写入、构建与测试按当前只读权限分别请求提权，不借其他工具绕过。三项用户原修改排除提交。
+
 ## 2026-11-14 · UX9 增量布局与章节定位（本机软件验证完成）
 
 基于已合并 [PR #21](https://github.com/KLucen/MerMarked/pull/21) 的 main `ab3239d`，分支 `codex/ux9-layout-navigation`。范围与退出条件见 [UX9_ACCEPTANCE.md](UX9_ACCEPTANCE.md)。

@@ -312,6 +312,13 @@ export interface ReadingSummaryCopyResult {
   count: number;
 }
 
+export interface DocumentCopyResult {
+  readonly status: 'copied' | 'restored' | 'cancelled' | 'conflict';
+  readonly name?: string;
+  readonly count?: number;
+  readonly message: string;
+}
+
 export interface MerMarkdApi {
   readonly appName: 'MerMarkd';
   confirmLeaveInputs(kinds: readonly LocalInputKind[]): Promise<LeaveInputsChoice>;
@@ -321,6 +328,7 @@ export interface MerMarkdApi {
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
   newMarkdown(): Promise<OpenedMarkdownDocument | null>;
   closeMarkdown(): Promise<void>;
+  createSavedDocumentCopy(): Promise<DocumentCopyResult>;
   confirmLeaveDocument(): Promise<DocumentDepartureChoice>;
   openRecentMarkdown(path: string): Promise<OpenedMarkdownDocument>;
   listRecentDocuments(): Promise<readonly RecentMarkdownDocument[]>;
