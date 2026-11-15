@@ -177,7 +177,11 @@ try {
     await click('[data-mode="editor"]'); await wait('Boolean(document.querySelector(".cm-content[contenteditable=true]"))', 'source');
     await page.evaluate('document.querySelector(".cm-content").focus()'); await page.send('Input.insertText', { text: 'COPY-DIRTY-未保存' });
     await wait('document.querySelector(".app-shell")?.dataset.dirty==="true"', 'dirty source');
-    await dialogs(item.target); await menu(); await click(copySelector); await wait('document.body.innerText.includes("请先保存正文")', 'input guard');
+    // Allow the source surface's selection/focus update to settle before leaving it.
+    await frame(); await page.evaluate('document.activeElement?.blur()'); await frame();
+    await dialogs(item.target); await menu();
+    await wait('Boolean(document.querySelector("[data-workspace-create-copy]")?.getClientRects().length)', 'dirty menu opened');
+    await click(copySelector); await wait('document.body.innerText.includes("请先保存正文")', 'input guard');
     assert.ok(await page.evaluate('document.querySelector(".cm-content").textContent.includes("COPY-DIRTY-未保存")'));
     assert.equal(await main.evaluate('globalThis.__file1SaveCalls'), 0); assert.equal((await apiCopy()).status, 'conflict');
     assert.equal(await main.evaluate('globalThis.__file1SaveCalls'), 0); await absentBundle(item.target); assert.deepEqual(await snapshot(item.file), before);
