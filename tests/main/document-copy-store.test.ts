@@ -4,7 +4,7 @@ import * as fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
-import { copyDocumentFiles, recoverPendingDocumentCopies, CopyInterrupted, DocumentCopyError, DOCUMENT_COPY_SUFFIXES } from '../../src/main/document-copy-store.ts';
+import { copyDocumentFiles, inspectPendingDocumentCopies, recoverPendingDocumentCopies, CopyInterrupted, DocumentCopyError, DOCUMENT_COPY_SUFFIXES } from '../../src/main/document-copy-store.ts';
 const sha = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 const original = Buffer.from('\ufeff# 中文 😀\r\n\r\n保留正文与原换行。');
 const yaml = Buffer.from('schemaVersion: 1\nsource: { sha256: old-basis }\n');
@@ -167,4 +167,181 @@ test('unpublished interruptions clean only private candidates', async () => fixt
   await targetAbsent(target);
   const recovered = await recoverPendingDocumentCopies({ sourcePath: source, journalDirectory: journals });
   assert.equal(recovered.rolledBack.length, 1); assert.equal(recovered.completed.length, 0); await targetAbsent(target); assert.deepEqual(await fs.readdir(journals), []);
+}));
+
+type FixtureItem = Parameters<Parameters<typeof fixture>[0]>[0];
+async function crossFixture(run: (item: FixtureItem & { destination: string }) => Promise<void>) {
+  await fixture(async item => {
+    const destination = path.join(item.root, 'destination'), target = path.join(destination, '跨目录副本.md');
+    await fs.mkdir(destination);
+    try {
+      await run({ ...item, destination, target, options: { ...item.options, targetPath: target, crossDirectory: { validateSnapshot: async () => {} } } });
+    } finally {
+      // Only these three generated direct children can be introduced by the
+      // cross-directory tests. Never follow a replaced destination junction.
+      for (const name of ['destination', 'original-destination', 'external-destination']) {
+        const directory = path.join(item.root, name);
+        assert.equal(path.dirname(path.resolve(directory)), path.resolve(item.root));
+        let info;
+        try { info = await fs.lstat(directory); } catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue; throw error; }
+        if (info.isSymbolicLink()) { await fs.unlink(directory); continue; }
+        assert.ok(info.isDirectory());
+        for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+          const file = path.join(directory, entry.name);
+          if (entry.isDirectory()) {
+            assert.ok(entry.name.startsWith('.mermarkd-copy-'));
+            for (const child of await fs.readdir(file, { withFileTypes: true })) {
+              assert.ok(child.isFile() || child.isSymbolicLink()); await fs.unlink(path.join(file, child.name));
+            }
+            await fs.rmdir(file);
+          } else await fs.unlink(file);
+        }
+        await fs.rmdir(directory);
+      }
+    }
+  });
+}
+
+test('cross-directory copying needs explicit snapshot review, while same-folder copies do not invoke it', async () => crossFixture(async ({ root, source, target, options }) => {
+  await assert.rejects(copyDocumentFiles({ ...options, crossDirectory: undefined }), DocumentCopyError);
+  await targetAbsent(target);
+  const local = path.join(root, '同目录.md');
+  await copyDocumentFiles({ ...options, targetPath: local, crossDirectory: { validateSnapshot: async () => { throw Error('must not run'); } } });
+  await exact(source, local);
+}));
+
+test('approved cross-directory copies retain exact independent saved files and original mtimes', async () => crossFixture(async ({ source, target, journals, destination, options }) => {
+  const before = await Promise.all(DOCUMENT_COPY_SUFFIXES.map(async suffix => ({ bytes: await fs.readFile(source + suffix), mtime: (await fs.stat(source + suffix)).mtimeMs })));
+  const order: string[] = [];
+  await copyDocumentFiles({ ...options, validateSnapshot: async () => { order.push('schema'); }, crossDirectory: { validateSnapshot: async files => {
+    order.push('portability'); assert.equal(files.length, 3); assert.deepEqual(files.map(file => file.bytes), before.map(file => file.bytes));
+  } } });
+  assert.deepEqual(order, ['schema', 'portability']); await exact(source, target);
+  assert.equal((await fs.readdir(destination)).length, 3); assert.deepEqual(await fs.readdir(journals), []);
+  await fs.writeFile(target, 'edited cross-directory copy');
+  for (let i = 0; i < 3; i++) {
+    assert.deepEqual(await fs.readFile(source + DOCUMENT_COPY_SUFFIXES[i]), before[i].bytes);
+    assert.equal((await fs.stat(source + DOCUMENT_COPY_SUFFIXES[i])).mtimeMs, before[i].mtime);
+  }
+}));
+
+test('approved cross-directory copies preserve absent companions', async () => crossFixture(async ({ source, target, options }) => {
+  await fs.unlink(source + '.annotations.yaml'); await fs.unlink(source + '.mermarkd.json');
+  assert.deepEqual((await copyDocumentFiles(options)).copiedSuffixes, ['']);
+  assert.deepEqual(await fs.readFile(target), original); await absent(target + '.annotations.yaml'); await absent(target + '.mermarkd.json');
+}));
+
+test('cross-directory preview cancellation creates no staging, journal or targets', async () => crossFixture(async ({ source, target, journals, destination, options }) => {
+  await assert.rejects(copyDocumentFiles({ ...options, crossDirectory: { validateSnapshot: async () => { throw Error('cancelled'); } } }), DocumentCopyError);
+  await targetAbsent(target); await absent(journals); assert.deepEqual(await fs.readdir(destination), []); assert.deepEqual(await fs.readFile(source), original);
+}));
+
+test('changes to any captured source file during cross-directory review reject publication', async () => {
+  for (const changed of DOCUMENT_COPY_SUFFIXES) await crossFixture(async ({ source, target, journals, destination, options }) => {
+    await assert.rejects(copyDocumentFiles({ ...options, crossDirectory: { validateSnapshot: async () => { await fs.writeFile(source + changed, 'new saved state'); } } }), DocumentCopyError);
+    await targetAbsent(target); assert.deepEqual(await fs.readdir(destination), []); assert.deepEqual(await fs.readdir(journals), []);
+    assert.equal(await fs.readFile(source + changed, 'utf8'), 'new saved state');
+  });
+});
+
+test('a companion appearing during cross-directory review is not silently added to the snapshot', async () => crossFixture(async ({ source, target, destination, options }) => {
+  await fs.unlink(source + '.annotations.yaml');
+  await assert.rejects(copyDocumentFiles({ ...options, crossDirectory: { validateSnapshot: async files => {
+    assert.equal(files[1].bytes, null); await fs.writeFile(source + '.annotations.yaml', 'new external annotations');
+  } } }), DocumentCopyError);
+  await targetAbsent(target); assert.deepEqual(await fs.readdir(destination), []);
+  assert.equal(await fs.readFile(source + '.annotations.yaml', 'utf8'), 'new external annotations');
+}));
+
+test('cross-directory reviewers cannot publish mutated snapshot buffers', async () => crossFixture(async ({ source, target, destination, options }) => {
+  await assert.rejects(copyDocumentFiles({ ...options, crossDirectory: { validateSnapshot: async files => { files[0].bytes![0] ^= 1; } } }), DocumentCopyError);
+  await targetAbsent(target); assert.deepEqual(await fs.readdir(destination), []); assert.deepEqual(await fs.readFile(source), original);
+}));
+
+test('all three occupied cross-directory target kinds refuse before review', async () => {
+  for (const occupied of DOCUMENT_COPY_SUFFIXES) await crossFixture(async ({ target, destination, options }) => {
+    await fs.writeFile(target + occupied, 'external');
+    await assert.rejects(copyDocumentFiles({ ...options, crossDirectory: { validateSnapshot: async () => assert.fail('occupied target must not be reviewed') } }), DocumentCopyError);
+    assert.equal(await fs.readFile(target + occupied, 'utf8'), 'external'); assert.deepEqual(await fs.readdir(destination), [path.basename(target + occupied)]);
+  });
+});
+
+test('a destination directory replaced during review is rejected before staging', async () => crossFixture(async ({ root, source, target, journals, destination, options }) => {
+  const retained = path.join(root, 'original-destination');
+  await assert.rejects(copyDocumentFiles({ ...options, crossDirectory: { validateSnapshot: async () => {
+    await fs.rename(destination, retained); await fs.mkdir(destination);
+  } } }), DocumentCopyError);
+  await targetAbsent(target); await absent(journals); assert.deepEqual(await fs.readdir(destination), []); assert.deepEqual(await fs.readdir(retained), []);
+  assert.deepEqual(await fs.readFile(source), original);
+}));
+
+test('a destination replaced after staging preserves recovery evidence without touching the new directory', async () => crossFixture(async ({ root, source, target, journals, destination, options }) => {
+  const retained = path.join(root, 'original-destination');
+  await assert.rejects(copyDocumentFiles({ ...options, beforePublish: async () => {
+    await fs.rename(destination, retained); await fs.mkdir(destination); await fs.writeFile(target + '.annotations.yaml', 'external replacement');
+  } }), DocumentCopyError);
+  assert.deepEqual(await fs.readdir(destination), [path.basename(target) + '.annotations.yaml']);
+  assert.equal(await fs.readFile(target + '.annotations.yaml', 'utf8'), 'external replacement');
+  assert.equal((await fs.readdir(journals)).length, 1); assert.equal((await fs.readdir(retained)).length, 1);
+  assert.equal((await recoverPendingDocumentCopies({ sourcePath: source, journalDirectory: journals })).conflicts.length, 1);
+  assert.equal(await fs.readFile(target + '.annotations.yaml', 'utf8'), 'external replacement'); await absent(target);
+}));
+
+test('cross-directory crash receipts use destination-local staging and recover after actual process exit', async () => {
+  const { spawnSync } = await import('node:child_process');
+  const { fileURLToPath } = await import('node:url');
+  for (const checkpoint of ['.annotations.yaml', 'markdown']) await crossFixture(async ({ source, target, journals, destination }) => {
+    const child = spawnSync(process.execPath, [fileURLToPath(new URL('../fixtures/document-copy-crash.mjs', import.meta.url)), source, target, journals, checkpoint, 'cross-directory'], { encoding: 'utf8', windowsHide: true });
+    assert.equal(child.status, 73, child.stderr);
+    const receiptName = (await fs.readdir(journals))[0], journal = JSON.parse(await fs.readFile(path.join(journals, receiptName), 'utf8'));
+    assert.equal(journal.version, 2); assert.equal(journal.targetDirectory.path, await fs.realpath(destination)); assert.equal(path.dirname(journal.stage.path), await fs.realpath(destination));
+    if (checkpoint === '.annotations.yaml') await fs.writeFile(source, 'a later saved source after the interrupted copy');
+    const inventory = await inspectPendingDocumentCopies({ sourcePath: source, journalDirectory: journals });
+    assert.equal(inventory[0].targetPath, target); assert.equal(inventory[0].busy, false);
+    const recovered = await recoverPendingDocumentCopies({ sourcePath: source, journalDirectory: journals });
+    assert.equal(recovered.completed.length, 1); assert.equal(recovered.busy.length + recovered.conflicts.length, 0); assert.equal(recovered.completedTargets[0].targetPath, target);
+    assert.deepEqual(await fs.readFile(target), original); assert.deepEqual(await fs.readFile(target + '.annotations.yaml'), yaml); assert.deepEqual(await fs.readFile(target + '.mermarkd.json'), canvas);
+    if (checkpoint === '.annotations.yaml') assert.equal(await fs.readFile(source, 'utf8'), 'a later saved source after the interrupted copy');
+    assert.deepEqual(await fs.readdir(journals), []); assert.equal((await fs.readdir(destination)).length, 3);
+  });
+});
+
+test('cross-directory recovery rejects tampered versions, paths and destination identity', async () => {
+  const mutations = [
+    (j: any) => { j.version = 1; },
+    (j: any) => { j.target = path.join(path.dirname(j.source), 'tampered.md'); },
+    (j: any) => { j.target = 'relative.md'; },
+    (j: any) => { j.stage.path = path.join(path.dirname(j.source), path.basename(j.stage.path)); },
+    (j: any) => { j.targetDirectory.ino = String(BigInt(j.targetDirectory.ino) + 1n); },
+  ];
+  for (const mutate of mutations) await crossFixture(async ({ source, target, journals, options }) => {
+    await assert.rejects(copyDocumentFiles({ ...options, afterPublish: async () => { throw new CopyInterrupted(); } }), CopyInterrupted);
+    const receiptName = (await fs.readdir(journals))[0], receiptPath = path.join(journals, receiptName), journal = JSON.parse(await fs.readFile(receiptPath, 'utf8'));
+    mutate(journal); const changed = JSON.stringify(journal); await fs.writeFile(receiptPath, changed);
+    assert.equal((await recoverPendingDocumentCopies({ sourcePath: source, journalDirectory: journals })).conflicts.length, 1);
+    await absent(target); assert.deepEqual(await fs.readFile(target + '.annotations.yaml'), yaml); assert.equal(await fs.readFile(receiptPath, 'utf8'), changed);
+  });
+});
+
+test('cross-directory recovery never follows a replacement destination junction', async () => crossFixture(async ({ root, source, target, journals, destination, options }) => {
+  await assert.rejects(copyDocumentFiles({ ...options, afterPublish: async () => { throw new CopyInterrupted(); } }), CopyInterrupted);
+  const retained = path.join(root, 'original-destination'), external = path.join(root, 'external-destination');
+  await fs.rename(destination, retained); await fs.mkdir(external);
+  for (const suffix of DOCUMENT_COPY_SUFFIXES) await fs.writeFile(path.join(external, path.basename(target) + suffix), 'unrelated external file');
+  const before = await Promise.all(DOCUMENT_COPY_SUFFIXES.map(async suffix => ({ bytes: await fs.readFile(path.join(external, path.basename(target) + suffix)), mtime: (await fs.stat(path.join(external, path.basename(target) + suffix))).mtimeMs })));
+  await fs.symlink(external, destination, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.equal((await recoverPendingDocumentCopies({ sourcePath: source, journalDirectory: journals })).conflicts.length, 1);
+  for (let i = 0; i < 3; i++) {
+    const file = path.join(external, path.basename(target) + DOCUMENT_COPY_SUFFIXES[i]);
+    assert.deepEqual(await fs.readFile(file), before[i].bytes); assert.equal((await fs.stat(file)).mtimeMs, before[i].mtime);
+  }
+  assert.deepEqual(await fs.readFile(path.join(retained, path.basename(target) + '.annotations.yaml')), yaml); assert.equal((await fs.readdir(journals)).length, 1);
+}));
+
+test('same-directory v1 receipt shape and recovery remain compatible', async () => fixture(async ({ source, target, journals, options }) => {
+  await assert.rejects(copyDocumentFiles({ ...options, afterPublish: async () => { throw new CopyInterrupted(); } }), CopyInterrupted);
+  const filename = (await fs.readdir(journals))[0], journal = JSON.parse(await fs.readFile(path.join(journals, filename), 'utf8'));
+  assert.equal(journal.version, 1); assert.equal(Object.hasOwn(journal, 'targetDirectory'), false);
+  assert.equal((await inspectPendingDocumentCopies({ sourcePath: source, journalDirectory: journals }))[0].targetPath, target);
+  assert.equal((await recoverPendingDocumentCopies({ sourcePath: source, journalDirectory: journals })).completed.length, 1); await exact(source, target);
 }));

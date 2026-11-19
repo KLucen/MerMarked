@@ -362,7 +362,7 @@ export function AppShell({
           {onCloseDocument && <button type="button" data-workspace-close="true" onClick={onCloseDocument} disabled={opening} aria-keyshortcuts="Control+W"><X size={15} aria-hidden="true" />关闭文档 <kbd>Ctrl+W</kbd></button>}
           {onSaveAs && <button type="button" data-workspace-save-as="true" aria-keyshortcuts="Control+Shift+S" onClick={onSaveAs} disabled={saving}>选择保存位置…</button>}
           {onCreateSavedCopy && <button type="button" data-workspace-create-copy="true" onClick={onCreateSavedCopy} disabled={opening || saving}
-            title="复制已保存的正文、批注和画布；不包含未保存输入，附件继续共用，原文保持打开">在当前文件夹创建已保存副本…</button>}
+            title="复制已保存的正文、批注和画布；跨目录先检查引用并确认，原文保持打开">创建已保存副本…</button>}
           {onDiscardChanges && !discardConfirmation && <button type="button" data-workspace-discard="true"
             onClick={() => setDiscardConfirmation(true)} disabled={!dirty || saving} title="放弃未保存的 Markdown 修改">
             <RotateCcw size={14} aria-hidden="true" />放弃未保存修改

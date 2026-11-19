@@ -7,6 +7,7 @@ import { Worker } from 'node:worker_threads';
 import squirrelStartup from 'electron-squirrel-startup';
 import { createWindowCloseGuard } from './window-close-guard';
 import { copyDocumentFiles, DocumentCopyError, inspectPendingDocumentCopies, recoverPendingDocumentCopies } from './document-copy-store';
+import { inspectDocumentCopyPortability } from '../core/document-copy-portability';
 import type { DocumentCopyResult } from '../types/reader-api';
 import type {
   AnnotationDocumentView, AnnotationSaveResult, AnnotationSelectionInput,
@@ -1269,7 +1270,7 @@ function registerReaderIpc(): void {
     const session = sessionFor(event), owner = BrowserWindow.fromWebContents(event.sender);
     if (!session || !owner) return { status: 'conflict', message: '请先打开一份已保存的文档。' };
     if (session.document.temporary || session.editor?.dirty) return { status: 'conflict', message: '请先保存正文，再创建已保存副本；当前输入仍保留。' };
-    let invalidCompanion = false, recoveredCopies = 0;
+    let invalidCompanion = false, recoveredCopies = 0, previewCancelled = false, portabilityWarning = '';
     try {
       return await withMarkdownOperation(session, async () => {
         const checkCurrent = async () => {
@@ -1283,17 +1284,17 @@ function registerReaderIpc(): void {
         await checkCurrent();
         const sourcePath = session.document.path;
         const selected = await dialog.showSaveDialog(owner, {
-          title: '在当前文件夹创建已保存副本',
+          title: '创建已保存副本',
           defaultPath: path.join(path.dirname(sourcePath), path.basename(sourcePath, path.extname(sourcePath)) + ' - 副本.md'),
           filters: [{ name: 'Markdown 文档', extensions: ['md'] }],
         });
         assertCurrentSession(event, session);
         if (selected.canceled || !selected.filePath) return { status: 'cancelled', message: '已取消创建副本，原文保持打开。' };
-        const targetPath = selectedNewMarkdownPath(selected.filePath);
-        const folder = await realpath(path.dirname(targetPath));
+        const selectedPath = selectedNewMarkdownPath(selected.filePath);
+        const folder = await realpath(path.dirname(selectedPath));
+        const targetPath = path.join(folder, path.basename(selectedPath));
         const originalFolder = await realpath(path.dirname(sourcePath));
-        if (folder.toLowerCase() !== originalFolder.toLowerCase()) return { status: 'conflict',
-          message: '请在原文当前文件夹选择新名称；本批副本与原文共用相对附件，未创建跨目录副本。' };
+        const crossDirectory = folder.toLowerCase() !== originalFolder.toLowerCase();
         await checkCurrent();
         const journalDirectory = path.join(app.getPath('userData'), 'document-copy-journals');
         const pendingCopies = await inspectPendingDocumentCopies({ sourcePath, journalDirectory });
@@ -1301,7 +1302,7 @@ function registerReaderIpc(): void {
         if (pendingCopies.length) {
           const choice = await dialog.showMessageBox(owner, {
             type: 'question', title: '发现未完成的副本', message: '检查并恢复先前的副本？',
-            detail: pendingCopies.map(item => item.name ?? '一份无法核验的副本').join('、') +
+            detail: pendingCopies.map(item => item.targetPath ?? item.name ?? '一份无法核验的副本').join('\n') +
               '\n恢复会尝试补齐缺失文件，副本保留当时的已保存快照。外部变化和正在使用的文件将保留；未发布的暂存会清理。',
             buttons: ['检查并恢复', '仅创建新副本', '取消'], defaultId: 1, cancelId: 2, noLink: true,
           });
@@ -1327,17 +1328,42 @@ function registerReaderIpc(): void {
               if (files[2].bytes) parseCanvasStateJson(textDecoder.decode(files[2].bytes));
             } catch { invalidCompanion = true; throw new Error('Copy snapshot validation failed.'); }
           },
+          crossDirectory: crossDirectory ? {
+            validateSnapshot: async files => {
+              const audit = await inspectDocumentCopyPortability(decodeMarkdownBytes(files[0].bytes!).content);
+              await checkCurrent();
+              if (!audit.portable) {
+                const reasons = [
+                  audit.localReferenceCount ? `${audit.localReferenceCount} 处需处理的资源或链接` : '',
+                  audit.htmlNodeCount ? `${audit.htmlNodeCount} 段 HTML` : '',
+                  audit.unsupportedExtensionCount ? '暂未支持的 Markdown 扩展' : '',
+                ].filter(Boolean).join('、');
+                portabilityWarning = `跨目录检查发现${reasons}，尚未创建副本。请在原文文件夹创建副本，或先处理这些内容；附件不会自动迁移。`;
+                throw new Error('Copy portability check refused.');
+              }
+              const count = files.filter(file => file.bytes !== null).length;
+              const kinds = files.filter(file => file.bytes !== null).map(file => file.suffix === '' ? '正文' : file.suffix === '.annotations.yaml' ? '批注' : '画布');
+              const choice = await dialog.showMessageBox(owner, {
+                type: 'question', title: '确认跨目录副本', message: '在所选位置创建已保存副本？',
+                detail: `保存到：${targetPath}\n将创建 ${count} 个文件：${kinds.join('、')}。\n未发现当前支持语法中的本地依赖；网络地址保留，不下载。\n原文保持打开，副本不会自动打开。`,
+                buttons: ['创建副本', '取消'], defaultId: 1, cancelId: 1, noLink: true,
+              });
+              await checkCurrent();
+              if (choice.response !== 0) { previewCancelled = true; throw new Error('Copy preview cancelled.'); }
+            },
+          } : undefined,
         });
         const name = path.basename(receipt.targetPath);
         return { status: 'copied', name, count: receipt.copiedSuffixes.length,
-          message: `已在当前文件夹创建“${name}”，原文保持打开，附件继续共用。${recoveredCopies ? `另已恢复 ${recoveredCopies} 份先前副本。` : ''}${recoveryWarning ? '另有未完成副本的文件及恢复记录仍保留，可使用其他名称。' : ''}` };
+          message: `${crossDirectory ? `已创建“${name}”，原文保持打开；网络地址保留，未复制附件。` : `已在当前文件夹创建“${name}”，原文保持打开，附件继续共用。`}${recoveredCopies ? `另已恢复 ${recoveredCopies} 份先前副本。` : ''}${recoveryWarning ? '另有未完成副本的文件及恢复记录仍保留，可使用其他名称。' : ''}` };
       });
     } catch (error) {
+      if (previewCancelled) return { status: 'cancelled', message: `已取消创建新副本，原文保持打开。${recoveredCopies ? `另已恢复 ${recoveredCopies} 份先前副本。` : ''}` };
       console.error('[document-copy]', error instanceof DocumentCopyError ? error.code : 'unavailable');
       const recoveryNote = recoveredCopies ? `已恢复 ${recoveredCopies} 份先前副本；当前新副本未完成。` : '';
-      return { status: 'conflict', message: recoveryNote + (invalidCompanion
+      return { status: 'conflict', message: recoveryNote + (portabilityWarning || (invalidCompanion
         ? '批注或画布文件无法安全解析，尚未创建新副本；请先检查原文档。'
-        : error instanceof DocumentCopyError ? error.message : '当前文档正在处理、需要恢复或文件已变化，尚未完成新副本；原文保持不变，请检查后重试。') };
+        : error instanceof DocumentCopyError ? error.message : '当前文档正在处理、需要恢复或文件已变化，尚未完成新副本；原文保持不变，请检查后重试。')) };
     }
   });
   ipcMain.handle('workspace:confirm-leave-document', async event => {

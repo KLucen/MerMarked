@@ -1,5 +1,13 @@
 # MerMarkd 开发进度
 
+## 2026-11-19 · FILE1B 跨目录副本预检（开发中）
+
+PR #23 已合并至 main `0c9b930`，本批分支 `codex/file1b-copy-preflight`。范围与退出条件见 [FILE1B_ACCEPTANCE.md](FILE1B_ACCEPTANCE.md)，决定见 ADR-058。
+
+- 先审已保存原始 Markdown 的本地 / 无法确认引用、HTML 和已知未支持扩展；无本地依赖才预览目的路径及实际复制文件，确认后按原字节创建跨目录副本。附件打包和链接改写继续留待后续，不静默创建断链副本。
+- 核心 16 项审计测试通过；主进程已接入原生预览及取消路径。store v2 目的目录绑定和窗口专项正在开发，尚未声明本批退出。
+- 继续保护三项用户原有修改，源 Markdown / YAML / JSON 字节和输入保护规则保持。当前包、完整测试与 GitHub 交付结果将在本节补齐。
+
 ## 2026-11-15 · FILE1A 同目录已保存副本（本机软件验证完成）
 
 基于已合并 [PR #22](https://github.com/KLucen/MerMarked/pull/22) / main `5ccea0d`，分支 `codex/file1a-saved-copy`。范围与退出条件见 [FILE1A_ACCEPTANCE.md](FILE1A_ACCEPTANCE.md)，数据决定见 ADR-057。

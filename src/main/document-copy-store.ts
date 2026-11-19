@@ -12,13 +12,18 @@ const activeCopies = new Set<string>();
 type Identity = { dev: string; ino: string };
 type FileRecord = Identity & { sha256: string; bytes: number };
 type ReadFile = FileRecord & { data: Buffer };
-interface Journal {
-  version: 1; id: string; ownerPid: number; source: string; target: string;
+type TargetDirectory = Identity & { path: string };
+interface JournalBase {
+  id: string; ownerPid: number; source: string; target: string;
   stage: Identity & { path: string }; files: (FileRecord | null)[];
 }
+type Journal = JournalBase & ({ version: 1 } | { version: 2; targetDirectory: TargetDirectory });
+type SnapshotValidator = (files: readonly { suffix: DocumentCopySuffix; bytes: Buffer | null }[]) => Promise<void>;
 export interface DocumentCopyOptions {
   sourcePath: string; targetPath: string; expectedSourceSha256: string; journalDirectory: string;
-  validateSnapshot?: (files: readonly { suffix: DocumentCopySuffix; bytes: Buffer | null }[]) => Promise<void>;
+  validateSnapshot?: SnapshotValidator;
+  /** Explicit portability review of the captured saved bytes, before staging. */
+  crossDirectory?: { validateSnapshot: SnapshotValidator };
   beforePublish?: () => Promise<void>;
   afterPublish?: (suffix: DocumentCopySuffix) => Promise<void>;
 }
@@ -89,6 +94,14 @@ async function directoryIdentity(dir: string): Promise<Identity | null> {
     return identity(stat);
   } catch (error) { if (missing(error)) return null; throw error; }
 }
+async function checkTargetDirectory(expected: TargetDirectory | undefined): Promise<void> {
+  if (!expected) return;
+  const canonical = await fs.realpath(expected.path);
+  if (key(canonical) !== key(expected.path)) uncertain();
+  const current = await directoryIdentity(expected.path);
+  if (!current || !sameIdentity(current, expected)) uncertain();
+}
+const targetDirectoryOf = (journal: Journal) => journal.version === 2 ? journal.targetDirectory : undefined;
 async function writeNew(file: string, data: Buffer, created: (id: Identity) => void): Promise<FileRecord> {
   const handle = await fs.open(file, 'wx', 0o600);
   try {
@@ -112,14 +125,23 @@ function ownerBusy(journal: Journal): boolean {
   catch (error) { return (error as NodeJS.ErrnoException).code !== 'ESRCH'; }
 }
 function validateJournal(value: unknown, source: string, filename: string): Journal {
-  const j = object(value, ['version', 'id', 'ownerPid', 'source', 'target', 'stage', 'files']);
-  if (j.version !== 1 || typeof j.id !== 'string' || !uuid.test(j.id) || typeof j.ownerPid !== 'number' ||
+  const isCrossDirectory = value && typeof value === 'object' && 'version' in value && value.version === 2;
+  const fields = ['version', 'id', 'ownerPid', 'source', 'target', 'stage', 'files'];
+  const j = object(value, isCrossDirectory ? [...fields, 'targetDirectory'] : fields);
+  if ((j.version !== 1 && j.version !== 2) || typeof j.id !== 'string' || !uuid.test(j.id) || typeof j.ownerPid !== 'number' ||
       !Number.isSafeInteger(j.ownerPid) || j.ownerPid <= 0 || j.ownerPid > 0x7fffffff ||
       typeof j.source !== 'string' || key(j.source) !== key(source) || filename !== journalName(source, j.id) ||
-      typeof j.target !== 'string' || !validName(path.basename(j.target)) ||
-      j.target !== path.join(path.dirname(source), path.basename(j.target)) || key(j.target) === key(source)) uncertain();
+      typeof j.target !== 'string' || !path.isAbsolute(j.target) || path.normalize(j.target) !== j.target ||
+      !validName(path.basename(j.target)) || key(j.target) === key(source)) uncertain();
+  const targetParent = path.dirname(j.target);
+  if (j.version === 1) {
+    if (j.target !== path.join(path.dirname(source), path.basename(j.target))) uncertain();
+  } else {
+    const parent = object(j.targetDirectory, ['path', 'dev', 'ino']);
+    if (!validIdentity(parent) || parent.path !== targetParent || key(targetParent) === key(path.dirname(source))) uncertain();
+  }
   const stage = object(j.stage, ['path', 'dev', 'ino']);
-  if (!validIdentity(stage) || stage.path !== path.join(path.dirname(source), stageName(j.id))) uncertain();
+  if (!validIdentity(stage) || stage.path !== path.join(targetParent, stageName(j.id))) uncertain();
   if (!Array.isArray(j.files) || j.files.length !== 3 || j.files[0] === null) uncertain();
   for (let i = 0; i < 3; i++) {
     if (j.files[i] === null) continue;
@@ -141,6 +163,8 @@ async function settle(source: string, journalRoot: string, filename: string, all
     const receiptPath = path.join(journalRoot, filename), receipt = await readBounded(receiptPath, 64 * 1024);
     if (!receipt) uncertain();
     const j = validateJournal(JSON.parse(receipt.data.toString('utf8')), source, filename);
+    const targetDirectory = targetDirectoryOf(j);
+    await checkTargetDirectory(targetDirectory);
     const stageId = await directoryIdentity(j.stage.path);
     if (stageId && !sameIdentity(stageId, j.stage)) uncertain();
     const staged: (ReadFile | null)[] = [], targets: (ReadFile | null)[] = [];
@@ -149,6 +173,7 @@ async function settle(source: string, journalRoot: string, filename: string, all
       if ((await fs.readdir(j.stage.path)).some(name => !allowed.has(name))) uncertain();
     }
     for (let i = 0; i < 3; i++) {
+      await checkTargetDirectory(targetDirectory);
       const expected = j.files[i];
       const candidate = stageId ? await readBounded(path.join(j.stage.path, String(i)), limits[i]) : null;
       const target = await readBounded(j.target + DOCUMENT_COPY_SUFFIXES[i], limits[i]);
@@ -163,11 +188,13 @@ async function settle(source: string, journalRoot: string, filename: string, all
     if (!complete && allowCompletion && !targets[0] && targets.some(Boolean)) {
       for (const i of [1, 2, 0]) {
         if (!j.files[i] || targets[i]) continue;
+        await checkTargetDirectory(targetDirectory);
         const candidate = await readBounded(path.join(j.stage.path, String(i)), limits[i]);
         if (!candidate || !sameFile(candidate, j.files[i]!)) uncertain();
         await fs.link(path.join(j.stage.path, String(i)), j.target + DOCUMENT_COPY_SUFFIXES[i]);
       }
       for (let i = 0; i < 3; i++) {
+        await checkTargetDirectory(targetDirectory);
         const current = await readBounded(j.target + DOCUMENT_COPY_SUFFIXES[i], limits[i]);
         if (j.files[i] ? !current || !sameFile(current, j.files[i]!) : current !== null) uncertain();
       }
@@ -175,7 +202,11 @@ async function settle(source: string, journalRoot: string, filename: string, all
     }
     if (!complete && targets.some(Boolean)) uncertain();
     if (stageId) {
-      for (let i = 0; i < 3; i++) if (staged[i]) await removeChecked(path.join(j.stage.path, String(i)), j.files[i]!, limits[i]);
+      for (let i = 0; i < 3; i++) if (staged[i]) {
+        await checkTargetDirectory(targetDirectory);
+        await removeChecked(path.join(j.stage.path, String(i)), j.files[i]!, limits[i]);
+      }
+      await checkTargetDirectory(targetDirectory);
       const currentStage = await directoryIdentity(j.stage.path);
       if (currentStage && !sameIdentity(currentStage, j.stage)) uncertain();
       if (currentStage) await fs.rmdir(j.stage.path);
@@ -199,16 +230,28 @@ async function cleanPrivate(stage: string, stageId: Identity | null, made: reado
 }
 export async function copyDocumentFiles(options: DocumentCopyOptions): Promise<DocumentCopyReceipt> {
   let source: string, target: string, snapshot: (ReadFile | null)[];
+  let targetDirectory: TargetDirectory | undefined;
   try {
     source = await location(options.sourcePath); target = await location(options.targetPath);
-    if (!validName(path.basename(target)) || key(source) === key(target) || key(path.dirname(source)) !== key(path.dirname(target)) ||
+    const crossDirectory = key(path.dirname(source)) !== key(path.dirname(target));
+    if (!validName(path.basename(target)) || key(source) === key(target) ||
+        (crossDirectory && typeof options.crossDirectory?.validateSnapshot !== 'function') ||
         !hashPattern.test(options.expectedSourceSha256.toLowerCase())) fail();
+    if (crossDirectory) {
+      const parent = path.dirname(target), id = await directoryIdentity(parent);
+      if (!id) fail();
+      targetDirectory = { path: parent, ...id };
+      await checkTargetDirectory(targetDirectory);
+    }
     snapshot = await readSource(source);
     if (snapshot[0]!.sha256 !== options.expectedSourceSha256.toLowerCase()) fail();
     for (const suffix of DOCUMENT_COPY_SUFFIXES) await absent(target + suffix);
-    await options.validateSnapshot?.(snapshot.map((file, i) => ({ suffix: DOCUMENT_COPY_SUFFIXES[i], bytes: file?.data ?? null })));
+    const files = snapshot.map((file, i) => ({ suffix: DOCUMENT_COPY_SUFFIXES[i], bytes: file?.data ?? null }));
+    await options.validateSnapshot?.(files);
+    if (crossDirectory) await options.crossDirectory!.validateSnapshot(files);
+    await checkTargetDirectory(targetDirectory);
   } catch (error) { throw error instanceof DocumentCopyError ? error : new DocumentCopyError('refused'); }
-  const id = randomUUID(), stage = path.join(path.dirname(source), stageName(id)), filename = journalName(source, id);
+  const id = randomUUID(), stage = path.join(path.dirname(target), stageName(id)), filename = journalName(source, id);
   const made: { file: string; id: Identity }[] = [];
   let stageId: Identity | null = null, journalReady = false, receiptId: Identity | null = null, journalRoot = '', receiptPath = '';
   const result = { operationId: id, targetPath: target, copiedSuffixes: DOCUMENT_COPY_SUFFIXES.filter((_, i) => snapshot[i] !== null) };
@@ -216,22 +259,27 @@ export async function copyDocumentFiles(options: DocumentCopyOptions): Promise<D
   try {
     await fs.mkdir(options.journalDirectory, { recursive: true }); journalRoot = await fs.realpath(options.journalDirectory);
     receiptPath = path.join(journalRoot, filename);
+    await checkTargetDirectory(targetDirectory);
     await fs.mkdir(stage, { mode: 0o700 }); stageId = await directoryIdentity(stage); if (!stageId) fail();
     const files: (FileRecord | null)[] = [];
     for (let i = 0; i < 3; i++) {
+      await checkTargetDirectory(targetDirectory);
       const file = path.join(stage, String(i));
       files.push(snapshot[i] ? await writeNew(file, snapshot[i]!.data, value => made.push({ file, id: value })) : null);
     }
     if (snapshot.some((file, i) => file ? files[i]?.sha256 !== file.sha256 || files[i]?.bytes !== file.bytes : files[i] !== null)) fail();
-    const j: Journal = { version: 1, id, ownerPid: process.pid, source, target, stage: { path: stage, ...stageId }, files };
+    const base: JournalBase = { id, ownerPid: process.pid, source, target, stage: { path: stage, ...stageId }, files };
+    const j: Journal = targetDirectory ? { ...base, version: 2, targetDirectory } : { ...base, version: 1 };
     const receiptBytes = Buffer.from(JSON.stringify(j) + '\n');
     if (receiptBytes.length > 64 * 1024) fail();
     await writeNew(receiptPath, receiptBytes, value => { receiptId = value; }); journalReady = true;
     await options.beforePublish?.();
+    await checkTargetDirectory(targetDirectory);
     const current = await readSource(source);
     if (snapshot.some((f, i) => f ? !current[i] || current[i]!.sha256 !== f.sha256 : current[i] !== null)) fail();
     for (const i of [1, 2, 0]) {
       if (!files[i]) continue;
+      await checkTargetDirectory(targetDirectory);
       const candidate = await readBounded(path.join(stage, String(i)), limits[i]);
       if (!candidate || !sameFile(candidate, files[i]!)) uncertain();
       await fs.link(path.join(stage, String(i)), target + DOCUMENT_COPY_SUFFIXES[i]);
@@ -244,6 +292,7 @@ export async function copyDocumentFiles(options: DocumentCopyOptions): Promise<D
     try {
       if (journalReady) { if (await settle(source, journalRoot, filename) === 'completed') return result; }
       else {
+        await checkTargetDirectory(targetDirectory);
         await cleanPrivate(stage, stageId, made);
         if (receiptId) {
           const stat = await fs.lstat(receiptPath, { bigint: true });
@@ -280,8 +329,8 @@ export async function recoverPendingDocumentCopies(options: { sourcePath: string
   return result;
 }
 /** Read-only inventory; actual recovery requires a separate explicit action. */
-export async function inspectPendingDocumentCopies(options: { sourcePath: string; journalDirectory: string }): Promise<readonly { name: string | null; busy: boolean }[]> {
-  const result: { name: string | null; busy: boolean }[] = [];
+export async function inspectPendingDocumentCopies(options: { sourcePath: string; journalDirectory: string }): Promise<readonly { name: string | null; busy: boolean; targetPath?: string }[]> {
+  const result: { name: string | null; busy: boolean; targetPath?: string }[] = [];
   try {
     const source = await location(options.sourcePath);
     let journalRoot: string;
@@ -291,7 +340,7 @@ export async function inspectPendingDocumentCopies(options: { sourcePath: string
       try {
         const raw = await readBounded(path.join(journalRoot, filename), 64 * 1024); if (!raw) continue;
         const journal = validateJournal(JSON.parse(raw.data.toString('utf8')), source, filename);
-        result.push({ name: path.basename(journal.target), busy: ownerBusy(journal) });
+        result.push({ name: path.basename(journal.target), busy: ownerBusy(journal), targetPath: journal.target });
       } catch { result.push({ name: null, busy: false }); }
     }
     return result;
