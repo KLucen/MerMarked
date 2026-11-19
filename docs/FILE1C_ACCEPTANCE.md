@@ -20,11 +20,32 @@ ZIP 包含原 Markdown 文件名及实际存在的两个 sidecar，并按原相�
 
 ## 退出条件
 
-- [ ] 原始引用计划与路径边界测试。
-- [ ] ZIP 编码、CRC / UTF-8、文件快照、外部变化、目录替换、取消和中断测试。
-- [ ] 类型检查、完整单测、干净 npm ci 和 Windows make。
-- [ ] 最终包专项及外部 .NET ZIP 解压兼容性，解压文档图片 / 批注 / 画布重开。
-- [ ] 既有完整窗口回归、实际 Vite、窄窗与截图复核。
+- [x] 原始引用计划与路径边界测试。
+- [x] ZIP 编码、CRC / UTF-8、文件快照、外部变化、目录替换、取消和中断测试。
+- [x] 类型检查、完整单测、干净 npm ci 和 Windows make。
+- [x] 最终包专项及外部 .NET ZIP 解压兼容性，解压文档图片 / 批注 / 画布重开。
+- [x] 既有完整窗口回归、实际 Vite、窄窗与截图复核。
 - [ ] 同包证据、原失败、用户三文件摘要及 GitHub 回执。
 
 原生确认响应由隔离 main 模拟，窗口测试使用生成的临时文档和绝对隔离 profile。本批不新增真实输入法、辅助客户端、正式性能、安装生命周期、物理跨屏或跨物理卷验收，FILE1 / QA1 / P0 尚未整体退出。
+
+## 最终包验证
+
+运行时 `945c0f5` 在全新 detached worktree 完成 `npm ci`、`npm run typecheck`、`npm test`（421/421）及 `npm run make`。核心规划 18 项、store 24 项，新增共 42 项单测；ZIP 条目 CRC 使用 Node 原生 zlib 校验，准备 / 发布两阶段真实子进程退出 73 分别留下无公开输出或完整 ZIP，原文和图片保持。源检出 clean、锁文件、主工作区 index 与冻结 QA1 产物均保持。
+
+ASAR 4,108,677 字节，SHA-256 `DB1ACDC9C189E4998C9C0F61D573A268B7868F95F25FDCFE1EF26616CDDB3A7C`；Setup 154,849,792 字节，SHA-256 `4A267BBAC3555D2281022A32EF2850EFE36B9EC99B74BBF6FE8FD939FB18BCD0`。安装包仅在本地生成，没有执行安装或公开发布。
+
+同包 `file1c-final-a-regression-manifest.json` 的 34 套窗口全部通过。FILE1C 十项专项包括真实菜单打包、保存 / 确认取消零写入、未知和越界引用拒绝、缺失 / 坏头图片、确认期间 MD / YAML / 图片外部变化保留、目标 ZIP 已存在、缺失 / 非法 sidecar、dirty 输入保留与 420 px 实际创建。
+
+ZIP 经现有 `pwsh.exe` 宿主调用 `System.IO.Compression.ZipFile` 独立解压，中文 / 空格 / emoji 条目与 percent 编码引用保持，解压后的原 MD / sidecar / 图片逐字节相同。应用按真实最近文档 path 确认打开解压文档，图片实际解码、旧 basis / 待定位、标签、折叠与箭头重开通过；修改解压副本不影响原文。窄窗菜单和解压画布截图已视觉复核。脚本使用既有 RemoteSigned 宿主，没有修改执行策略或使用 Bypass。
+
+文件 symlink 子项因 OS 权限未执行，已在单测日志输出诊断；目录 junction 子项确已执行并通过，不能把外层通过等同全部子项实测。图片只做格式头核验，完整解码证据限本次 PNG 样本。单机不同目录不等同不同物理卷验收。
+
+复现入口：`npm run typecheck`、`npm test`、`npm run make`、`npm run test:e2e:file1c`。专项支持 `MERMARKD_QA_EXE`、`MERMARKD_QA_RENDERER_URL`、`MERMARKD_QA_ARTIFACT_PREFIX`；外部解压宿主可用 `MERMARKD_QA_POWERSHELL` 指定现有可用 PowerShell。生成测试数据和绝对隔离 profile 不包含用户真实文档。
+## 开发模式与收口
+
+同一运行时代码 `945c0f5` 的实际 Vite FILE1C / FILE1B / FILE1A / UX9 / UX8 / UX7 六套全部通过，记录 `file1c-final-vite-a-manifest.json`；5178 服务与候选窗口均已停止。本批最终包 34 套及 Vite 六套没有重试或覆盖失败结果。独立 .NET 解压证据在打包和开发两种模式均完成。
+
+汇总见 [FILE1C_EVIDENCE.json](FILE1C_EVIDENCE.json)，包含构建身份、测试命令 / 日志摘要、十项副本包专项及已知环境边界。三项用户原文件 SHA-256 均保持，且未纳入提交。README 已补充解压后打开原 Markdown 的步骤，并纠正旧的仅阅读模式描述。
+
+本批本机软件退出条件通过，GitHub 回执在交付后补齐。后续可单独评估应用内导入、更多附件与安全可证明的引用范围，不将本批称为任意工作区或网络内容的完整离线包。
