@@ -246,9 +246,16 @@ try {
     assert.equal(await page.evaluate('Boolean(document.querySelector(".react-flow__node[data-id=card-1]"))'), false);
     await assertImported(item, directory);
     assert.deepEqual(await Promise.all(importedPaths.map(fileState)), importedBefore, 'reading and canvas loading do not write imported files');
+    const canvasShot = await screenshot('imported-canvas');
+    await click('[data-mode="editor"]');
+    await wait('Boolean(document.querySelector(".cm-content[contenteditable=true]"))', 'imported source editable');
+    const editor = await page.evaluate('window.mermarkd.openMarkdownEditor()');
+    assert.equal(editor.editable, true);
+    assert.equal(editor.content, item.bytes.toString('utf8').replace(/^\ufeff/u, ''));
+    assert.deepEqual(await Promise.all(importedPaths.map(fileState)), importedBefore, 'source mode loading does not write imported files');
     assert.deepEqual(await snapshot(item), before); assert.deepEqual(await fileState(item.archive), archiveBefore);
     return { exactBomCrlfUnicodeAndCompanions: true, uniqueImageCount: 1, repeatedImagesDecoded: 2, pendingBasisRetained: true,
-      foldAndArrowRetained: true, recentPath: file, archiveUnchanged: true, screenshot: await screenshot('imported-canvas') };
+      foldAndArrowRetained: true, sourceEditableAndComplete: true, recentPath: file, archiveUnchanged: true, screenshot: canvasShot };
   });
   await scenario('menu-import-keeps-original-document-and-companions', async () => {
     const item = await fixture('menu'), before = await snapshot(item), archiveBefore = await fileState(item.archive); await start(item.file);
