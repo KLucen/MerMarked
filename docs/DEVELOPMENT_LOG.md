@@ -2106,3 +2106,28 @@ file1b-final-a-regression-manifest.json 的33套窗口全部通过。FILE1B九�
 ### 交付与后续
 
 第二轮实际 Vite FILE1B / FILE1A / UX9 / UX8 / UX7 五套全部通过，file1b-final-vite-b-manifest.json 记录服务已停止。file1b-collect.ps1 核对379单测、33窗口、5Vite、加强UX9专项及同包摘要，输出 FILE1B_EVIDENCE.json，保留首轮失败。实现 a367964、测试同步 8a78744 与验收 ba1780f 已推送 origin/codex/file1b-copy-preflight，创建并附加 PR #24（https://github.com/KLucen/MerMarked/pull/24），目标 main，待审未合并。沿用本机已有 KLucen 的 SSH / GCM 认证和官方 API；连接器仍要求重新认证，没有新建凭据或扩大权限。最终精确 head 与云端检查状态由收尾回执核准，不将本地检查当成云端 CI。三项用户原有文件继续保护且排除提交，生成测试文档 / profile、原日志 / 截图及本地安装包不公开上传。原生对话框响应由隔离 main 模拟，未新增真实输入法、安装、物理DPI、辅助客户端或正式性能样本验收。后续 FILE1 需要独立资源迁移与预览合同，不能直接将当前受限入口称为可移植资源包。
+## 2026-11-19 · FILE1C 文档与本地图片副本包
+
+### 目标与设计
+
+接续已合并 PR #24 的 main d584144，分支 codex/file1c-document-bundle。新增“打包文档与本地图片…”将已保存 Markdown、实际存在的批注 / 画布，以及文档目录内直接引用的 PNG / JPEG / GIF / WebP 按原文件名和相对路径放入 UTF-8 stored ZIP32。网络地址不下载；其他本地文件、目录外资源、HTML 和无法确认的引用保守拒绝。不改写原文、不重算锚点、不切换会话。决定 ADR-059，范围见 FILE1C_ACCEPTANCE.md。
+
+新增无参数 document:create-saved-bundle IPC，目标只来自 main 原生对话框，复用 dirty、表单、组合 / 待提交输入、当前会话和 Markdown 操作锁。确认显示目标、文件 / 图片数、总内容大小、最多8项文件名及包含批注与便签的提示，取消不写暂存。最多32张、每图10MiB、总内容50MiB，源三文件沿用32/1/4MiB限制。所有资源路径一次URI解码、去重、拒绝大小写 / NFC冲突和Windows非法名；逐组件拒绝junction / symlink，图片头与扩展一致。文件头检查不等同完整解码器。
+
+完整ZIP先写目的目录唯一私有文件并sync，确认后再核验三文件、图片、目录身份，再独占发布单文件。已发布ZIP不删除、不覆盖，清理只针对自身已核验暂存。没有新依赖或文档sidecar字段；单文件ZIP不使用三文件journal，中断可留私有暂存或完整ZIP，不承诺目录项断电持久性或任意外部进程竞态原子性。
+
+### 实现与验证
+
+运行时 945c0f5 新增 core/document-bundle-plan、main/document-bundle-store、新IPC及菜单，renderer复用现有同步mutation锁；另有core/store/窗口测试和独立.NET解压fixture。18项core规划与24项store测试使总单测达到421。CRC由node:zlib.crc32独立核对，ZIP header/central offset、UTF8、原字节、外部变化、目录替换、过限、取消和真实子进程prepared/published退出73均有测试。文件symlink子项因OS权限未执行并记录诊断，真实directory junction子项通过；不把外层test通过等同该子项已实测。
+
+独立detached worktree mermarkd-file1c-final 完成 npm ci、npm run typecheck、npm test（421/421）和 npm run make。源clean、锁文件、主区index及冻结QA1产物保持。ASAR4108677bytes、SHA256 DB1ACDC9C189E4998C9C0F61D573A268B7868F95F25FDCFE1EF26616CDDB3A7C；Setup154849792bytes、SHA256 4A267BBAC3555D2281022A32EF2850EFE36B9EC99B74BBF6FE8FD939FB18BCD0。构建记录 out/qa/file1c-final-build-manifest.json，本地包未安装或公开发布。
+
+FILE1C十项最终包专项全部通过。ZIP由pwsh宿主的System.IO.Compression.ZipFile独立解压，中文 / 空格 / emoji条目和percent编码引用保持；解压原MD / YAML / JSON / 图片逐字节核对，图片实际解码、旧basis待定位、标签、折叠和箭头重开通过。通过最近文档真实path核对打开的是解压文档，避免同名原文假通过；编辑解压文件不影响原文。保存 / 确认取消、未知或越界引用、缺失 / 坏头图片、预览MD / YAML / image变化、已有ZIP、缺失 / 非法sidecar、dirty输入和420px创建分别通过。窄窗和解压画布截图已视觉复核。
+
+解压fixture默认使用现有pwsh.exe，未改变ExecutionPolicy或使用Bypass。此前system powershell.exe的Restricted策略使脚本未执行，改用既有RemoteSigned宿主后实际完成.NET解压，保留环境边界而不是更改全局设置。用户真实Markdown、sidecar或profile没有参与测试。
+
+### 收口与后续
+
+34套最终包回归和6套实际Vite全部通过，file1c-final-a-regression-manifest.json / file1c-final-vite-a-manifest.json记录各命令与日志摘要，后者serverStopped=true，窗口亦停止。file1c-collect.ps1核对421单测、34窗口、6Vite、同包身份及三用户文件，生成FILE1C_EVIDENCE.json；最终候选没有失败重试。实现945c0f5与验收b5bb4b1已推送origin/codex/file1c-document-bundle，创建并附加PR #25（https://github.com/KLucen/MerMarked/pull/25），目标main，待审未合并。沿用本机已有KLucen的SSH/GCM认证和官方API，连接器仍要求重新认证，没有新增凭据或扩大权限；最终远端精确head另核准，本地检查不等同云端CI。README纠正仍声称仅阅读可进入的历史描述，并补充ZIP解压和图片范围；产品架构与模式边界记录副本包属于共同文档命令。三项用户原文件继续排除提交。
+
+本批不新增真实IME、安装生命周期、物理跨屏 / 跨卷、辅助客户端或正式性能样本。通用其他文档 / 附件、HTML依赖、链接改写、压缩与应用内导入仍是后续范围，FILE1 / QA1 / P0未整体退出。

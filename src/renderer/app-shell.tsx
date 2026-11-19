@@ -55,6 +55,7 @@ export interface AppShellProps {
   readonly onSave?: () => void;
   readonly onSaveAs?: () => void;
   readonly onCreateSavedCopy?: () => void;
+  readonly onCreateSavedBundle?: () => void;
   readonly onDiscardChanges?: () => void;
   readonly workspaceStatuses?: WorkspaceStatuses;
   readonly annotationDetails?: ReactNode;
@@ -132,6 +133,7 @@ export function AppShell({
   onSave,
   onSaveAs,
   onCreateSavedCopy,
+  onCreateSavedBundle,
   onDiscardChanges,
   workspaceStatuses,
   annotationDetails,
@@ -363,6 +365,8 @@ export function AppShell({
           {onSaveAs && <button type="button" data-workspace-save-as="true" aria-keyshortcuts="Control+Shift+S" onClick={onSaveAs} disabled={saving}>选择保存位置…</button>}
           {onCreateSavedCopy && <button type="button" data-workspace-create-copy="true" onClick={onCreateSavedCopy} disabled={opening || saving}
             title="复制已保存的正文、批注和画布；跨目录先检查引用并确认，原文保持打开">创建已保存副本…</button>}
+          {onCreateSavedBundle && <button type="button" data-workspace-create-bundle="true" onClick={onCreateSavedBundle} disabled={opening || saving}
+            title="将已保存的文档、批注、画布和目录内图片打成 ZIP，确认清单后创建">打包文档与本地图片…</button>}
           {onDiscardChanges && !discardConfirmation && <button type="button" data-workspace-discard="true"
             onClick={() => setDiscardConfirmation(true)} disabled={!dirty || saving} title="放弃未保存的 Markdown 修改">
             <RotateCcw size={14} aria-hidden="true" />放弃未保存修改

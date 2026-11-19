@@ -1,5 +1,18 @@
 # MerMarkd 开发进度
 
+## 2026-11-19 · FILE1C 文档与本地图片副本包（本机软件验证完成）
+
+PR #24 已合并至 main `d584144`，本批分支 `codex/file1c-document-bundle`。范围和退出条件见 [FILE1C_ACCEPTANCE.md](FILE1C_ACCEPTANCE.md)，决定见 ADR-059。
+
+- 新增「打包文档与本地图片…」，将已保存正文、现有批注 / 画布及目录内直接引用图片按原文件名 / 路径存入 ZIP。确认清单和包含批注 / 便签后才创建，原文、模式及锚点基线保持。
+- 支持 PNG / JPG / GIF / WebP，重复去重，最多32张、每图10MiB、内容合计50MiB；拒绝越界、未知引用、HTML、其他本地文档和间接资源，不下载网络内容。ZIP stored / UTF8 / CRC，无新依赖；完整单文件暂存同步后独占发布，不覆盖或删除已有ZIP。
+- 运行时 `945c0f5` 干净检出通过 npm ci、类型检查、421/421 单测及 make。18项core规划与24项store测试新增42项，ZIP CRC由原生zlib核对；两个真实子进程prepared / published退出73分别留下无公开输出 / 完整ZIP，源三文件和图片保持。ASAR SHA-256 `DB1ACDC9C189E4998C9C0F61D573A268B7868F95F25FDCFE1EF26616CDDB3A7C`。
+- 同包34套窗口及实际Vite六套全通过。FILE1C十项包括独立.NET ZIP解压、原字节和原路径、图片实际解码、批注 / 折叠 / 箭头重开、原会话与输入保留、取消和外部变化拒绝、目标冲突及420px创建。通过真实最近文档path核对打开解压文档，避免同名假通过；修改解压副本不改原文。证据见 [FILE1C_EVIDENCE.json](FILE1C_EVIDENCE.json)，测试窗口和5178服务已停。
+- 文件symlink子项因OS权限未执行并有诊断，directory-junction子项实测通过。外部解压使用既有RemoteSigned pwsh，未改变策略或用Bypass。图片头核验不是全格式解码器，实际图像解码限本次PNG样本。三项用户原文件摘要保持且排除提交；未公开发布或安装本地包。
+- README、架构和模式边界补充ZIP使用步骤及当前三模式状态；本批不新增真实IME、安装生命周期、物理跨屏 / 跨卷、辅助客户端或正式性能样本，FILE1 / QA1 / P0尚未整体退出。
+
+实现 `945c0f5` 与验收记录 `b5bb4b1` 已推送至 `origin/codex/file1c-document-bundle`，创建并附加 [PR #25](https://github.com/KLucen/MerMarked/pull/25)，目标main，待审未合并。应用内导入、更多附件、HTML依赖、路径改写与压缩仍是后续范围，不能把当前副本包当作任意网络内容的完整离线工作区。
+
 ## 2026-11-19 · FILE1B 跨目录副本预检（本机软件验证完成）
 
 PR #23 已合并至 main `0c9b930`，本批分支 `codex/file1b-copy-preflight`。范围和退出条件见 [FILE1B_ACCEPTANCE.md](FILE1B_ACCEPTANCE.md)，决定见 ADR-058。
