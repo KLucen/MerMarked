@@ -234,6 +234,8 @@ try {
     const item = await fixture('start'), before = await snapshot(item), archiveBefore = await fileState(item.archive);
     await start(); await dialogs(item); await beginImport(true); const file = await importedDocument(item), directory = await assertPreview(item);
     assert.equal(file, await assertImported(item, directory)); assert.deepEqual(await snapshot(item), before); assert.deepEqual(await fileState(item.archive), archiveBefore);
+    const importedPaths = [...suffixes.map(suffix => file + suffix), path.join(directory, imageEntry)];
+    const importedBefore = await Promise.all(importedPaths.map(fileState));
     await wait('[...document.querySelectorAll(".markdown-body img")].length===2&&[...document.querySelectorAll(".markdown-body img")].every(i=>i.complete&&i.naturalWidth===1)', 'imported images decode');
     const annotations = parseAnnotationYaml(await readFile(file + suffixes[1], 'utf8')); assert.equal(annotations.annotations[0].anchor.basisSha256, '0'.repeat(64));
     assert.equal(annotations.annotations[0].note, '打包保留的私人便签');
@@ -242,6 +244,8 @@ try {
     const model = (await page.evaluate('window.mermarkd.loadCanvasV2()')).model;
     assert.deepEqual(model, JSON.parse(await readFile(file + suffixes[2], 'utf8'))); assert.equal(model.links[0].from, 'card-1');
     assert.equal(await page.evaluate('Boolean(document.querySelector(".react-flow__node[data-id=card-1]"))'), false);
+    await assertImported(item, directory);
+    assert.deepEqual(await Promise.all(importedPaths.map(fileState)), importedBefore, 'reading and canvas loading do not write imported files');
     assert.deepEqual(await snapshot(item), before); assert.deepEqual(await fileState(item.archive), archiveBefore);
     return { exactBomCrlfUnicodeAndCompanions: true, uniqueImageCount: 1, repeatedImagesDecoded: 2, pendingBasisRetained: true,
       foldAndArrowRetained: true, recentPath: file, archiveUnchanged: true, screenshot: await screenshot('imported-canvas') };
