@@ -283,17 +283,33 @@ try {
     return { rejected: ['malformed ZIP', 'bad CRC', 'zip-slip'], parentDialogNotOpened: true, noOutput: true };
   });
   await scenario('extra-missing-and-html-payload-refused-before-parent-dialog', async () => {
-    for (const kind of ['extra', 'missing-image', 'html']) {
+    const variants = ['extra', 'missing-image', 'html', 'annotations-invalid', 'annotations-unknown-schema',
+      'canvas-invalid', 'canvas-unknown-schema', 'annotations-invalid-utf8', 'canvas-invalid-utf8'];
+    for (const kind of variants) {
       const item = await fixture(`semantic-${kind}`), before = await snapshot(item); let entries = item.entries;
       if (kind === 'extra') entries = [...entries, { path: 'unlisted.png', data: png() }];
       if (kind === 'missing-image') entries = entries.filter(entry => entry.path !== imageEntry);
       if (kind === 'html') entries = entries.map(entry => entry.path.endsWith('.md') ? { ...entry, data: Buffer.from('<img src="assets/unsafe.png">') } : entry);
+      if (kind.startsWith('annotations-')) entries = entries.map(entry => {
+        if (!entry.path.endsWith(suffixes[1])) return entry;
+        const data = kind === 'annotations-invalid' ? Buffer.from('schemaVersion: [unterminated\n')
+          : kind === 'annotations-unknown-schema' ? Buffer.from(entry.data.toString('utf8').replace('schemaVersion: 1', 'schemaVersion: 999'))
+          : Buffer.concat([entry.data, Buffer.from([0xff])]);
+        assert.notDeepEqual(data, entry.data, 'annotation variant changes only the archive payload'); return { ...entry, data };
+      });
+      if (kind.startsWith('canvas-')) entries = entries.map(entry => {
+        if (!entry.path.endsWith(suffixes[2])) return entry;
+        const data = kind === 'canvas-invalid' ? Buffer.from('{"schemaVersion":2,')
+          : kind === 'canvas-unknown-schema' ? Buffer.from(JSON.stringify({ ...JSON.parse(entry.data.toString('utf8')), schemaVersion: 999 }))
+          : Buffer.concat([entry.data, Buffer.from([0xff])]);
+        assert.notDeepEqual(data, entry.data, 'canvas variant changes only the archive payload'); return { ...entry, data };
+      });
       await writeFile(item.archive, unsafeArchive(entries)); const archiveBefore = await fileState(item.archive); await start(item.file); await dialogs(item);
       await rejectedImport(); assert.deepEqual((await calls()).map(call => call.title), ['打开文档副本包']);
       await unchangedSession(item, 'reader'); await emptyDestination(item); assert.deepEqual(await snapshot(item), before);
       assert.deepEqual(await fileState(item.archive), archiveBefore); await stop();
     }
-    return { refused: ['unlisted extra file', 'missing local image', 'HTML Markdown'], noSilentPartialBundle: true };
+    return { refused: variants, noSilentPartialBundle: true };
   });
   await scenario('existing-parent-files-preserved-and-second-import-independent', async () => {
     const item = await fixture('occupied'), sentinel = path.join(item.parent, '已有文件.txt'); await writeFile(sentinel, '不得覆盖');
