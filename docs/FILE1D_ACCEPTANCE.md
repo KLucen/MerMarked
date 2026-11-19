@@ -1,6 +1,6 @@
 # FILE1D · 在应用内打开文档副本包
 
-2026-11-19，基于已合并 FILE1C / main `bbfae8f`。本批完成状态与实际验证证据将在收口后补充；不提前标记 FILE1 / QA1 / P0 整体完成。
+2026-11-19，基于已合并 FILE1C / main `bbfae8f`。本批本机工程退出条件通过；FILE1 / QA1 / P0 尚未整体完成。证据见 [FILE1D_EVIDENCE.json](FILE1D_EVIDENCE.json)，决定见 ADR-060。
 
 ## 使用与文件边界
 
@@ -23,7 +23,7 @@
 
 确认前不创建应用输出。选择的父目录和 ZIP 均核对 canonical path / 文件身份；新目录独占创建，子目录不可经过 symlink / junction。私有文件以 `wx` 创建、同步后用独占硬链接发布，图片和 companion 优先，Markdown 最后。发布 Markdown 前复核 ZIP、目录和全部已发布文件的身份与摘要；已有文件不覆盖、不删除。
 
-本批不新增导入事务日志。原 ZIP 是完整重试来源，失败保留已经生成的新文件夹并提示位置；重试创建另一个独立目录。进程在 Markdown 发布前中断不会得到可打开的根 Markdown，发布后则完整数据已就绪。可能遗留私有暂存，不宣称三文件原子性、目录项物理断电持久性或可恢复外部恶意持续改写。
+本批不新增导入事务日志。原 ZIP 是完整重试来源，失败保留已经生成的新文件夹并提示位置；重试创建另一个独立目录。Markdown 在其他捕获文件发布并核验后最后发布，全部最终核验成功才打开。没有外部更改的进程中断样本在 Markdown 发布前没有入口、发布后保留完整包；Markdown 存在不能替代失败提示和完整性核验。可能遗留私有暂存，不宣称三文件原子性、目录项物理断电持久性或可恢复外部恶意持续改写。
 
 ## 验收例子与退出条件
 
@@ -34,3 +34,16 @@
 5. 类型检查、全量单测、Windows make；同一冻结 ASAR 上新增 FILE1D 与全部既有打包窗口回归，实际 Vite 相关回归和 420px 布局通过。记录包摘要、命令、失败及限制，保持三项用户原修改。
 
 原生 IME、正式性能、安装升级卸载、物理跨屏 DPI、跨物理卷和干净 Windows 不由本批测试替代。
+
+## 实际验证与产物
+
+- 运行时提交 `6f0beaa5efd67e876bcd8677ccebfe4620df0524` 在独立 detached 检出 `C:\Users\KLucen\.codex\worktrees\mermarkd-file1d-final` 完成 `npm ci`、`npm run typecheck`、`npm test`（460/460）及 `npm run make`。构建源 clean、lockfile、主工作区 index 和原 QA1 冻结产物均保持。Node 24.20.0 / npm 11.19.0 / Electron 44.4.1，无新依赖。
+- 新增 19 项纯 core ZIP 测试和 20 项文件服务测试，包含独立 zlib CRC、FILE1C 实际 writer 往返、真实最大尺寸、截断 / 危险头与路径 / 别名 / 集合校验、父目录 / 输出目录 / junction 替换、ZIP 同字节身份替换、已发布文件外改、取消、独立重试和真实子进程退出 73。MD 发布后报错的完整目录同样保留。文件 symlink 子例因 Windows `EPERM` 未执行，目录 junction 子例实际通过。
+- ASAR 4,120,372 bytes，SHA-256 `A111DD7C3A1C5FD87D26697F94D5AC091DFBC4DA1019F89BEB6C52C50316C65E`。Setup 154,852,864 bytes，SHA-256 `DDBF0AA10805AE457151F8531AA0614C81B95C3A48D12A46D9F5CEB057B97140`，仅本机生成，未安装或公开发布。
+- 同一 ASAR 的 35 套窗口回归全部通过。首轮 FILE1D 11 项通过后，测试提交 `f81bea8` / `37981c3` / `a9ab95c` 补充 6 类损坏 sidecar、导入后模式切换 bytes / mtime 及完整源码 / 可编辑断言；运行时没有变化。冻结检出只快进这三项测试提交，加强后的 11 项专项再次通过。
+- FILE1D 专项实际从开始页和菜单导入，核对真实最近文件完整 path；新目录与包四文件逐字节相等、图片实际解码、旧 basis 待定位、便签 / 标签、折叠 / 箭头、三模式及原 ZIP bytes / mtime 保持。三个取消点、dirty 保存 / 放弃 / 取消、main 直接 dirty 拒绝、重复导入不覆盖、预览 ZIP 外改拒绝、错误重试及 420px 均通过。CRC 正确的非法 / 未知 schema / 非法 UTF-8 YAML 与 JSON 全部在父目录对话框前拒绝。窄窗开始页、菜单和导入画布截图已视觉复核。
+- 实际 Vite FILE1D / FILE1C / FILE1B / FILE1A / UX9 / UX8 / UX7 七套通过。原生对话框响应由隔离 main 模拟，文件系统、preload、IPC 和 renderer 实际运行；不能据此声称真实输入法或原生对话框人工验收。测试窗口已停止，5178 服务已停止。三项用户原有文件 SHA 保持且排除提交。
+
+命令和日志摘要记录于本地 `out/qa/file1d-final-build-manifest.json`、`file1d-final-regression-manifest.json`、`file1d-final-guards-file1d.log`、`file1d-final-vite-a-manifest.json`。证据文件汇总包身份、全部命令和运行结果；本批没有失败运行被替换。私人测试目录、原日志 / 截图和本地安装包不随 Git 提交。
+
+后续继续拆分普通副本打开行为、其他附件 / HTML / 间接资源、源路径改写与通用压缩支持，不将本批受限包导入扩大为完整工作区迁移承诺。
