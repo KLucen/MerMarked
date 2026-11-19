@@ -2105,4 +2105,4 @@ file1b-final-a-regression-manifest.json 的33套窗口全部通过。FILE1B九�
 
 ### 交付与后续
 
-第二轮实际 Vite FILE1B / FILE1A / UX9 / UX8 / UX7 五套全部通过，file1b-final-vite-b-manifest.json 记录服务已停止。file1b-collect.ps1 核对379单测、33窗口、5Vite、加强UX9专项及同包摘要，输出 FILE1B_EVIDENCE.json，保留首轮失败。GitHub 回执在交付后补录。三项用户原有文件继续保护且排除提交，生成测试文档 / profile、原日志 / 截图及本地安装包不公开上传。原生对话框响应由隔离 main 模拟，未新增真实输入法、安装、物理DPI、辅助客户端或正式性能样本验收。后续 FILE1 需要独立资源迁移与预览合同，不能直接将当前受限入口称为可移植资源包。
+第二轮实际 Vite FILE1B / FILE1A / UX9 / UX8 / UX7 五套全部通过，file1b-final-vite-b-manifest.json 记录服务已停止。file1b-collect.ps1 核对379单测、33窗口、5Vite、加强UX9专项及同包摘要，输出 FILE1B_EVIDENCE.json，保留首轮失败。实现 a367964、测试同步 8a78744 与验收 ba1780f 已推送 origin/codex/file1b-copy-preflight，创建并附加 PR #24（https://github.com/KLucen/MerMarked/pull/24），目标 main，待审未合并。沿用本机已有 KLucen 的 SSH / GCM 认证和官方 API；连接器仍要求重新认证，没有新建凭据或扩大权限。最终精确 head 与云端检查状态由收尾回执核准，不将本地检查当成云端 CI。三项用户原有文件继续保护且排除提交，生成测试文档 / profile、原日志 / 截图及本地安装包不公开上传。原生对话框响应由隔离 main 模拟，未新增真实输入法、安装、物理DPI、辅助客户端或正式性能样本验收。后续 FILE1 需要独立资源迁移与预览合同，不能直接将当前受限入口称为可移植资源包。
