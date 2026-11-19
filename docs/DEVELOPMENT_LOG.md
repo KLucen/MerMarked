@@ -2128,6 +2128,6 @@ FILE1C十项最终包专项全部通过。ZIP由pwsh宿主的System.IO.Compressi
 
 ### 收口与后续
 
-34套最终包回归和6套实际Vite全部通过，file1c-final-a-regression-manifest.json / file1c-final-vite-a-manifest.json记录各命令与日志摘要，后者serverStopped=true，窗口亦停止。file1c-collect.ps1核对421单测、34窗口、6Vite、同包身份及三用户文件，生成FILE1C_EVIDENCE.json；最终候选没有失败重试。GitHub回执在交付后补录。README纠正仍声称仅阅读可进入的历史描述，并补充ZIP解压和图片范围；产品架构与模式边界记录副本包属于共同文档命令。三项用户原文件继续排除提交。
+34套最终包回归和6套实际Vite全部通过，file1c-final-a-regression-manifest.json / file1c-final-vite-a-manifest.json记录各命令与日志摘要，后者serverStopped=true，窗口亦停止。file1c-collect.ps1核对421单测、34窗口、6Vite、同包身份及三用户文件，生成FILE1C_EVIDENCE.json；最终候选没有失败重试。实现945c0f5与验收b5bb4b1已推送origin/codex/file1c-document-bundle，创建并附加PR #25（https://github.com/KLucen/MerMarked/pull/25），目标main，待审未合并。沿用本机已有KLucen的SSH/GCM认证和官方API，连接器仍要求重新认证，没有新增凭据或扩大权限；最终远端精确head另核准，本地检查不等同云端CI。README纠正仍声称仅阅读可进入的历史描述，并补充ZIP解压和图片范围；产品架构与模式边界记录副本包属于共同文档命令。三项用户原文件继续排除提交。
 
 本批不新增真实IME、安装生命周期、物理跨屏 / 跨卷、辅助客户端或正式性能样本。通用其他文档 / 附件、HTML依赖、链接改写、压缩与应用内导入仍是后续范围，FILE1 / QA1 / P0未整体退出。

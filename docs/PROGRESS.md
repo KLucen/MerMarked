@@ -11,7 +11,7 @@ PR #24 已合并至 main `d584144`，本批分支 `codex/file1c-document-bundle`
 - 文件symlink子项因OS权限未执行并有诊断，directory-junction子项实测通过。外部解压使用既有RemoteSigned pwsh，未改变策略或用Bypass。图片头核验不是全格式解码器，实际图像解码限本次PNG样本。三项用户原文件摘要保持且排除提交；未公开发布或安装本地包。
 - README、架构和模式边界补充ZIP使用步骤及当前三模式状态；本批不新增真实IME、安装生命周期、物理跨屏 / 跨卷、辅助客户端或正式性能样本，FILE1 / QA1 / P0尚未整体退出。
 
-GitHub交付正在整理，完成后补回执。应用内导入、更多附件、HTML依赖、路径改写与压缩仍是后续范围，不能把当前副本包当作任意网络内容的完整离线工作区。
+实现 `945c0f5` 与验收记录 `b5bb4b1` 已推送至 `origin/codex/file1c-document-bundle`，创建并附加 [PR #25](https://github.com/KLucen/MerMarked/pull/25)，目标main，待审未合并。应用内导入、更多附件、HTML依赖、路径改写与压缩仍是后续范围，不能把当前副本包当作任意网络内容的完整离线工作区。
 
 ## 2026-11-19 · FILE1B 跨目录副本预检（本机软件验证完成）
 
