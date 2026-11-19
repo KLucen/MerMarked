@@ -1,5 +1,18 @@
 # MerMarkd 开发进度
 
+## 2026-11-15 · FILE1A 同目录已保存副本（本机软件验证完成）
+
+基于已合并 [PR #22](https://github.com/KLucen/MerMarked/pull/22) / main `5ccea0d`，分支 `codex/file1a-saved-copy`。范围与退出条件见 [FILE1A_ACCEPTANCE.md](FILE1A_ACCEPTANCE.md)，数据决定见 ADR-057。
+
+- 文档菜单新增「在当前文件夹创建已保存副本…」。原文与现有批注 / 画布 sidecar 逐字节复制到同目录新名，缺失 companion 不生成，旧 basis 和待定位保留，资源共用，原文保持打开。
+- 无参数 IPC、同目录独占新名、发布前源复核、私有 staging 与日志、显式前向恢复。已发布目标不在失败清理中删除；恢复旧快照与复制当前版本分开反馈。dirty、表单、组合 / 待提交输入与在途事务受保护。
+- 实现 `76fcd03` 干净检出完成 npm ci、类型检查、349/349 单测和 make；22 项 store 测试含两个实际子进程发布阶段退出 73 后恢复。ASAR SHA-256 `5A3BDF5D455EF919F3405623E80E164C4386D91F49EE995567BE565DD36FC61E`。
+- 同包 32 套窗口、实际 Vite FILE1A / UX9 / UX8 / UX7 全部通过。首次专项 8/9 与 UX2 两次失败保留；测试 `996307e` / `64c362f` 等待源码 scheduled selection/focus 后再打开菜单，并加强精确撤销与专注状态断言，没有改产品撤销逻辑。旧包单次对照通过，未据此宣称旧包复现。证据见 [FILE1A_EVIDENCE.json](FILE1A_EVIDENCE.json)。
+- 早期类型检查曾有 never 箭头函数导致六处收窄错误，修正声明后通过。原 Electron 缓存缺失，重新从官方固定版本下载并核验既有 SHA-256 后构建。会话初期沙箱运行时不可用，按当时只读规则提权；之后根任务权限更新为完整访问，继续执行，没有绕过权限。测试窗口与 5178 服务已关闭。
+- 三项用户原修改摘要保持且未提交。安装包仅本地生成；本批没有新原生 IME、安装生命周期、物理 DPI 或辅助客户端性能验收，QA1 / P0 既有门槛保留。FILE1A 完成不意味着 FILE1 跨目录和附件包完成。
+
+实现 `76fcd03`、测试同步 `996307e` / `64c362f` 与验收记录 `065b0e6` 已推送至 `origin/codex/file1a-saved-copy`，已创建并附加 [PR #23](https://github.com/KLucen/MerMarked/pull/23)，目标 main，待审未合并。本地安装包未公开发布。后续 FILE1 应先固定跨目录资源授权、引用预览与恢复合同，再开发；不直接扩大同目录保存入口。
+
 ## 2026-11-14 · UX9 增量布局与章节定位（本机软件验证完成）
 
 基于已合并 [PR #21](https://github.com/KLucen/MerMarked/pull/21) 的 main `ab3239d`，分支 `codex/ux9-layout-navigation`。范围与退出条件见 [UX9_ACCEPTANCE.md](UX9_ACCEPTANCE.md)。

@@ -226,11 +226,21 @@ try {
   assert.deepEqual(await snapshot(),seeded,'panel, focus, resize and mode changes preserve three-file bytes and mtimes');
   await metrics(1200,800);
   await click('[data-source-editor], [data-editor-textarea]');
+  const sourceBeforeHistory = await page.evaluate('__sourceControl().value');
   await page.send('Input.insertText',{text:'验证历史'});
-  await wait('document.querySelector(".app-shell").dataset.dirty==="true"','editor dirty');
-  await focusMode(); await focusMode();
+  await wait('document.querySelector(".app-shell").dataset.dirty==="true" && __sourceControl().value.includes("验证历史") && document.querySelector("[data-editor-undo]")?.disabled===false','editor dirty and undo ready');
+  // The optimistic dirty flag precedes selectAfterRender's animation-frame focus
+  // restoration. Settle that update before moving focus to the document menu.
+  await page.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+  await page.evaluate('document.activeElement?.blur()');
+  await page.evaluate('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+  await focusMode();
+  await wait('document.querySelector(".app-shell").dataset.focusMode==="true"','entered source focus mode');
+  await focusMode();
+  await wait('document.querySelector(".app-shell").dataset.focusMode==="false"','left source focus mode');
   await click('[data-editor-undo]');
   await wait('document.querySelector(".app-shell").dataset.dirty==="false"','undo survives focus');
+  assert.equal(await page.evaluate('__sourceControl().value'),sourceBeforeHistory,'undo exactly restores the full source');
   assert.deepEqual(await snapshot(),seeded,'unsaved edit and undo do not write document files');
   console.log('UX2 packaged E2E passed: shared panels, narrow focus, draft retention, viewport sizing and zero writes.');
 } finally {

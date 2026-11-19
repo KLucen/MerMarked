@@ -6,6 +6,8 @@ import path from 'node:path';
 import { Worker } from 'node:worker_threads';
 import squirrelStartup from 'electron-squirrel-startup';
 import { createWindowCloseGuard } from './window-close-guard';
+import { copyDocumentFiles, DocumentCopyError, inspectPendingDocumentCopies, recoverPendingDocumentCopies } from './document-copy-store';
+import type { DocumentCopyResult } from '../types/reader-api';
 import type {
   AnnotationDocumentView, AnnotationSaveResult, AnnotationSelectionInput,
   CanvasExportFormat, CanvasExportInput, CanvasExportResult, CanvasLoadResult, CanvasSaveResult,
@@ -21,7 +23,7 @@ import {
 } from '../core/annotation-anchor';
 import { extractSections } from '../core/sections';
 import { buildSelectionMap, resolveStoredHighlight } from '../core/selection-map';
-import { serializeAnnotationYaml } from '../core/annotations';
+import { parseAnnotationYaml, serializeAnnotationYaml } from '../core/annotations';
 import type { AnnotationColor, AnnotationSidecar } from '../core/annotations';
 import { relocateAnnotationSidecarCandidate } from '../core/annotation-relocation';
 import type { AnnotationRelocationReason } from '../core/annotation-relocation';
@@ -38,7 +40,7 @@ import { loadCanvasFile, saveCanvasFile } from './canvas-store';
 import { CanvasSourceCache } from '../core/canvas-state';
 import { loadCanvasFileV2, saveCanvasFileV2 } from './canvas-store-v2';
 import { parseCanvasJson, validateCanvasState } from '../core/canvas-state';
-import { validateCanvasStateV2 } from '../core/canvas-state-v2';
+import { parseCanvasStateJson, validateCanvasStateV2 } from '../core/canvas-state-v2';
 import { prepareSectionStructurePlan } from './section-structure-store';
 import { inspectDocumentTransaction, listDocumentTransactions, recoverDocumentTransaction } from './document-transaction';
 import type { DocumentTransactionRef } from './document-transaction';
@@ -1263,6 +1265,81 @@ async function recoveryPreviewFor(event: IpcMainInvokeEvent, documentPath: strin
 }
 
 function registerReaderIpc(): void {
+  ipcMain.handle('document:create-saved-copy', async (event): Promise<DocumentCopyResult> => {
+    const session = sessionFor(event), owner = BrowserWindow.fromWebContents(event.sender);
+    if (!session || !owner) return { status: 'conflict', message: '请先打开一份已保存的文档。' };
+    if (session.document.temporary || session.editor?.dirty) return { status: 'conflict', message: '请先保存正文，再创建已保存副本；当前输入仍保留。' };
+    let invalidCompanion = false, recoveredCopies = 0;
+    try {
+      return await withMarkdownOperation(session, async () => {
+        const checkCurrent = async () => {
+          assertCurrentSession(event, session);
+          if (session.editor?.dirty || session.document.temporary || session.document.recoveryPending ||
+              session.editor?.pendingStructureTransactionId) throw new Error('Copy baseline unavailable.');
+          const inventory = await listDocumentTransactions(session.document.path);
+          assertCurrentSession(event, session);
+          if (inventory.some(item => !item.completed && item.status !== 'committed')) throw new Error('Copy baseline requires recovery.');
+        };
+        await checkCurrent();
+        const sourcePath = session.document.path;
+        const selected = await dialog.showSaveDialog(owner, {
+          title: '在当前文件夹创建已保存副本',
+          defaultPath: path.join(path.dirname(sourcePath), path.basename(sourcePath, path.extname(sourcePath)) + ' - 副本.md'),
+          filters: [{ name: 'Markdown 文档', extensions: ['md'] }],
+        });
+        assertCurrentSession(event, session);
+        if (selected.canceled || !selected.filePath) return { status: 'cancelled', message: '已取消创建副本，原文保持打开。' };
+        const targetPath = selectedNewMarkdownPath(selected.filePath);
+        const folder = await realpath(path.dirname(targetPath));
+        const originalFolder = await realpath(path.dirname(sourcePath));
+        if (folder.toLowerCase() !== originalFolder.toLowerCase()) return { status: 'conflict',
+          message: '请在原文当前文件夹选择新名称；本批副本与原文共用相对附件，未创建跨目录副本。' };
+        await checkCurrent();
+        const journalDirectory = path.join(app.getPath('userData'), 'document-copy-journals');
+        const pendingCopies = await inspectPendingDocumentCopies({ sourcePath, journalDirectory });
+        let recoveryWarning = false;
+        if (pendingCopies.length) {
+          const choice = await dialog.showMessageBox(owner, {
+            type: 'question', title: '发现未完成的副本', message: '检查并恢复先前的副本？',
+            detail: pendingCopies.map(item => item.name ?? '一份无法核验的副本').join('、') +
+              '\n恢复会尝试补齐缺失文件，副本保留当时的已保存快照。外部变化和正在使用的文件将保留；未发布的暂存会清理。',
+            buttons: ['检查并恢复', '仅创建新副本', '取消'], defaultId: 1, cancelId: 2, noLink: true,
+          });
+          await checkCurrent();
+          if (choice.response === 2) return { status: 'cancelled', message: '已取消，原文和已有副本保持不变。' };
+          if (choice.response === 0) {
+            const recovered = await recoverPendingDocumentCopies({ sourcePath, journalDirectory });
+            recoveredCopies = recovered.completed.length;
+            recoveryWarning = Boolean(recovered.conflicts.length || recovered.busy.length);
+            const canonicalTarget = path.join(folder, path.basename(targetPath));
+            const selectedRecovery = recovered.completedTargets.find(item => item.targetPath.toLowerCase() === canonicalTarget.toLowerCase());
+            if (selectedRecovery) return { status: 'restored', name: path.basename(selectedRecovery.targetPath),
+              message: '该名称的先前副本已恢复，保留的是当时快照；若要复制当前内容，请选择新名称。原文保持打开。' };
+          } else recoveryWarning = true;
+        }
+        const receipt = await copyDocumentFiles({ sourcePath, targetPath,
+          expectedSourceSha256: session.document.sourceSha256, journalDirectory,
+          beforePublish: checkCurrent,
+          validateSnapshot: async files => {
+            try {
+              decodeMarkdownBytes(files[0].bytes!);
+              if (files[1].bytes) parseAnnotationYaml(textDecoder.decode(files[1].bytes));
+              if (files[2].bytes) parseCanvasStateJson(textDecoder.decode(files[2].bytes));
+            } catch { invalidCompanion = true; throw new Error('Copy snapshot validation failed.'); }
+          },
+        });
+        const name = path.basename(receipt.targetPath);
+        return { status: 'copied', name, count: receipt.copiedSuffixes.length,
+          message: `已在当前文件夹创建“${name}”，原文保持打开，附件继续共用。${recoveredCopies ? `另已恢复 ${recoveredCopies} 份先前副本。` : ''}${recoveryWarning ? '另有未完成副本的文件及恢复记录仍保留，可使用其他名称。' : ''}` };
+      });
+    } catch (error) {
+      console.error('[document-copy]', error instanceof DocumentCopyError ? error.code : 'unavailable');
+      const recoveryNote = recoveredCopies ? `已恢复 ${recoveredCopies} 份先前副本；当前新副本未完成。` : '';
+      return { status: 'conflict', message: recoveryNote + (invalidCompanion
+        ? '批注或画布文件无法安全解析，尚未创建新副本；请先检查原文档。'
+        : error instanceof DocumentCopyError ? error.message : '当前文档正在处理、需要恢复或文件已变化，尚未完成新副本；原文保持不变，请检查后重试。') };
+    }
+  });
   ipcMain.handle('workspace:confirm-leave-document', async event => {
     const session = sessionFor(event);
     const owner = BrowserWindow.fromWebContents(event.sender);
