@@ -1,5 +1,9 @@
 # MerMarkd 开发进度
 
+## 2026-11-19 · FILE1D 打开文档副本包（开发与验证中）
+
+PR #25 已合并至 main `bbfae8f`，本批分支 `codex/file1d-open-bundle`。开始页和文件菜单增加「打开副本包…」，先校验 FILE1C ZIP，再预览并解包到新独立目录，完成后打开。原 ZIP 和内容字节保持，取消 / dirty / 表单 / 组合输入复用已有离开保护。范围、验收例子和限制见 [FILE1D_ACCEPTANCE.md](FILE1D_ACCEPTANCE.md)，决定见 ADR-060。正在完成边界测试、冻结打包及窗口回归，尚未宣称退出。
+
 ## 2026-11-19 · FILE1C 文档与本地图片副本包（本机软件验证完成）
 
 PR #24 已合并至 main `d584144`，本批分支 `codex/file1c-document-bundle`。范围和退出条件见 [FILE1C_ACCEPTANCE.md](FILE1C_ACCEPTANCE.md)，决定见 ADR-059。

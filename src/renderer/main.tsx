@@ -52,10 +52,10 @@ import './style.css';
 type SelectionProbeResult = ReturnType<typeof resolveSelection>;
 type SuccessfulSelectionProbe = Extract<SelectionProbeResult, { ok: true }>;
 type DocumentIntent = { readonly documentKey: number } & (
-  { readonly kind: 'open' | 'new' | 'close' | 'reload' } |
+  { readonly kind: 'open' | 'bundle' | 'new' | 'close' | 'reload' } |
   { readonly kind: 'recent'; readonly path: string } | { readonly kind: 'drop'; readonly file: File }
 );
-const documentIntentLabels = { open: '打开文档', new: '新建文档', close: '关闭文档', reload: '重新载入', recent: '打开最近文档', drop: '打开拖入的文档' };
+const documentIntentLabels = { open: '打开文档', bundle: '打开副本包', new: '新建文档', close: '关闭文档', reload: '重新载入', recent: '打开最近文档', drop: '打开拖入的文档' };
 
 /** Give opening feedback a paint opportunity before a fast IPC reply replaces it. */
 function paintOpeningFeedback(): Promise<void> {
@@ -237,6 +237,7 @@ function StartPage({
   opening,
   recentDocuments,
   onOpen,
+  onOpenBundle,
   onNew,
   onOpenRecent,
   onRemoveRecent,
@@ -244,6 +245,7 @@ function StartPage({
   readonly opening: boolean;
   readonly recentDocuments: readonly RecentDocumentItem[];
   readonly onOpen: () => void;
+  readonly onOpenBundle: () => void;
   readonly onNew: () => void;
   readonly onOpenRecent: (path: string) => void;
   readonly onRemoveRecent: (path: string) => void;
@@ -260,6 +262,7 @@ function StartPage({
         <button className="start-secondary-action" type="button" data-start-new="true" onClick={onNew} disabled={opening} aria-keyshortcuts="Control+N" title="新建文档（Ctrl+N）">
           <FilePlus2 size={16} aria-hidden="true" />新建文档
         </button>
+        <button className="start-secondary-action" type="button" data-start-open-bundle="true" onClick={onOpenBundle} disabled={opening}>打开副本包…</button>
       </div>
       <span className="welcome-note">文件保存在本地；模式切换和阅读批注不会改写 Markdown。</span>
     </section>
@@ -874,6 +877,7 @@ function App() {
       }
       const opened = intent.kind === 'new' ? await window.mermarkd.newMarkdown()
         : intent.kind === 'open' ? await window.mermarkd.openMarkdown()
+        : intent.kind === 'bundle' ? await window.mermarkd.openDocumentBundle()
         : intent.kind === 'recent' ? await window.mermarkd.openRecentMarkdown(intent.path)
         : intent.kind === 'drop' ? await window.mermarkd.openDroppedMarkdown(intent.file)
         : await window.mermarkd.reloadMarkdown();
@@ -918,6 +922,7 @@ function App() {
   }), [leaveGuard.run, performDocumentIntent, setMessage]);
 
   const openMarkdown = useCallback(() => runDocumentIntent({ kind: 'open', documentKey: noteDocumentKey.current }), [runDocumentIntent]);
+  const openDocumentBundle = useCallback(() => runDocumentIntent({ kind: 'bundle', documentKey: noteDocumentKey.current }), [runDocumentIntent]);
   const newMarkdown = useCallback(() => runDocumentIntent({ kind: 'new', documentKey: noteDocumentKey.current }), [runDocumentIntent]);
   const closeMarkdown = useCallback(() => openedDocument
     ? runDocumentIntent({ kind: 'close', documentKey: noteDocumentKey.current }) : Promise.resolve(), [openedDocument, runDocumentIntent]);
@@ -2182,6 +2187,7 @@ function App() {
         currentIndex: readerSearchIndex, total: readerSearch.result?.matches.length ?? 0,
         truncated: readerSearch.result?.truncated ?? false, status: readerSearch.status }}
       onOpen={() => void openMarkdown()} onModeChange={(mode) => void changeMode(mode)}
+      onOpenBundle={() => void openDocumentBundle()}
       onLocateSectionInCanvas={() => void locateReaderSectionInCanvas()}
       canLocateSectionInCanvas={canLocateSectionInCanvas}
       onSave={saveSource}
@@ -2283,6 +2289,7 @@ function App() {
       </div>}
       {!openedDocument ? (
         <StartPage opening={opening} recentDocuments={recentDocuments} onOpen={() => void openMarkdown()}
+          onOpenBundle={() => void openDocumentBundle()}
           onNew={() => void newMarkdown()} onOpenRecent={(documentPath) => void openRecentMarkdown(documentPath)}
           onRemoveRecent={(documentPath) => void removeRecentMarkdown(documentPath)} />
       ) : activeMode === 'cards' ? (

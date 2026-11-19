@@ -95,7 +95,7 @@ async function sourceFiles(source: string): Promise<(Captured | null)[]> {
   if (!files[0]) refused();
   return files;
 }
-function rasterSignature(file: string, bytes: Buffer): boolean {
+export function rasterSignature(file: string, bytes: Buffer): boolean {
   const ext = path.extname(file).toLowerCase();
   if (ext === '.png') return bytes.length >= 24 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) &&
     bytes.toString('ascii', 12, 16) === 'IHDR' && bytes.readUInt32BE(16) > 0 && bytes.readUInt32BE(20) > 0;

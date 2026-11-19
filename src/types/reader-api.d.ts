@@ -326,6 +326,7 @@ export interface MerMarkdApi {
   replyToCloseRequest(id: string, allowed: boolean): void;
   onCloseRequestFinished(listener: (id: string) => void): () => void;
   openMarkdown(): Promise<OpenedMarkdownDocument | null>;
+  openDocumentBundle(): Promise<OpenedMarkdownDocument | null>;
   newMarkdown(): Promise<OpenedMarkdownDocument | null>;
   closeMarkdown(): Promise<void>;
   createSavedDocumentCopy(): Promise<DocumentCopyResult>;

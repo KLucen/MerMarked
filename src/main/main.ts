@@ -10,6 +10,7 @@ import { copyDocumentFiles, DocumentCopyError, inspectPendingDocumentCopies, rec
 import { inspectDocumentCopyPortability } from '../core/document-copy-portability';
 import { planDocumentBundle } from '../core/document-bundle-plan';
 import { createSavedDocumentBundle, BundleStoreError } from './document-bundle-store';
+import { importDocumentBundle, BundleImportError } from './document-bundle-import-store';
 import type { DocumentCopyResult } from '../types/reader-api';
 import type {
   AnnotationDocumentView, AnnotationSaveResult, AnnotationSelectionInput,
@@ -92,6 +93,7 @@ interface DocumentSession {
 }
 
 const documentSessions = new Map<number, DocumentSession>();
+const openingBundleWindows = new Set<number>();
 function replaceDocumentSession(id: number, session?: DocumentSession): void {
   documentSessions.get(id)?.annotationReadTask?.cancel();
   if (session) documentSessions.set(id, session);
@@ -1268,6 +1270,86 @@ async function recoveryPreviewFor(event: IpcMainInvokeEvent, documentPath: strin
 }
 
 function registerReaderIpc(): void {
+  ipcMain.handle('document:open-bundle', async (event): Promise<OpenedMarkdownDocument | null> => {
+    if (!isMainFrame(event)) return null;
+    const owner = BrowserWindow.fromWebContents(event.sender);
+    if (!owner) return null;
+    const windowId = event.sender.id, existing = sessionFor(event);
+    if (openingBundleWindows.has(windowId)) throw new Error('副本包正在打开，请稍后重试。');
+    assertDocumentCanBeReplaced(existing);
+    let cancelled = false, completedDirectory: string | undefined;
+    const checkCurrent = () => {
+      if (owner.isDestroyed()) throw new Error('Bundle window unavailable.');
+      assertCurrentSession(event, existing);
+      if (existing?.editor?.dirty || existing?.annotationWriteInProgress || existing?.canvasWriteInProgress ||
+          existing?.canvasExportInProgress || existing?.editor?.writeInProgress) throw new Error('Bundle departure is stale.');
+    };
+    openingBundleWindows.add(windowId);
+    try {
+      const run = async () => {
+        const selection = await dialog.showOpenDialog(owner, {
+          title: '打开文档副本包', properties: ['openFile'], filters: [{ name: '文档副本包', extensions: ['zip'] }],
+        });
+        await checkCurrent();
+        if (selection.canceled) return null;
+        const archivePath = selection.filePaths.length === 1 ? selection.filePaths[0] : undefined;
+        if (!archivePath || !path.isAbsolute(archivePath) || path.extname(archivePath).toLowerCase() !== '.zip') throw new Error('Invalid bundle selection.');
+        const imported = await importDocumentBundle({ archivePath,
+          validateBundle: async bundle => {
+            for (const file of bundle.files) {
+              if (file.kind === 'markdown') decodeMarkdownBytes(file.bytes);
+              else if (file.kind === 'annotations') parseAnnotationYaml(textDecoder.decode(file.bytes));
+              else if (file.kind === 'canvas') parseCanvasStateJson(textDecoder.decode(file.bytes));
+            }
+            await checkCurrent();
+          },
+          parentDirectory: async () => {
+            await checkCurrent();
+            const chosen = await dialog.showOpenDialog(owner, {
+              title: '选择副本包解包位置', defaultPath: app.getPath('documents'), properties: ['openDirectory', 'createDirectory'],
+            });
+            await checkCurrent();
+            if (chosen.canceled) { cancelled = true; throw new Error('Bundle parent cancelled.'); }
+            if (chosen.filePaths.length !== 1 || !path.isAbsolute(chosen.filePaths[0])) throw new Error('Invalid bundle parent.');
+            return chosen.filePaths[0];
+          },
+          review: async summary => {
+            await checkCurrent();
+            const notes = summary.files.some(file => file.kind === 'annotations') ? '\n包含已有批注与便签。' : '';
+            const choice = await dialog.showMessageBox(owner, {
+              type: 'question', title: '确认打开副本包', message: '解包到独立文件夹并打开文档？',
+              detail: `新文件夹：${summary.directory}\n共 ${summary.fileCount} 个文件，其中 ${summary.imageCount} 张图片；内容合计 ${summary.totalBytes} 字节。${notes}\n保留原文件名和图片路径。解包完成后打开其中的 Markdown，原 ZIP 保持不变。`,
+              buttons: ['解包并打开', '取消'], defaultId: 1, cancelId: 1, noLink: true,
+            });
+            if (choice.response !== 0) { cancelled = true; throw new Error('Bundle opening cancelled.'); }
+            await checkCurrent();
+          },
+          beforePublish: async () => checkCurrent(),
+        });
+        completedDirectory = imported.directory;
+        await checkCurrent();
+        const document = await loadMarkdownDocument(imported.documentPath);
+        checkCurrent();
+        replaceDocumentSession(windowId, { document });
+        recoveryPreviews.delete(windowId);
+        // Recent-file bookkeeping must not turn a successful session replacement
+        // into a rejected reply that would leave the renderer on the old file.
+        try { await recordOpenedDocument(document); } catch { console.error('[document:open-bundle]', 'recent-unavailable'); }
+        return document;
+      };
+      return existing ? await withMarkdownOperation(existing, run) : await run();
+    } catch (error) {
+      if (cancelled) return null;
+      console.error('[document:open-bundle]', error instanceof BundleImportError ? error.code : 'unavailable');
+      const partial = error instanceof BundleImportError ? error.partialDirectory : completedDirectory;
+      if (partial && !owner.isDestroyed()) await dialog.showMessageBox(owner, {
+        type: 'warning', title: '副本包未完成', message: '解包文件夹已保留，当前文档未切换。',
+        detail: `${partial}\n原 ZIP 未修改。请保留该文件夹检查；可从原 ZIP 重试，重试会创建另一个独立文件夹。`,
+        buttons: ['确定'], defaultId: 0, noLink: true,
+      });
+      throw new Error(error instanceof BundleImportError ? error.message : '无法安全打开副本包，当前文档和原 ZIP 保持；请检查后重试。');
+    } finally { openingBundleWindows.delete(windowId); }
+  });
   ipcMain.handle('document:create-saved-bundle', async (event): Promise<DocumentCopyResult> => {
     const session = sessionFor(event), owner = BrowserWindow.fromWebContents(event.sender);
     if (!session || !owner) return { status: 'conflict', message: '请先打开一份已保存的文档。' };
