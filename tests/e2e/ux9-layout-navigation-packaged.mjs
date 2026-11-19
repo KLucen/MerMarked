@@ -231,6 +231,19 @@ async function searchResult(total, current, cardId, hidden) {
 async function readSection(index) {
   await activate(`.toc-list > li:nth-child(${index + 1}) .toc-link`);
   await wait(`document.querySelector('.toc-list > li:nth-child(${index + 1}) .toc-link')?.getAttribute('aria-current')==='location'`, `reader current section ${index}`);
+  // The selected marker precedes the smooth scroll. Read the chapter at its
+  // actual stable position before testing a passive return to that position.
+  await wait(`(async()=>{
+    const heading=document.querySelectorAll('.markdown-body h1,.markdown-body h2,.markdown-body h3,.markdown-body h4,.markdown-body h5,.markdown-body h6')[${index}];
+    if(!(heading instanceof HTMLElement))return false;
+    const top=heading.getBoundingClientRect().top,y=scrollY;
+    if(top < -1 || top > 148)return false;
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    if(!heading.isConnected)return false;
+    const after=heading.getBoundingClientRect().top;
+    return after>=-1&&after<=148&&Math.abs(after-top)<=1&&Math.abs(scrollY-y)<=1&&
+      document.querySelector('.toc-list > li:nth-child(${index + 1}) .toc-link')?.getAttribute('aria-current')==='location';
+  })()`, `reader section ${index} reaches a stable reading position`);
 }
 
 try {

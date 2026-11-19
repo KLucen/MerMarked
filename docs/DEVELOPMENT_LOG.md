@@ -2078,3 +2078,31 @@ QA2布局修复本地退出条件已过，增强特性受控诊断已完成；QA
 node out/qa/ux9-collect-evidence.mjs核对31条日志SHA、三条Vite日志SHA、报告/包体/脚本文本身份与三项用户保护值，输出docs/UX9_EVIDENCE.json，108313bytes，原值及失败均保留。本批本机软件退出条件已通过；QA1原生辅助客户端性能、原单次拖动异常、卸载残留及设备/发布门槛保持，不用合成组合事件替代新的真实IME，也不声称本批重做安装生命周期或正式性能cohort。三项用户原文件不变且排除提交，私有profile、原始日志及本地安装包不上传。GitHub交付另记回执。
 
 2026-11-14 GitHub交付：本机KLucen已有GCM认证和SSH预检成功，源码7b6318d、窄窗修正8425753及验收a52b678推送origin/codex/ux9-layout-navigation。已创建并附加[PR #22](https://github.com/KLucen/MerMarked/pull/22)，目标main，创建回执head a52b67870ebb02e95eecee075654dd7d652fb7ad、open、非draft、未合并；交付状态随分支更新，最终精确head由官方API和远端ref核验。连接器本次仍要求重新认证，沿用已有凭据调用官方API，没有新增权限或修改全局配置。独立文档复核和31日志/3Vite日志/14截图/3用户保护文件SHA核对通过。仅代码、测试与验收记录上传，原始大日志、测试profile和本地Setup未公开发布。
+
+## 2026-11-19 · FILE1B 跨目录副本预检与确认
+
+### 目标与设计
+
+接续已合并 PR #23 / main 0c9b930，分支 codex/file1b-copy-preflight。用户要求继续下一批开发，先实现不需要迁移本地资源的跨目录已保存副本；附件打包、链接改写与复制后切换会话留待后续，不声明完整 FILE1、QA1 或 P0 退出。决定见 ADR-058，用户步骤及退出条件见 FILE1B_ACCEPTANCE.md。
+
+主进程仍通过无参数 createSavedDocumentCopy IPC 拥有原生路径选择，renderer 复用既有输入与会话锁。核心检查原始 Markdown AST 的全部链接 / 图片 / 引用定义，原始 HTML、已知未支持扩展保守拒绝；代码和 YAML 不作为活动资源。跨目录允许前展示实际目的路径与正文 / 批注 / 画布文件清单，默认取消，不下载附件。源和已有 sidecar 原字节保持，不改旧 basis / 待定位 / 卡片身份，不自动打开副本。
+
+store 默认仍拒绝跨目录，只有显式快照核验回调才能进入。v2 journal 绑定目标目录 canonical path、dev/ino，候选在目的目录内；v1 日志和同目录复制保持兼容。预览后重读三个源摘要，目的目录在发布和恢复时重新核验，已发布目标不删除或覆盖。文件级 sync、物理断电、日志建立前 staging 与不遵协议外部竞态的限制保持；本机不同目录测试不视为不同物理卷实测。
+
+### 实现与验证
+
+运行时代码 a367964c6912fd1cac867dc8f21761e0af78ee08，主要文件为 core/document-copy-portability、main/document-copy-store、main handler、AppShell 菜单及 core / store / packaged 测试。没有新依赖、preload API 或文档 sidecar 字段，新增的是内部恢复日志 v2。审计 16 项与复制 / 恢复 36 项通过，本批共新增 30 项单测。
+
+干净 detached worktree mermarkd-file1b-final 完成 npm ci、npm run typecheck、npm test（379/379）和 npm run make。out/qa/file1b-final-build-manifest.json 记录 Node24.20.0/npm11.19.0/Electron44.4.1、源 clean、lock 不变、主区 index 及冻结 QA1 产物保持。最终 ASAR 4095890 bytes / SHA256 4766D613759C2F4B9A7BC7CD319E3529A90F636AB511F6BDDBB4F4BD5CD256DB，Setup154845696 bytes / SHA256 72E9AE78BDCAD9433CF9380E607F09B6DA9314E179BB5CAFAFCF46E0B33EB46F。原 FILE1A ASAR5A3BDF5D455EF919F3405623E80E164C4386D91F49EE995567BE565DD36FC61E 保持。
+
+file1b-final-a-regression-manifest.json 的33套窗口全部通过。FILE1B九项专项覆盖实际菜单跨目录复制及重开、原文 bytes/mtime / 会话 / 模式、便签标签与旧 basis、折叠和箭头、编辑副本独立性、确认取消零写入、本地引用与HTML拒绝、预览期间MD/YAML外部变化、三类目标冲突、缺失/非法sidecar和420px实际创建。两个真实子进程在v2发布后退出73，恢复原staging快照，原文后来更新仍保持。目录替换和junction不接入外部文件。窄窗与副本画布截图已视觉复核。
+
+### 原失败与测试修正
+
+第一轮 Vite 中 FILE1B / FILE1A通过，UX9为8/9，最后从折叠卡片返回阅读时超时；原 manifest、日志及失败截图保留，服务器已停。发现 readSection 只等目录 aria-current，而该标记先于 smooth scroll 到位；测试马上离开阅读可保存尚未到目标的 scrollY。8a78744 仅加强测试等待：对应章节实际进入阅读区域且跨两帧位置稳定后才定位卡片，后续返回原章节、保存视口、三文件断言保持。没有修改产品导航或撤销逻辑，不声称上一批包也已复现此失败。同一ASAR的加强后UX9九项打包专项通过。
+
+生成复杂 Vite 辅助脚本的一次复合 PowerShell 命令被环境自动策略拒绝；未执行该脚本，改用已存在验证脚本并只调整输出前缀，未扩大权限。第二轮 Vite 使用 file1b-final-vite-b 独立前缀，结果在最终验收中核准，不覆盖首轮失败。
+
+### 交付与后续
+
+第二轮实际 Vite FILE1B / FILE1A / UX9 / UX8 / UX7 五套全部通过，file1b-final-vite-b-manifest.json 记录服务已停止。file1b-collect.ps1 核对379单测、33窗口、5Vite、加强UX9专项及同包摘要，输出 FILE1B_EVIDENCE.json，保留首轮失败。实现 a367964、测试同步 8a78744 与验收 ba1780f 已推送 origin/codex/file1b-copy-preflight，创建并附加 PR #24（https://github.com/KLucen/MerMarked/pull/24），目标 main，待审未合并。沿用本机已有 KLucen 的 SSH / GCM 认证和官方 API；连接器仍要求重新认证，没有新建凭据或扩大权限。最终精确 head 与云端检查状态由收尾回执核准，不将本地检查当成云端 CI。三项用户原有文件继续保护且排除提交，生成测试文档 / profile、原日志 / 截图及本地安装包不公开上传。原生对话框响应由隔离 main 模拟，未新增真实输入法、安装、物理DPI、辅助客户端或正式性能样本验收。后续 FILE1 需要独立资源迁移与预览合同，不能直接将当前受限入口称为可移植资源包。

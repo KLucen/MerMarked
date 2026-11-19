@@ -1,5 +1,18 @@
 # MerMarkd 开发进度
 
+## 2026-11-19 · FILE1B 跨目录副本预检（本机软件验证完成）
+
+PR #23 已合并至 main `0c9b930`，本批分支 `codex/file1b-copy-preflight`。范围和退出条件见 [FILE1B_ACCEPTANCE.md](FILE1B_ACCEPTANCE.md)，决定见 ADR-058。
+
+- 文档菜单统一为「创建已保存副本…」。选择其他目录时，先检查已保存原始 Markdown 的全部资源 / 链接、HTML 和已知未支持扩展，再确认目的路径及实际文件种类；无本地或无法确认依赖才继续。代码 / YAML 字面路径不作为资源，不下载网络地址，不静默生成断链附件副本。
+- 已有三文件按原字节复制，缺失 companion 不生成，旧 basis / 待定位 / 卡片身份保留，原文和模式保持。同目录沿用附件共用；附件打包、路径改写和复制后切换会话仍待后续。
+- store 默认仍拒绝跨目录，显式快照核验回调才授权。v2 日志绑定目的目录 canonical path / dev / ino，暂存放目的目录，发布与恢复前复核；v1 继续兼容，已发布目标不删除。dirty、表单、组合及待提交输入、外部变化和在途事务门槛保持，无新 IPC、renderer 路径权限或依赖。
+- 运行时 `a367964` 干净检出通过 npm ci、类型检查、379/379 单测和 Windows make。新增 16 项引用审计与 14 项 store 测试，store 总计 36 项，包括两个实际子进程退出 73 的 v2 恢复、目录替换和 junction。ASAR SHA-256 `4766D613759C2F4B9A7BC7CD319E3529A90F636AB511F6BDDBB4F4BD5CD256DB`。
+- 同包 33 套打包窗口通过。首轮 Vite 的 UX9 8/9 返回章节超时保留；测试 `8a78744` 等实际章节滚动位置跨帧稳定，不再只等提前发布的目录选中标记，保留原章节 / 视口 / 三文件断言。加强后的 UX9 同包专项和第二轮五套 Vite 全通过，没有改产品导航逻辑或推断旧包已复现。证据见 [FILE1B_EVIDENCE.json](FILE1B_EVIDENCE.json)，测试服务与窗口已停止。
+- 三项用户原修改摘要保持且排除提交；本地安装包未公开发布。本批不新增真实 IME、安装生命周期、跨物理卷 / DPI、辅助客户端或正式性能验收，FILE1 / QA1 / P0 未整体退出。
+
+实现 `a367964`、测试同步 `8a78744` 与验收记录 `ba1780f` 已推送至 `origin/codex/file1b-copy-preflight`，已创建并附加 [PR #24](https://github.com/KLucen/MerMarked/pull/24)，目标 main，待审未合并。下一步先固定本地附件清单、授权、相对路径和源跨度预览，再实现附件迁移与独立副本包。
+
 ## 2026-11-15 · FILE1A 同目录已保存副本（本机软件验证完成）
 
 基于已合并 [PR #22](https://github.com/KLucen/MerMarked/pull/22) / main `5ccea0d`，分支 `codex/file1a-saved-copy`。范围与退出条件见 [FILE1A_ACCEPTANCE.md](FILE1A_ACCEPTANCE.md)，数据决定见 ADR-057。
