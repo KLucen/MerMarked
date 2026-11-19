@@ -2127,19 +2127,19 @@ function App() {
 
   const confirmDocumentRecovery = () => leaveGuard.run(confirmDocumentRecoveryUnchecked);
 
-  const createSavedDocumentCopy = async () => {
+  const createSavedDocumentCopy = async (bundle = false) => {
     if (!openedDocument || openedDocument.temporary || documentCopying || opening || leaveGuard.locked) return;
     if (dirtyPreview || localInputKinds.length || readerInputActivity.current.composing || readerInputActivity.current.committing ||
         mutationInFlight.current || editorController.busy || editorController.opening || annotationSaving || recoveryOpen || annotationView?.pendingDraftCount) {
-      setMessage('请先保存正文、提交或处理批注输入并完成恢复，再创建已保存副本；当前内容仍保留。', 'alert'); return;
+      setMessage(`请先保存正文、提交或处理批注输入并完成恢复，再${bundle ? '创建副本包' : '创建已保存副本'}；当前内容仍保留。`, 'alert'); return;
     }
     const originKey = noteDocumentKey.current;
-    mutationInFlight.current = true; setDocumentCopying(true); setMessage('正在创建已保存副本…');
+    mutationInFlight.current = true; setDocumentCopying(true); setMessage(bundle ? '正在检查文档与本地图片…' : '正在创建已保存副本…');
     try {
-      const result = await window.mermarkd.createSavedDocumentCopy();
+      const result = await (bundle ? window.mermarkd.createSavedDocumentBundle() : window.mermarkd.createSavedDocumentCopy());
       if (originKey === noteDocumentKey.current) setMessage(result.message, result.status === 'conflict' ? 'alert' : 'status');
     } catch {
-      if (originKey === noteDocumentKey.current) setMessage('副本尚未完成，原文件和当前输入保持；请检查后重试。', 'alert');
+      if (originKey === noteDocumentKey.current) setMessage(`${bundle ? '副本包' : '副本'}尚未完成，原文件和当前输入保持；请检查后重试。`, 'alert');
     } finally {
       mutationInFlight.current = false; setDocumentCopying(false);
       requestAnimationFrame(() => {
@@ -2188,6 +2188,7 @@ function App() {
       canSave={Boolean(editorController.editor?.editable)}
       onSaveAs={openedDocument?.temporary ? saveSource : undefined}
       onCreateSavedCopy={openedDocument && !openedDocument.temporary ? () => void createSavedDocumentCopy() : undefined}
+      onCreateSavedBundle={openedDocument && !openedDocument.temporary ? () => void createSavedDocumentCopy(true) : undefined}
       onDiscardChanges={() => { canvasStructureRequest.current += 1; setCanvasStructurePreview(null); void editorController.discardChanges(); }}
       workspaceStatuses={workspaceStatuses}
       annotationDetails={<div className="annotation-summary" role="region" aria-label="批注状态与操作">

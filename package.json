@@ -41,6 +41,7 @@
     "test:e2e:ux9": "node tests/e2e/ux9-layout-navigation-packaged.mjs",
     "test:e2e:file1a": "node tests/e2e/file1a-saved-copy-packaged.mjs",
     "test:e2e:file1b": "node tests/e2e/file1b-cross-directory-copy-packaged.mjs",
+    "test:e2e:file1c": "node tests/e2e/file1c-document-bundle-packaged.mjs",
     "test:qa:accessibility-observed": "node tests/e2e/qa2-accessibility-observed-packaged.mjs",
     "test:e2e:ux8": "node tests/e2e/ux8-card-reading-packaged.mjs",
     "test:e2e:perf2": "node tests/e2e/perf2-background-reading-packaged.mjs",

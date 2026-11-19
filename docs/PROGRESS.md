@@ -1,5 +1,13 @@
 # MerMarkd 开发进度
 
+## 2026-11-19 · FILE1C 文档与本地图片副本包（开发中）
+
+PR #24 已合并至 main `d584144`，本批分支 `codex/file1c-document-bundle`。范围与退出条件见 [FILE1C_ACCEPTANCE.md](FILE1C_ACCEPTANCE.md)，决定见 ADR-059。
+
+- 新增「打包文档与本地图片…」：将已保存正文、现有批注 / 画布及目录内直接引用图片按原文件名 / 路径打成 ZIP，不改原文或重算锚点，确认清单后才创建。
+- 支持当前阅读器的 PNG / JPG / GIF / WebP，最多 32 张、每图 10 MiB、总内容 50 MiB；拒绝越界、未知引用、HTML、其他本地文档和间接资源，不下载网络地址。核心计划 18 项测试已通过。
+- 文件快照、单 ZIP 独占发布、外部 .NET 解压和窗口专项正在验证。三项用户原有修改继续保护，本批尚未宣布退出。
+
 ## 2026-11-19 · FILE1B 跨目录副本预检（本机软件验证完成）
 
 PR #23 已合并至 main `0c9b930`，本批分支 `codex/file1b-copy-preflight`。范围和退出条件见 [FILE1B_ACCEPTANCE.md](FILE1B_ACCEPTANCE.md)，决定见 ADR-058。

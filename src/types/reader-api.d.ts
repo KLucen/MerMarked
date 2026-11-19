@@ -329,6 +329,7 @@ export interface MerMarkdApi {
   newMarkdown(): Promise<OpenedMarkdownDocument | null>;
   closeMarkdown(): Promise<void>;
   createSavedDocumentCopy(): Promise<DocumentCopyResult>;
+  createSavedDocumentBundle(): Promise<DocumentCopyResult>;
   confirmLeaveDocument(): Promise<DocumentDepartureChoice>;
   openRecentMarkdown(path: string): Promise<OpenedMarkdownDocument>;
   listRecentDocuments(): Promise<readonly RecentMarkdownDocument[]>;

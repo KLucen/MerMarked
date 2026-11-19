@@ -8,6 +8,8 @@ import squirrelStartup from 'electron-squirrel-startup';
 import { createWindowCloseGuard } from './window-close-guard';
 import { copyDocumentFiles, DocumentCopyError, inspectPendingDocumentCopies, recoverPendingDocumentCopies } from './document-copy-store';
 import { inspectDocumentCopyPortability } from '../core/document-copy-portability';
+import { planDocumentBundle } from '../core/document-bundle-plan';
+import { createSavedDocumentBundle, BundleStoreError } from './document-bundle-store';
 import type { DocumentCopyResult } from '../types/reader-api';
 import type {
   AnnotationDocumentView, AnnotationSaveResult, AnnotationSelectionInput,
@@ -1266,6 +1268,80 @@ async function recoveryPreviewFor(event: IpcMainInvokeEvent, documentPath: strin
 }
 
 function registerReaderIpc(): void {
+  ipcMain.handle('document:create-saved-bundle', async (event): Promise<DocumentCopyResult> => {
+    const session = sessionFor(event), owner = BrowserWindow.fromWebContents(event.sender);
+    if (!session || !owner) return { status: 'conflict', message: '请先打开一份已保存的文档。' };
+    if (session.document.temporary || session.editor?.dirty) return { status: 'conflict', message: '请先保存正文，再创建副本包；当前输入仍保留。' };
+    let previewCancelled = false, invalidCompanion = false, bundleWarning = '';
+    try {
+      return await withMarkdownOperation(session, async () => {
+        const checkCurrent = async () => {
+          assertCurrentSession(event, session);
+          if (session.editor?.dirty || session.document.temporary || session.document.recoveryPending ||
+              session.editor?.pendingStructureTransactionId) throw new Error('Bundle baseline unavailable.');
+          const inventory = await listDocumentTransactions(session.document.path);
+          assertCurrentSession(event, session);
+          if (inventory.some(item => !item.completed && item.status !== 'committed')) throw new Error('Bundle baseline requires recovery.');
+        };
+        await checkCurrent();
+        const sourcePath = session.document.path;
+        const selected = await dialog.showSaveDialog(owner, {
+          title: '打包文档与本地图片',
+          defaultPath: path.join(path.dirname(sourcePath), path.basename(sourcePath, path.extname(sourcePath)) + ' - 副本包.zip'),
+          filters: [{ name: '文档副本包', extensions: ['zip'] }],
+        });
+        await checkCurrent();
+        if (selected.canceled || !selected.filePath) return { status: 'cancelled', message: '已取消创建副本包，原文保持打开。' };
+        if (!path.isAbsolute(selected.filePath) || path.extname(selected.filePath).toLowerCase() !== '.zip') throw new Error('Invalid bundle destination.');
+        const targetPath = path.join(await realpath(path.dirname(selected.filePath)), path.basename(selected.filePath));
+        const receipt = await createSavedDocumentBundle({ sourcePath, targetPath,
+          expectedSourceSha256: session.document.sourceSha256,
+          validateSnapshot: async files => {
+            try {
+              decodeMarkdownBytes(files[0].bytes!);
+              if (files[1].bytes) parseAnnotationYaml(textDecoder.decode(files[1].bytes));
+              if (files[2].bytes) parseCanvasStateJson(textDecoder.decode(files[2].bytes));
+            } catch { invalidCompanion = true; throw new Error('Bundle snapshot validation failed.'); }
+          },
+          planSnapshot: async files => {
+            const plan = await planDocumentBundle(decodeMarkdownBytes(files[0].bytes!).content);
+            await checkCurrent();
+            if (!plan.portable) {
+              const reasons = [
+                plan.blockedReferenceCount ? `${plan.blockedReferenceCount} 处无法打包的引用` : '',
+                plan.htmlNodeCount ? `${plan.htmlNodeCount} 段 HTML` : '',
+                plan.unsupportedExtensionCount ? '暂未支持的 Markdown 扩展' : '',
+              ].filter(Boolean).join('、');
+              bundleWarning = `副本包检查发现${reasons}，尚未创建文件。仅支持文档目录内直接引用的 PNG、JPG、GIF、WebP 图片；其他本地文件和目录外资源需先处理。`;
+              throw new Error('Bundle dependency check refused.');
+            }
+            return plan.images.map(image => image.path);
+          },
+          review: async summary => {
+            await checkCurrent();
+            const listed = summary.files.slice(0, 8).map(file => file.path).join('\n');
+            const notes = summary.files.some(file => file.kind === 'annotations') ? '\n包含已有批注与便签。' : '';
+            const choice = await dialog.showMessageBox(owner, {
+              type: 'question', title: '确认文档副本包', message: '创建包含本地图片的 ZIP 副本包？',
+              detail: `保存到：${summary.targetPath}\n共 ${summary.files.length} 个文件，其中 ${summary.imageCount} 张图片；内容合计 ${summary.totalBytes} 字节。${notes}\n${listed}${summary.files.length > 8 ? `\n另有 ${summary.files.length - 8} 个文件。` : ''}\n保留原文件名和相对路径；网络地址不下载。解压后打开其中的 Markdown，原文保持打开。`,
+              buttons: ['创建副本包', '取消'], defaultId: 1, cancelId: 1, noLink: true,
+            });
+            if (choice.response !== 0) { previewCancelled = true; throw new Error('Bundle preview cancelled.'); }
+            await checkCurrent();
+          },
+          beforePublish: checkCurrent,
+        });
+        return { status: 'copied', name: path.basename(receipt.targetPath), count: receipt.fileCount,
+          message: `已创建副本包“${path.basename(receipt.targetPath)}”，包含 ${receipt.imageCount} 张本地图片；解压后打开其中的 Markdown，原文保持打开。` };
+      });
+    } catch (error) {
+      if (previewCancelled) return { status: 'cancelled', message: '已取消创建副本包，原文和当前输入保持。' };
+      console.error('[document-bundle]', error instanceof BundleStoreError ? error.code : 'unavailable');
+      return { status: 'conflict', message: bundleWarning || (invalidCompanion
+        ? '批注或画布文件无法安全解析，尚未创建副本包；请先检查原文档。'
+        : error instanceof BundleStoreError ? error.message : '当前文档正在处理、需要恢复或文件已变化，副本包尚未完成；原文保持不变。') };
+    }
+  });
   ipcMain.handle('document:create-saved-copy', async (event): Promise<DocumentCopyResult> => {
     const session = sessionFor(event), owner = BrowserWindow.fromWebContents(event.sender);
     if (!session || !owner) return { status: 'conflict', message: '请先打开一份已保存的文档。' };
