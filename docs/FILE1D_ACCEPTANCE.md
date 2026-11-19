@@ -47,3 +47,5 @@
 命令和日志摘要记录于本地 `out/qa/file1d-final-build-manifest.json`、`file1d-final-regression-manifest.json`、`file1d-final-guards-file1d.log`、`file1d-final-vite-a-manifest.json`。证据文件汇总包身份、全部命令和运行结果；本批没有失败运行被替换。私人测试目录、原日志 / 截图和本地安装包不随 Git 提交。
 
 后续继续拆分普通副本打开行为、其他附件 / HTML / 间接资源、源路径改写与通用压缩支持，不将本批受限包导入扩大为完整工作区迁移承诺。
+
+本批已推送 `origin/codex/file1d-open-bundle` 并创建、附加 [PR #26](https://github.com/KLucen/MerMarked/pull/26)，目标 main，待审未合并。运行时 `6f0beaa`，测试加强至 `a9ab95c`，验收 `ae3a226`；后续交付记录仅改文档。GitHub 云端 check runs / status contexts 为0，不把本地结果描述为云端CI。

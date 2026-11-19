@@ -2158,6 +2158,6 @@ ASAR4120372bytes / SHA256 A111DD7C3A1C5FD87D26697F94D5AC091DFBC4DA1019F89BEB6C52
 
 本地 out/qa/file1d-final-build-manifest.json、file1d-final-regression-manifest.json、file1d-final-guards-file1d.log、file1d-final-vite-a-manifest.json记录命令和日志摘要；file1d-collect.ps1核对460单测 / 35窗口 / 加强专项 / 7Vite、同包身份与三项用户原文件，输出FILE1D_EVIDENCE.json。本批没有失败候选被替换，测试窗口和5178服务已停止。三项用户原修改继续排除提交，测试文档 / profile、原始日志 / 截图与本地安装包不上传。
 
-GitHub连接器仍返回UNAUTHORIZED / requires reauthentication，本机已有KLucen GCM账户核验成功，沿用既有SSH和官方GitHub API同步，不新建凭据或扩大权限；PR回执随后补充。本地检查不等同云端CI，PR不自动合并。
+GitHub连接器仍返回UNAUTHORIZED / requires reauthentication，本机已有KLucen GCM账户核验成功，沿用既有SSH和官方GitHub API同步，不新建凭据或扩大权限。运行时6f0beaa、三项测试加强及验收ae3a226已推送origin/codex/file1d-open-bundle，创建并附加PR #26（https://github.com/KLucen/MerMarked/pull/26），目标main，open且未合并。首次回执核对本地 / PR精确head为ae3a226；随后交付文档提交再次推送并核对最终head。云端check runs / status contexts为0，本地检查不等同云端CI，PR不自动合并。
 
 本批未新增真实IME、安装升级卸载、物理跨屏 / 跨卷、辅助客户端、正式性能或干净Windows验收。当前恢复中的旧文档需先处理恢复；严格目录前缀别名和32层 / 128目录上限保守保留。普通副本自动切换、更多附件、HTML / 间接依赖、链接改写、通用压缩仍需后续独立切片，FILE1 / QA1 / P0不整体退出。
