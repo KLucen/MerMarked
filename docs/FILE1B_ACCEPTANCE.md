@@ -21,10 +21,31 @@ sidecar 优先、Markdown 最后独占发布；不删除或覆盖已发布目标
 ## 退出条件
 
 - [x] 原始 Markdown 引用审计与 16 项边界测试。
-- [ ] 跨目录 store、v1/v2 恢复、目的目录替换及预览期间变化测试。
-- [ ] 类型检查、完整单测、干净检出 npm ci 和 Windows make。
-- [ ] FILE1B 专项、FILE1A 与既有回归的最终包窗口验证。
-- [ ] 实际 Vite、窄窗菜单和截图复核。
+- [x] 跨目录 store、v1/v2 恢复、目的目录替换及预览期间变化测试。
+- [x] 类型检查、完整单测、干净检出 npm ci 和 Windows make。
+- [x] FILE1B 专项、FILE1A 与既有回归的最终包窗口验证。
+- [x] 实际 Vite、窄窗菜单和截图复核。
 - [ ] 构建 / 测试证据、用户三文件摘要、GitHub PR 回执。
 
 原生对话框响应可由隔离 main 模拟，不能据此声称物理对话框、真实 IME、安装或正式性能验收通过。QA1 / P0 的已有设备、增强 AX、单次拖动、卸载残留及发布门槛保持。
+
+## 已完成的最终包验证
+
+运行时代码 `a367964` 干净检出完成 `npm ci`、`npm run typecheck`、`npm test`（379/379）和 `npm run make`。本批新增 16 项原始引用审计与 14 项 store 边界测试；store 总计 36 项，两个 v2 实际子进程退出 73 后恢复阶段均通过。依赖锁与冻结的 QA1 产物保持，未新增依赖或 IPC。
+
+ASAR SHA-256 `4766D613759C2F4B9A7BC7CD319E3529A90F636AB511F6BDDBB4F4BD5CD256DB`，Setup SHA-256 `72E9AE78BDCAD9433CF9380E607F09B6DA9314E179BB5CAFAFCF46E0B33EB46F`。原 FILE1A ASAR 的 `5A3BDF5D455EF919F3405623E80E164C4386D91F49EE995567BE565DD36FC61E` 保持。安装包只在本地生成，本批没有安装或发布。
+
+同包 33 套窗口全部通过：FILE1B、FILE1A、UX9、QA2、source-composition、UX8 / 7 / 6B、A6、A7.1 / 2 / 3b / 4 / 5、A8.2 / 3 / 4 / 5、B1、UX1–5、PERF1、UX6A、PERF2、PERF3A / B / C / D / E / G。记录 `out/qa/file1b-final-a-regression-manifest.json` 没有失败或复用其他版本的结果。
+
+FILE1B 九项专项包括实际菜单的跨目录三文件复制及重开、原会话 / 模式 / 三文件 bytes/mtime、待定位及旧 basis、便签 / 标签 / 折叠 / 箭头、编辑副本不影响原文、预览取消零目标及暂存写入、本地引用与原始 HTML 在确认前拒绝、预览期间 Markdown / YAML 外部变化保留、三类目标冲突、缺失 sidecar、非法 sidecar，以及 420 px 菜单实际创建。窄窗与副本画布截图已人工视觉复核。
+
+复现入口：`npm run typecheck`、`npm test`、`npm run make`、`npm run test:e2e:file1b`。专项接受 `MERMARKD_QA_EXE`、`MERMARKD_QA_RENDERER_URL`、`MERMARKD_QA_ARTIFACT_PREFIX`，使用生成文档和绝对隔离 profile，记录实际脚本及 ASAR 摘要，旧证据不覆盖。窗口原生确认响应在 main 中模拟；真实文件系统与 IPC 执行，不推定物理对话框或真实输入法新验收。
+## 开发模式复测与收口
+
+首轮 Vite 的 FILE1B / FILE1A 通过，UX9 8/9，最后返回原阅读章节超时。测试只等目录选中标记，却未等平滑滚动到实际章节；该标记会先于滚动位置发布。`8a78744` 仅加强 `readSection()`：对应 heading 实际进入阅读区域并跨两帧稳定后才继续，保留返回原章节、视口和三文件断言，没有改变产品导航逻辑。原失败日志、报告和截图保留，不声称旧版也已复现。
+
+同一 ASAR 的加强后 UX9 九项打包专项通过；第二轮实际 Vite FILE1B / FILE1A / UX9 / UX8 / UX7 五套全部通过，独立记录 `file1b-final-vite-b-manifest.json`，端口 5178 服务和候选窗口均已关闭。没有覆盖首轮失败。完整回归仍绑定运行时代码 `a367964`，测试修正 `8a78744` 与其产品 src、package、lock 及构建配置无差异，未为测试修改重新声称新包。
+
+证据汇总见 [FILE1B_EVIDENCE.json](FILE1B_EVIDENCE.json)，包括构建、33 套窗口、首轮 Vite 失败、加强后的 UX9 专项及最终五套 Vite 身份。三项用户原文件 SHA-256 保持且排除提交。内部目录身份检查是逐次核验，不是对任意不遵守协议进程竞态的原子保证。
+
+本批本机软件退出条件通过；GitHub 回执在交付后补齐。后续先定义本地附件清单、授权、相对路径与源跨度预览，再实现资源迁移，不扩大当前入口的离线或完整工作区承诺。
