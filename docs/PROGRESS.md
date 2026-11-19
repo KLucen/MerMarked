@@ -1,5 +1,18 @@
 # MerMarkd 开发进度
 
+## 2026-11-19 · FILE1D 打开文档副本包（本机软件验证完成）
+
+PR #25 已合并至 main `bbfae8f`，本批分支 `codex/file1d-open-bundle`。范围和退出条件见 [FILE1D_ACCEPTANCE.md](FILE1D_ACCEPTANCE.md)，决定见 ADR-060。
+
+- 开始页和文件菜单增加「打开副本包…」，先只读校验 FILE1C ZIP，再选择父目录、预览新文件夹和包含批注 / 便签的清单。独立 UUID 子目录中原字节发布图片 / sidecar，Markdown 最后，最终核验成功才打开并记录最近文件；原 ZIP 保持。
+- 仅接受 stored UTF-8 ZIP32，严格 CRC / 长度 / 偏移 / 路径 / 类型 / 数量 / 大小，图片集合精确对应原 Markdown，现有 sidecar 验证 schema。新目录和文件均独占创建，复核 ZIP 与目录 / 已发布文件身份；失败保留目录，重试另建，不新增日志、不覆盖或删除已发布物。
+- dirty / 表单 / 组合输入沿用共同离开保护，取消 / 失败保持当前会话与模式；当前文档未完成保存恢复需先处理。严格目录前缀别名、最多32层 / 128目录可能保守拒绝少量已有包；通用压缩、其他附件、HTML与路径改写仍在范围外。
+- 运行时 `6f0beaa` 干净检出通过 npm ci、类型检查、460/460 单测和 make。新增19项parser与20项store测试，包含两个真实子进程退出73、父目录和junction替换、外部变更、冲突与重试。文件symlink子例因OS权限未执行，directory-junction实际执行。ASAR SHA-256 `A111DD7C3A1C5FD87D26697F94D5AC091DFBC4DA1019F89BEB6C52C50316C65E`。
+- 同包35套窗口、加强后FILE1D十一项和7套实际Vite全部通过。加强仅涉及测试 `f81bea8` / `37981c3` / `a9ab95c`，包含真实path、原字节 / mtime、PNG解码、旧basis、折叠 / 箭头、完整源码和三个模式、取消 / dirty / ZIP外改及六类损坏sidecar在父目录选择前拒绝。420px截图已复核，窗口与5178服务已停止；证据见 [FILE1D_EVIDENCE.json](FILE1D_EVIDENCE.json)。
+- 三项用户原文件摘要保持并排除提交；本地安装包未安装或公开发布。未新增真实IME、安装生命周期、物理跨屏 / 跨卷、辅助客户端、正式性能或干净Windows验收，FILE1 / QA1 / P0尚未整体退出。
+
+实现 `6f0beaa`、三项测试加强和验收 `ae3a226` 已推送 `origin/codex/file1d-open-bundle`，创建并附加 [PR #26](https://github.com/KLucen/MerMarked/pull/26)，目标 main，待审未合并。沿用已有 SSH / GCM 官方 API 认证，连接器仍需重新认证；当前云端 check runs / status contexts 为0，本地验证不当作云端CI。后续其他附件、间接依赖、源路径改写、普通副本自动切换与通用 ZIP 需要独立合同和验收。
+
 ## 2026-11-19 · FILE1C 文档与本地图片副本包（本机软件验证完成）
 
 PR #24 已合并至 main `d584144`，本批分支 `codex/file1c-document-bundle`。范围和退出条件见 [FILE1C_ACCEPTANCE.md](FILE1C_ACCEPTANCE.md)，决定见 ADR-059。

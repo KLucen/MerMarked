@@ -2131,3 +2131,33 @@ FILE1C十项最终包专项全部通过。ZIP由pwsh宿主的System.IO.Compressi
 34套最终包回归和6套实际Vite全部通过，file1c-final-a-regression-manifest.json / file1c-final-vite-a-manifest.json记录各命令与日志摘要，后者serverStopped=true，窗口亦停止。file1c-collect.ps1核对421单测、34窗口、6Vite、同包身份及三用户文件，生成FILE1C_EVIDENCE.json；最终候选没有失败重试。实现945c0f5与验收b5bb4b1已推送origin/codex/file1c-document-bundle，创建并附加PR #25（https://github.com/KLucen/MerMarked/pull/25），目标main，待审未合并。沿用本机已有KLucen的SSH/GCM认证和官方API，连接器仍要求重新认证，没有新增凭据或扩大权限；最终远端精确head另核准，本地检查不等同云端CI。README纠正仍声称仅阅读可进入的历史描述，并补充ZIP解压和图片范围；产品架构与模式边界记录副本包属于共同文档命令。三项用户原文件继续排除提交。
 
 本批不新增真实IME、安装生命周期、物理跨屏 / 跨卷、辅助客户端或正式性能样本。通用其他文档 / 附件、HTML依赖、链接改写、压缩与应用内导入仍是后续范围，FILE1 / QA1 / P0未整体退出。
+
+## 2026-11-19 · FILE1D 在应用内打开副本包
+
+### 需求与设计
+
+按用户“继续完成下一批的开发”接续已合并 PR #25 / main bbfae8f，分支 codex/file1d-open-bundle。开始页和文档菜单增加“打开副本包…”，只读校验 FILE1C 的 stored UTF-8 ZIP32，确认后解入独立新目录并打开 Markdown。保留正文、已有两个 sidecar 和受支持直接图片的原字节 / 名称 / 路径；旧锚点基线不改写，源 ZIP 不修改。通用压缩、其他附件与间接依赖不在本批范围。决定 ADR-060，完整合同 FILE1D_ACCEPTANCE.md。
+
+原生 ZIP 选择后先校验 CRC、头字段、偏移、严格 UTF-8、路径 / 别名 / 尺寸、Markdown 引用图片集合、图片文件头及 sidecar schema，再选择父目录和预览数量 / 大小 / 批注提示。无参数 IPC 不给 renderer 任意路径写权限。复用共同离开保护；main 操作锁保护旧会话，最终会话校验同步衔接替换，避免开始页最后微任务让出造成会话覆盖。
+
+每次新建 UUID 目录，核对 canonical path / dev / ino，拒绝 symlink / junction。私有 wx 文件写入 sync 后独占硬链接发布，图片 / companion 在先，Markdown 在后，最终核验全部成功才打开。失败保留已生成目录和原 ZIP，重试另建目录，不复用或回滚旧目录，不增加导入日志。MD 存在不替代失败提示和完整性核验；不承诺目录项断电持久性。
+
+### 修改与验证
+
+新增 core/document-bundle-archive、main/document-bundle-import-store、窄 IPC / preload / types、开始页 / 菜单入口、parser / store 测试及子进程 fixture、11场景 packaged E2E。document-bundle-store 仅导出已有图片头函数复用，无运行逻辑改写，无依赖或 schema 变更。按 React skill复核新增入口与 hooks，继续沿用已有可访问按钮及同步离开锁，不引入新状态副本。
+
+运行时6f0beaa在独立detached检出 mermarkd-file1d-final通过 npm ci、npm run typecheck、npm test（460/460）和 npm run make。19项parser覆盖实际writer往返、独立zlib CRC、截断 / 危险ZIP / UTF8 / 命名空间 / 实际容量边界。20项store覆盖只读源、取消零输出、来源与目录身份变化、junction、未引用 / 缺失图片、目标冲突、已发布数据外改、失败保留与新目录重试；两个真实子进程MD前 / 后退出73分别无MD入口 / 完整包，源ZIP bytes / mtime保持。文件symlink子例受Windows EPERM未执行，directory junction实际通过。
+
+ASAR4120372bytes / SHA256 A111DD7C3A1C5FD87D26697F94D5AC091DFBC4DA1019F89BEB6C52C50316C65E；Setup154852864bytes / SHA256 DDBF0AA10805AE457151F8531AA0614C81B95C3A48D12A46D9F5CEB057B97140。构建时源clean、lock、主区index与既有QA1冻结产物保持，产物没有安装或公开发布。
+
+同一包35套窗口全部通过。首轮FILE1D 11项成功后，review发现应补损坏sidecar的真实main校验与导入后模式零写入证据，测试提交f81bea8 / 37981c3 / a9ab95c扩充六种YAML/JSON非法语法、未知schema和非法UTF8（CRC正确），完整编辑源码 / 可编辑状态和导入文件bytes / mtime断言。冻结检出仅快进这些测试提交，运行时 / ASAR不变，加强后FILE1D 11项再次通过，不重建未变化运行时。
+
+实际Vite的FILE1D / FILE1C / FILE1B / FILE1A / UX9 / UX8 / UX7七套均通过；420px开始页、菜单和导入画布截图视觉检查通过。真实最近文档完整path防止同名原文假通过；PNG实际解码，旧basis便签 / 标签、折叠 / 箭头及原ZIP不变。三个取消点、dirty保存 / 放弃 / 取消、main直接拒绝、错误重试、预览外改和不覆盖既有父目录分别验证。原生对话框由隔离main模拟，不当作人工原生对话框或真实IME验收。
+
+### 收口与后续
+
+本地 out/qa/file1d-final-build-manifest.json、file1d-final-regression-manifest.json、file1d-final-guards-file1d.log、file1d-final-vite-a-manifest.json记录命令和日志摘要；file1d-collect.ps1核对460单测 / 35窗口 / 加强专项 / 7Vite、同包身份与三项用户原文件，输出FILE1D_EVIDENCE.json。本批没有失败候选被替换，测试窗口和5178服务已停止。三项用户原修改继续排除提交，测试文档 / profile、原始日志 / 截图与本地安装包不上传。
+
+GitHub连接器仍返回UNAUTHORIZED / requires reauthentication，本机已有KLucen GCM账户核验成功，沿用既有SSH和官方GitHub API同步，不新建凭据或扩大权限。运行时6f0beaa、三项测试加强及验收ae3a226已推送origin/codex/file1d-open-bundle，创建并附加PR #26（https://github.com/KLucen/MerMarked/pull/26），目标main，open且未合并。首次回执核对本地 / PR精确head为ae3a226；随后交付文档提交再次推送并核对最终head。云端check runs / status contexts为0，本地检查不等同云端CI，PR不自动合并。
+
+本批未新增真实IME、安装升级卸载、物理跨屏 / 跨卷、辅助客户端、正式性能或干净Windows验收。当前恢复中的旧文档需先处理恢复；严格目录前缀别名和32层 / 128目录上限保守保留。普通副本自动切换、更多附件、HTML / 间接依赖、链接改写、通用压缩仍需后续独立切片，FILE1 / QA1 / P0不整体退出。

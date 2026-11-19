@@ -23,6 +23,7 @@ const api: MerMarkdApi = Object.freeze({
     return () => ipcRenderer.removeListener('workspace:close-finished', receive);
   },
   openMarkdown: () => ipcRenderer.invoke('document:open'),
+  openDocumentBundle: () => ipcRenderer.invoke('document:open-bundle'),
   newMarkdown: () => ipcRenderer.invoke('document:new'),
   closeMarkdown: () => ipcRenderer.invoke('document:close'),
   createSavedDocumentCopy: () => ipcRenderer.invoke('document:create-saved-copy'),

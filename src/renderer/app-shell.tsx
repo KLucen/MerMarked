@@ -48,6 +48,7 @@ export interface AppShellProps {
   readonly taskLabel: string;
   readonly taskAvailable: boolean;
   readonly onNewDocument?: () => void;
+  readonly onOpenBundle?: () => void;
   readonly onCloseDocument?: () => void;
   readonly departureNotice?: ReactNode;
   readonly onOpenRecent?: (path: string) => void;
@@ -126,6 +127,7 @@ export function AppShell({
   taskLabel,
   taskAvailable,
   onNewDocument,
+  onOpenBundle,
   onCloseDocument,
   departureNotice,
   onOpenRecent,
@@ -361,6 +363,7 @@ export function AppShell({
         <WorkspacePopover key={`menu-${document.path}`} label="文档菜单" trigger={<MoreHorizontal size={18} aria-hidden="true" />}>
           {onNewDocument && <button type="button" data-workspace-new="true" onClick={onNewDocument} disabled={opening} aria-keyshortcuts="Control+N"><FilePlus2 size={15} aria-hidden="true" />新建文档 <kbd>Ctrl+N</kbd></button>}
           <button type="button" onClick={onOpen} disabled={opening}><FolderOpen size={15} aria-hidden="true" />打开文档 <kbd>Ctrl+O</kbd></button>
+          {onOpenBundle && <button type="button" data-workspace-open-bundle="true" onClick={onOpenBundle} disabled={opening}>打开副本包…</button>}
           {onCloseDocument && <button type="button" data-workspace-close="true" onClick={onCloseDocument} disabled={opening} aria-keyshortcuts="Control+W"><X size={15} aria-hidden="true" />关闭文档 <kbd>Ctrl+W</kbd></button>}
           {onSaveAs && <button type="button" data-workspace-save-as="true" aria-keyshortcuts="Control+Shift+S" onClick={onSaveAs} disabled={saving}>选择保存位置…</button>}
           {onCreateSavedCopy && <button type="button" data-workspace-create-copy="true" onClick={onCreateSavedCopy} disabled={opening || saving}
