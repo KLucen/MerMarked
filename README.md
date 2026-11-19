@@ -46,3 +46,5 @@ MerMarkd 是开发中的本地 Markdown 阅读与章节卡片软件。桌面应�
 ## 本地开发
 
 首发开发环境为 Windows、Node.js 与 npm。执行 `npm ci` 安装锁定依赖，`npm start` 运行桌面应用，`npm test` 和 `npm run typecheck` 验证代码，`npm run make` 生成本地 Windows 测试安装包。若 Electron 下载因 GitHub 超时，可在执行构建的同一终端设置 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/` 后重试。最新验证结果以进度记录为准。
+
+`npm ci` 的 postinstall 会为锁定的 `@xyflow/system@0.0.83` 校验并应用边缘拖动顺序补丁。构建需完成这一步；依赖版本或源字节变化会明确失败，更新依赖时须重新审查补丁。范围与证据见 [QA3 验收](docs/QA3_ACCEPTANCE.md) 和 ADR-061。

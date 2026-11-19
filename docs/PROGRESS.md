@@ -1,5 +1,11 @@
 # MerMarkd 开发进度
 
+## 2026-11-20 · QA3 边缘拖动修复与原生诊断（验证中）
+
+回到QA1软件收口，基于已合并PR #26的main `4214054`，分支 `codex/qa3-software-closeout`。范围见 [QA3_ACCEPTANCE.md](QA3_ACCEPTANCE.md)，决定ADR-061。已稳定复现三个缩放的边缘auto-pan约10–11 CSS px位置偏差，中央六场景通过；以固定依赖字节的安装补丁捕获原启动条件，在pointer更新后启动首次pan，10项聚焦测试通过，正在完成窗口及冻结构建验证。只移动guard的原型8/9保持失败，最终方案保留原阈值启动时机与完整断言。
+
+真实原生辅助查询已触发inlineTextBoxes并记录完整主线程AX长任务；分批暴露原型未达目标，已撤回并保留本地证据。Squirrel旧包实际三hook全部通过，未复现提前进程退出，拟议产品修改同样撤回；卸载二进制残留保持未解释。历史QA1单次大跳、AX性能、长期内存、硬件与发布门槛不据本批关闭。
+
 ## 2026-11-19 · FILE1D 打开文档副本包（本机软件验证完成）
 
 PR #25 已合并至 main `bbfae8f`，本批分支 `codex/file1d-open-bundle`。范围和退出条件见 [FILE1D_ACCEPTANCE.md](FILE1D_ACCEPTANCE.md)，决定见 ADR-060。
