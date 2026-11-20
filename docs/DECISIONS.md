@@ -553,7 +553,7 @@
 
 ## ADR-061 首次 auto-pan 在当前 pointer 更新后启动，安装补丁绑定精确依赖字节
 
-- 2026-11-20，QA3。三个缩放的边缘拖动稳定偏差约10–11 CSS px并持久化，中央对照通过。锁定 `@xyflow/system@0.0.83` 的auto-pan先修改lastPos并等待panBy，同一drag随后用pan之前计算的pointerPos覆盖校正。在原位置捕获首次启动条件，再于pointer更新后启动，保留原先越过阈值后下一move才启动的时机、速度、算法及release / cancel原字节；不在松手时补偿，也不关闭auto-pan。
+- 2026-11-20，QA3。三个缩放的边缘拖动稳定偏差约10–11 CSS px并持久化，中央对照通过。锁定 `@xyflow/system@0.0.83` 的auto-pan先修改lastPos并等待panBy，同一drag随后用pan之前计算的pointerPos覆盖校正。在原位置捕获首次启动条件，再于pointer更新后启动，保留原先越过阈值后下一move才启动的事件时机、autoPanSpeed配置、calcAutoPan函数公式及release / cancel原字节。首次计算使用本次更新的mousePosition，距离不承诺与旧的过时指针结果相同；不在松手时补偿，也不关闭auto-pan。
 - 不升级未验证的整套React Flow、不引入新依赖。`scripts/patch-xyflow-autopan.mjs` 在npm postinstall核对包名 / 版本与两个ESM入口的完整SHA。原始 `BA3932F6CEAB1529C9F3587695B43BDAE84E31D356EB153473DF5F5C38E6BD5C`，修复后 `A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699`；先验证两份再写，已修复状态幂等，一份完成可续，未知版本 / 字节安装失败。package-lock只增加根hasInstallScript标记。
 - Vite生产与开发使用这两个ESM入口；未改变不被应用使用的UMD入口。干净npm ci必须执行并验证补丁。未来更新依赖须审查上游修复并移除或更新该精确补丁，不能放宽hash匹配。代价是项目维护一处受限安装补丁，拒绝无关字节变化以保持可审查。
 - 只移动guard的原型会提前首次启动，在Vite九场景中8/9；该失败保留，最终捕获条件方案同时用真实handler与窗口验证启动边界。pending panBy在release后的行为未扩大修复。历史QA1单次大跳仍未定位；原生AX及卸载残留仍保持独立未解决状态。见QA3_ACCEPTANCE.md。
