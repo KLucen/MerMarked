@@ -2201,3 +2201,43 @@ GitHub连接器仍返回UNAUTHORIZED / requires reauthentication，本机已有K
 qa3-collect.ps1核准470单测、37窗口、加强后9项专项、8Vite、同包身份、安装补丁与三项用户文件，输出QA3_EVIDENCE.json；候选进程与5178服务均已停止。原生trace、失败原型和Squirrel旧包全绿按其真实含义分别记录。GitHub连接器仍要求重新认证，沿用既有KLucen SSH / GCM和官方API交付；运行时55af10b、测试2cceee7与验收9e04f2d已推送origin/codex/qa3-software-closeout，创建并附加PR #27（https://github.com/KLucen/MerMarked/pull/27），目标main，open且未合并，首次回执与本地精确head9e04f2d一致。随后交付文档提交再次推送并核对最终head。云端check runs / status contexts为0，不将本地验证描述为云端CI，不自动合并。
 
 QA1历史单次大跳、原生AX性能、卸载二进制残留与长期内存仍未解决，硬件和公开发布门槛独立等待。本批不进行新的物理IME、真实安装生命周期、跨屏 / 跨卷或干净Windows验收，不标记QA1 / P0整体退出。
+
+## 2026-11-20 · QA4 标题辅助名称、Unicode编辑与AX诊断
+
+接续已合并PR #27 / main `898c9ac`，分支 `codex/qa4-reader-ax`。原计划比较常驻阅读编辑宿主的真实辅助树成本，依据证据决定是否改造宿主生命周期；最终交付两个实际复现的缺陷修复，合同见QA4_ACCEPTANCE.md。没有修改文件格式、IPC、依赖版本或持久化模型。
+
+### 原生宿主对照与测量边界
+
+新增qa4-reader-ax-session.mjs，绑定绝对EXE、passed构建清单及ASAR / 脚本摘要，生成5,271,620字节、200标题 / 500高亮样本。控制服务仅loopback并校验每会话token；不设置或关闭AX特性。正文、侧车bytes / mtime、DOM属性恢复及完整语义文本逐次核验。原生客户端按computer-use技能通过@oai/sky查询，激活nativeAPIs / webContents / inlineTextBoxes / extendedProperties。
+
+同一QA3冻结包先product两次，再readonly、one-host、static-focusable，最后恢复product两次；所有探针属性匹配且原文保持。trace中renderer主SerializeLifecycleStage分别仍为514–527 / 516–518 / 517–522 / 518–525ms，Browser OnAccessibilityEvents从product614–626ms降为其他模式321–338ms；这是浏览器侧收益信号，不能宣称整条路径预算达标。renderer任务在ready后才开始，Browser主事件结束甚至在测量end后389–696ms；嵌套事件不相加，跨进程可能重叠。
+
+首轮被其他应用遮挡、焦点失效，保留为诊断；用户恢复前台后再做普通对照，仍记录534–548ms renderer长任务。两帧结束策略会在下一次rAF gap进入记录前结束，不能用部分50ms帧值掩盖已记录的长任务。工具v2补明确1500ms观察尾窗与实际起止，readyMs保持独立；仍只作诊断，不将end视为全部AX工作已完成。完整trace551,508,815字节 / SHA256 `3fda3e045d7df52ea2540712e0737d27014507f7f40fec38e8c9cc1d1a5cbd61`保留本地，不上传原始trace。
+
+内部CDP完整AX树为53,389节点，其中48,013个InlineTextBox；不能把trace中的Dispose调用数当成唯一节点或inline节点数。大样本原生document_text截到19999字，尾标记未出现在该快照，不能宣布原生全文验收；内部CDP存在尾部是另一类证据。未采用会省略部分屏外辅助内容的content-visibility:auto，也未重做QA3已失败的分批AX暴露。
+
+### 标题名称与字素缺陷
+
+真实AX检查发现200个可编辑正文heading都被title中的统一操作提示命名；同包DOM探针只删除title会变为空名。h1–h6以已有章节id或React useId补全id引用自身实时DOM内容，提示改为aria-description。保留普通段落、目录id、contentEditable与全部焦点 / 组合 / blur提交生命周期。
+
+新增qa4-reader-accessibility-packaged.mjs，使用实际backendDOMNodeId匹配AX角色、name、level、description及StaticText，覆盖h1–h6、重复中文emoji、inline格式与目录外嵌套标题。实际可信Input.insertText检查未提交DOM名称实时变化，Escape、blur提交、跨模式撤销 / 重做及显式保存；BOM / CRLF / 无尾换行精确预期，批注映射和canvas bytes / mtime分别断言。没有用DOM aria属性或源码grep代替AX语义。
+
+旧QA3包专项在第一个heading实际名称断言失败。初始产品 `d1f4e91` 干净构建470单测、37套窗口全部通过，但同一专项在emoji尾部追加后的blur提交失败，已保留qa4-names-old-a / qa4-names-new-a两份不同阶段失败。纯核心独立复现确认applyReaderMappedTextEdit按UTF-16公共前后缀和±1边界取样，会拆到代理位、组合重音或ZWJ内部，resolveSelection因而安全拒绝；不是AX名称修复改变了提交生命周期。
+
+核心改为两侧完整字素前缀及共同字素后缀边界，以单调边界流避免逐字符数组；零宽插入通过完整相邻字素映射，扩展范围仍限定同一exact Markdown叶并经过原resolveSelection校验。孤立代理位明确拒绝，Unicode内容不规范化，跨叶与实体继续保守拒绝。新增6组参数化测试，原12项保留；聚焦18/18与typecheck通过。额外固定种子1200组普通标题的Unicode插删替精确源码检查通过，独立审查亦未发现可操作问题。
+
+### 最终候选验证与证据
+
+运行时 `975a2db` 在新detached检出mermarkd-qa4b-final完成npm ci、typecheck、476/476单测及make。两个@xyflow/system ESM入口仍为A24AD58C…C1E699，lock、旧QA1冻结产物及源码clean均核验。ASAR4,121,767字节 / SHA `A1A6BE43536B7DEF963B6FA55B28742A8451AF610A2DE1900D0188DA487370CE`，Setup154,853,376字节 / SHA `DD99A659552F41C812845E05AF17003C9D30B29EE68C9F084909DF9BBD29C7DB`。仅本地生成，未安装或公开发布。
+
+最终同ASAR的38套打包回归及九套实际Vite全部通过，服务5178已停止。标题专项九阶段包含实际AX、可信输入和精确保存，原生只读hold期间三文件保持。首个原生小样本只取到窗口壳，截图仍为聊天界面，后续查询时有界hold已关闭，因此独立保存invalid记录；重新初始化Sky客户端后，第二次原生查询确认9个正文heading的真实名称和完整末尾，包括目录外嵌套标题。原生名称 / 尾部、内部AX描述 / 层级、物理IME和语音输出是不同证据，不互相替代。
+
+同包v2诊断qa4-ax-candidate-b经真实原生查询启用全部四项特性，前后均聚焦 / 可见 / 未最小化，完成打开、两次卡片 / 阅读往返、稳定采样及滚至末尾。每次实际观察尾窗至少1500ms，打开ready1967ms、max gap550ms / long task552ms；返回阅读ready约87ms，但尾窗捕捉538 / 544ms任务及约542 / 546ms帧间隔，一次切卡ready约436ms。全部仍为诊断，不是正式性能通过。
+
+最终内部完整AX为53,389节点 / 48,013 InlineTextBox，200正文标题按顺序均为Heading 0..199，尾标记存在，500高亮保持；原生大样本快照再次截到19999字，不能据此证明原生全文或尾部已验。stop重新核对ASAR / 构建清单 / 脚本 / 三文件原字节和mtime，窗口及服务均已结束。qa4-collect.mjs核准构建、476单测、38窗口、9Vite、原生小样本、诊断边界与三项用户摘要，生成QA4_EVIDENCE.json；原始失败、trace及fixtures保留本地不上传。
+
+实际执行包括两次独立干净构建helper（各自npm ci / typecheck / test / make）、最终qa4b-full-regression.ps1、qa4b-vite-check-b.ps1、标题专项旧 / 初始 / 最终各唯一prefix、原生hold A / B、无GUI fixture check、核心18测及1200生成检查、诊断会话A / B、内部AX检查及证据收集。初始37套结果不能替代最终38套，未覆盖项在证据中保留。三项用户原修改摘要保持且排除提交。GitHub连接器仍需重新认证，沿用已核验的KLucen SSH / 官方API交付，不自动合并。
+
+大文档原生AX性能、历史单次大跳、卸载二进制残留、长期内存及设备 / 发布门槛继续未解决。本批不将浏览器可信输入当作物理IME，不进行真实安装生命周期、跨物理屏幕 / 卷或干净Windows验收，QA1 / P0整体状态保持。
+
+交付：`d1f4e91`、`975a2db`、验收 `33f418b` 已通过SSH推送codex/qa4-reader-ax。官方API以现有KLucen凭证创建PR #28（https://github.com/KLucen/MerMarked/pull/28），首次head与本地 / 远端33f418b完全一致，目标main，open且未合并，并附加到当前任务；未触发自动合并。check runs / status contexts为0，不将本地验收当作云端CI。随后交付文档单独提交、再次推送及核对最终head，工作区仅保留三项用户原修改。

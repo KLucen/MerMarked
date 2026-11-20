@@ -1,4 +1,4 @@
-import { createElement, useEffect, useRef, useState } from 'react';
+import { createElement, useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode, ClipboardEvent, FormEvent } from 'react';
 
 interface ReaderEditableBlockProps {
@@ -48,6 +48,10 @@ export function ReaderEditableBlock({
   id,
   tabIndex,
 }: ReaderEditableBlockProps) {
+  // Chromium does not name editable headings from their contents automatically.
+  // Refer to the live DOM text so unsaved input is reflected without a stale label.
+  const generatedId = useId();
+  const headingId = as === 'p' ? undefined : (id ?? `reader-heading-${generatedId}`);
   const elementRef = useRef<HTMLElement | null>(null);
   const originalRef = useRef(sourceText);
   const [restoreVersion, setRestoreVersion] = useState(0);
@@ -144,14 +148,15 @@ export function ReaderEditableBlock({
   return createElement(as, {
     key: restoreVersion,
     ref: (element: HTMLElement | null) => { elementRef.current = element; },
-    id,
+    id: headingId ?? id,
+    'aria-labelledby': headingId,
     tabIndex,
     className: [className, enabled ? 'reader-editable-block' : undefined].filter(Boolean).join(' ') || undefined,
     contentEditable: enabled,
     suppressContentEditableWarning: true,
     'data-reader-editable': enabled ? 'true' : undefined,
     'data-source-block-start': blockStart,
-    title: enabled ? '点击正文直接编辑；换行或复杂编辑可在源码中继续' : undefined,
+    'aria-description': enabled ? '点击正文直接编辑；换行或复杂编辑可在源码中继续' : undefined,
     onFocus: enabled ? () => { editingRef.current = true; } : undefined,
     onCompositionStart: () => { composingRef.current = true; pendingBlurRef.current = false; },
     onCompositionEnd: () => {

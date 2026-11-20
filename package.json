@@ -46,6 +46,8 @@
     "test:e2e:file1d": "node tests/e2e/file1d-open-bundle-packaged.mjs",
     "test:e2e:qa3-drag": "node tests/e2e/qa3-canvas-drag-packaged.mjs",
     "test:e2e:qa3-squirrel": "node tests/e2e/qa3-squirrel-startup-packaged.mjs",
+    "test:e2e:qa4-reader": "node tests/e2e/qa4-reader-accessibility-packaged.mjs",
+    "test:qa:reader-ax": "node tests/e2e/qa4-reader-ax-session.mjs",
     "test:qa:accessibility-observed": "node tests/e2e/qa2-accessibility-observed-packaged.mjs",
     "test:e2e:ux8": "node tests/e2e/ux8-card-reading-packaged.mjs",
     "test:e2e:perf2": "node tests/e2e/perf2-background-reading-packaged.mjs",

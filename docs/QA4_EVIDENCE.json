@@ -1,0 +1,545 @@
+{
+  "batch": "QA4",
+  "date": "2026-11-20",
+  "status": "local-software-slice-verified-not-QA1-exit",
+  "runtimeSourceCommit": "975a2dbf00d132989eba6dfbde810b85450fdc70",
+  "build": {
+    "manifest": {
+      "path": "out/qa/qa4b-final-build-manifest.json",
+      "bytes": 10902,
+      "sha256": "ae2ea078c71da36058d6a63e3e6a647f7ec98cb5f681c619d2b3d1c23d1f6c63"
+    },
+    "tests": 476,
+    "passed": 476,
+    "failed": 0,
+    "cleanSource": true,
+    "lockUnchanged": true,
+    "dependencyPatch": [
+      {
+        "bytes": 155053,
+        "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+      },
+      {
+        "bytes": 155053,
+        "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "app.asar",
+        "bytes": 4121767,
+        "sha256": "A1A6BE43536B7DEF963B6FA55B28742A8451AF610A2DE1900D0188DA487370CE"
+      },
+      {
+        "name": "MerMarkd-0.1.0 Setup.exe",
+        "bytes": 154853376,
+        "sha256": "DD99A659552F41C812845E05AF17003C9D30B29EE68C9F084909DF9BBD29C7DB"
+      },
+      {
+        "name": "RELEASES",
+        "bytes": 79,
+        "sha256": "6A83A843EAB6FC683588319A1096E0BE5FA9BA5595D5613B32D003AEA06CF67E"
+      },
+      {
+        "name": "MerMarkd-0.1.0-full.nupkg",
+        "bytes": 154097850,
+        "sha256": "C6EE5037D170AB8D3620D67214AF2F25F93402EC36B1AD8C52587E662A30C183"
+      }
+    ]
+  },
+  "packaged": {
+    "manifest": {
+      "path": "out/qa/qa4b-final-regression-manifest.json",
+      "bytes": 14967,
+      "sha256": "bb99bda809ad7e1a931307975619e5927549914977a5c5a439fa1d596fff8da0"
+    },
+    "suites": [
+      "qa4-reader",
+      "qa3-drag",
+      "qa3-squirrel",
+      "file1d",
+      "file1c",
+      "file1b",
+      "file1a",
+      "ux9",
+      "qa2",
+      "source-composition",
+      "ux8",
+      "ux7",
+      "ux6b",
+      "a6",
+      "a7-1",
+      "a7-2",
+      "a7-3b",
+      "a7-4",
+      "a7-5",
+      "a8-2",
+      "a8-3",
+      "a8-4",
+      "a8-5",
+      "b1",
+      "ux1",
+      "ux2",
+      "ux3",
+      "ux4",
+      "ux5",
+      "perf1",
+      "ux6a",
+      "perf2",
+      "perf3a",
+      "perf3b",
+      "perf3c",
+      "perf3d",
+      "perf3e",
+      "perf3g"
+    ]
+  },
+  "vite": {
+    "manifest": {
+      "path": "out/qa/qa4b-final-vite-b-manifest.json",
+      "bytes": 4008,
+      "sha256": "4c134271b7c60bccd153087b0942cd8c89a329a2c66ad818f5347b4c5f3ace1d"
+    },
+    "suites": [
+      "qa4-reader",
+      "qa3-drag",
+      "file1d",
+      "file1c",
+      "file1b",
+      "file1a",
+      "ux9",
+      "ux8",
+      "ux7"
+    ],
+    "serverStopped": true
+  },
+  "focused": {
+    "report": {
+      "path": "out/qa/qa4b-names-native-b.json",
+      "bytes": 8106,
+      "sha256": "5c0298fe72f48cb58ec5a52e4c99884c94522e3b6670ccc5a0dcc8cd10ab4b3f"
+    },
+    "checks": [
+      "initial-reader",
+      "source-only",
+      "canvas-hidden-reader",
+      "returned-reader",
+      "escaped-reader",
+      "committed-heading",
+      "undone-heading",
+      "redone-heading",
+      "saved-reader"
+    ],
+    "fixture": {
+      "sourceSha256": "3b78817dfd7b9f08b51ca997ec64322c0e654a6f7e5b89c5575d1a94396028da",
+      "bytes": 386,
+      "headings": 9,
+      "expectedSavedSha256": "d2730d0b48317346ed846fbffff5a21a4df0d125651c8736f0d958f1a410db58",
+      "expectedSavedBytes": 405,
+      "bom": true,
+      "crlf": true,
+      "trailingNewline": false
+    },
+    "savedFiles": [
+      {
+        "suffix": "",
+        "bytes": 405,
+        "sha256": "d2730d0b48317346ed846fbffff5a21a4df0d125651c8736f0d958f1a410db58",
+        "mtimeNs": "1795169648912256100"
+      },
+      {
+        "suffix": ".annotations.yaml",
+        "bytes": 884,
+        "sha256": "801bea93d737f1cc24c6a365186041151caa34d5392e15c64595b0607cee3c40",
+        "mtimeNs": "1795169648928325500"
+      },
+      {
+        "suffix": ".mermarkd.json",
+        "bytes": 4594,
+        "sha256": "7c1bf53c10d5259a19d4344eaa29606ce2ca638f1683e484e133d6288bbda75b",
+        "mtimeNs": "1795169645932970900"
+      }
+    ],
+    "sourceAndCompanionsUnchangedDuringNativeHold": true
+  },
+  "native": {
+    "report": {
+      "path": "out/qa/qa4b-native-names.json",
+      "bytes": 7449,
+      "sha256": "c0b6c0ac7a713eee38acbab98cac01dc12635d0ea47768909bc5a2648980493e"
+    },
+    "earlierUnacceptedAttempt": {
+      "path": "out/qa/qa4b-native-names-a-invalid.json",
+      "bytes": 988,
+      "sha256": "97e53da4d8b2f614ef92c9acc1218f9bda63a54d42141ef77f84dae4c38281b3"
+    },
+    "headingNames": [
+      "中文重复😀已提交中文🚀",
+      "中文重复😀",
+      "格式 强调😀 与 链接🚀",
+      "三级中文🌟",
+      "四级标题🍀",
+      "五级标题🌙",
+      "六级标题🪁",
+      "引用标题🌿",
+      "列表标题🧭"
+    ],
+    "hasTail": true,
+    "boundary": "Native heading text controls and complete small-fixture tail verified. Description/levels were checked separately through internal Chromium AX. No screen-reader speech, native IME or performance pass is claimed."
+  },
+  "diagnostics": {
+    "baseline": {
+      "path": "out/qa/qa4-ax-baseline-a-session.json",
+      "bytes": 320090,
+      "sha256": "331835f0880cae307e8d2e555e14efe23458d233e9df4f77b978a172ffbe4c6e"
+    },
+    "trace": {
+      "bytes": 551508815,
+      "sha256": "3fda3e045d7df52ea2540712e0737d27014507f7f40fec38e8c9cc1d1a5cbd61",
+      "groups": {
+        "product": {
+          "samples": 4,
+          "rendererSerializeMs": {
+            "min": 514.107,
+            "max": 527.463
+          },
+          "browserAXMs": {
+            "min": 613.687,
+            "max": 625.842
+          },
+          "rendererStartAfterReadyMs": {
+            "min": 18.177,
+            "max": 77.079
+          },
+          "browserEndAfterMeasurementMs": {
+            "min": 679.923,
+            "max": 695.661
+          }
+        },
+        "readonly": {
+          "samples": 2,
+          "rendererSerializeMs": {
+            "min": 515.702,
+            "max": 518.137
+          },
+          "browserAXMs": {
+            "min": 325.438,
+            "max": 335.151
+          },
+          "rendererStartAfterReadyMs": {
+            "min": 15.933,
+            "max": 64.553
+          },
+          "browserEndAfterMeasurementMs": {
+            "min": 391.442,
+            "max": 402.333
+          }
+        },
+        "one-host": {
+          "samples": 2,
+          "rendererSerializeMs": {
+            "min": 517.015,
+            "max": 522.119
+          },
+          "browserAXMs": {
+            "min": 335.507,
+            "max": 337.701
+          },
+          "rendererStartAfterReadyMs": {
+            "min": 17.032,
+            "max": 67.904
+          },
+          "browserEndAfterMeasurementMs": {
+            "min": 404.497,
+            "max": 409.757
+          }
+        },
+        "static-focusable": {
+          "samples": 2,
+          "rendererSerializeMs": {
+            "min": 518.304,
+            "max": 524.566
+          },
+          "browserAXMs": {
+            "min": 321.251,
+            "max": 333.387
+          },
+          "rendererStartAfterReadyMs": {
+            "min": 16.006,
+            "max": 66.521
+          },
+          "browserEndAfterMeasurementMs": {
+            "min": 388.966,
+            "max": 404.701
+          }
+        }
+      }
+    },
+    "ordinaryBaseline": "Focused samples still recorded 534-548ms renderer long tasks; the v1 two-rAF frame measurement can end before its next gap. No budget pass.",
+    "candidate": {
+      "path": "out/qa/qa4-ax-candidate-b-session.json",
+      "bytes": 395877,
+      "sha256": "9c58b5466c6e441c143476faea55796e3d7f10d249f539891f663371c35faf34"
+    },
+    "observationPolicy": {
+      "id": "qa4-post-ready-observation-v2",
+      "minimumObservationMs": 1500,
+      "finalAnimationFrames": 2,
+      "anchor": "ready-painted for actions with a readiness condition; action-completed for other actions",
+      "readyMetric": "inputToReadyPaintMs remains independent of the observation tail",
+      "boundary": "Diagnostic observation only; native AX work may continue after end and this is not a performance budget pass."
+    },
+    "candidateOperations": [
+      {
+        "id": "qa4-ax-candidate-b-1-open",
+        "action": "open",
+        "eligibility": "recorded-focused-diagnostic",
+        "readyMs": 1967,
+        "maxFrameGapMs": 550,
+        "longTasks": [
+          {
+            "start": 26283.40000000596,
+            "duration": 552
+          }
+        ],
+        "observation": {
+          "policyId": "qa4-post-ready-observation-v2",
+          "minimumObservationMs": 1500,
+          "finalAnimationFrames": 2,
+          "anchor": "ready-painted",
+          "anchorTime": 26285.60000000894,
+          "tailWaitStarted": 26285.60000000894,
+          "targetTime": 27785.60000000894,
+          "tailWaitFinished": 27788.90000000596,
+          "observedAfterAnchorMs": 1512.0999999940395
+        },
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa4-ax-candidate-b-2-cards",
+        "action": "cards",
+        "eligibility": "recorded-focused-diagnostic",
+        "readyMs": 255.6000000089407,
+        "maxFrameGapMs": 50,
+        "longTasks": [],
+        "observation": {
+          "policyId": "qa4-post-ready-observation-v2",
+          "minimumObservationMs": 1500,
+          "finalAnimationFrames": 2,
+          "anchor": "ready-painted",
+          "anchorTime": 28454.40000000596,
+          "tailWaitStarted": 28484,
+          "targetTime": 29954.40000000596,
+          "tailWaitFinished": 29954.79999999702,
+          "observedAfterAnchorMs": 1505.2000000029802
+        },
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa4-ax-candidate-b-3-reader",
+        "action": "reader",
+        "eligibility": "recorded-focused-diagnostic",
+        "readyMs": 87.30000001192093,
+        "maxFrameGapMs": 545.7999999999993,
+        "longTasks": [
+          {
+            "start": 30271.5,
+            "duration": 544
+          }
+        ],
+        "observation": {
+          "policyId": "qa4-post-ready-observation-v2",
+          "minimumObservationMs": 1500,
+          "finalAnimationFrames": 2,
+          "anchor": "ready-painted",
+          "anchorTime": 30271.60000000894,
+          "tailWaitStarted": 30271.60000000894,
+          "targetTime": 31771.60000000894,
+          "tailWaitFinished": 31781.29999999702,
+          "observedAfterAnchorMs": 1609.5999999940395
+        },
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa4-ax-candidate-b-4-cards",
+        "action": "cards",
+        "eligibility": "recorded-focused-diagnostic",
+        "readyMs": 436.29999999701977,
+        "maxFrameGapMs": 33.39999999999782,
+        "longTasks": [],
+        "observation": {
+          "policyId": "qa4-post-ready-observation-v2",
+          "minimumObservationMs": 1500,
+          "finalAnimationFrames": 2,
+          "anchor": "ready-painted",
+          "anchorTime": 32591,
+          "tailWaitStarted": 32593.20000000298,
+          "targetTime": 34091,
+          "tailWaitFinished": 34091.20000000298,
+          "observedAfterAnchorMs": 1507.5
+        },
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa4-ax-candidate-b-5-reader",
+        "action": "reader",
+        "eligibility": "recorded-focused-diagnostic",
+        "readyMs": 87.90000000596046,
+        "maxFrameGapMs": 541.7000000000044,
+        "longTasks": [
+          {
+            "start": 34379.40000000596,
+            "duration": 538
+          }
+        ],
+        "observation": {
+          "policyId": "qa4-post-ready-observation-v2",
+          "minimumObservationMs": 1500,
+          "finalAnimationFrames": 2,
+          "anchor": "ready-painted",
+          "anchorTime": 34379.40000000596,
+          "tailWaitStarted": 34918.70000000298,
+          "targetTime": 35879.40000000596,
+          "tailWaitFinished": 35879.5,
+          "observedAfterAnchorMs": 1505.2000000029802
+        },
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa4-ax-candidate-b-6-sample",
+        "action": "sample",
+        "eligibility": "recorded-focused-diagnostic",
+        "readyMs": null,
+        "maxFrameGapMs": 24.80000000000291,
+        "longTasks": [],
+        "observation": {
+          "policyId": "qa4-post-ready-observation-v2",
+          "minimumObservationMs": 1500,
+          "finalAnimationFrames": 2,
+          "anchor": "action-completed",
+          "anchorTime": 39141.10000000894,
+          "tailWaitStarted": 39141.10000000894,
+          "targetTime": 40641.10000000894,
+          "tailWaitFinished": 40642,
+          "observedAfterAnchorMs": 1505.8999999910593
+        },
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      }
+    ],
+    "internalAX": {
+      "report": {
+        "path": "out/qa/qa4-ax-candidate-b-internal-ax.json",
+        "bytes": 4227,
+        "sha256": "d121e5c9b5cf52f8675daf4a920197323c765e1baf9fdf68f109273b2b0abfc8"
+      },
+      "nodes": 53389,
+      "roles": {
+        "RootWebArea": 1,
+        "none": 2729,
+        "generic": 8,
+        "complementary": 1,
+        "banner": 1,
+        "heading": 201,
+        "button": 214,
+        "group": 2,
+        "main": 1,
+        "navigation": 2,
+        "StaticText": 1213,
+        "article": 1,
+        "InlineTextBox": 48013,
+        "list": 1,
+        "paragraph": 801,
+        "listitem": 200
+      },
+      "allDocumentHeadingsNamed": true,
+      "hasTail": true
+    },
+    "nativeLargeTail": {
+      "report": {
+        "path": "out/qa/qa4-ax-candidate-b-native-tail.json",
+        "bytes": 383,
+        "sha256": "004b85856b19ba923aa27637d55114c8f86d7cb98dc34aff5b29866d4cdf7d9b"
+      },
+      "kind": "actual-native-large-document-visible-tail-query",
+      "capturedAt": "2026-11-20T10:17:25.107Z",
+      "hasTail": false,
+      "treeLength": 47050,
+      "documentTextLength": 19999,
+      "matchingLines": [],
+      "boundary": "A bounded native snapshot; absence in a capped snapshot is not proof the underlying AX tree lacks the text. Internal full-tree inspection is recorded separately.",
+      "note": "Both baseline and final large-document native snapshots were capped; internal CDP completeness is separate evidence."
+    }
+  },
+  "preservedFailures": [
+    {
+      "report": {
+        "path": "out/qa/qa4-names-old-a.json",
+        "bytes": 26771,
+        "sha256": "26a00c16b9f0a17ffd0dc84eebda2922d55c3be82461ee6cd97968d421da455b"
+      },
+      "scope": "QA3 package, first actual AX heading incorrectly named by editing hint",
+      "script": "3adb64a6bb1c9592254609690db5bf7e16ff87b96826e08559aa763aaaa29180"
+    },
+    {
+      "report": {
+        "path": "out/qa/qa4-names-new-a.json",
+        "bytes": 27949,
+        "sha256": "8bc8d3650e3bf393ebd43528dcb78a959f48f2ea6bdec306a89a87e985d221d8"
+      },
+      "scope": "Initial d1f4e91 heading fix passed first five semantic checks but Unicode-tail append was refused at blur",
+      "script": "3adb64a6bb1c9592254609690db5bf7e16ff87b96826e08559aa763aaaa29180"
+    }
+  ],
+  "generatedUnicodeCheck": {
+    "report": {
+      "path": "out/qa/qa4-unicode-generated-check.json",
+      "bytes": 206,
+      "sha256": "700588c24587beb0104c9287639fdeb0a1c20c599a132f8a9d799177e7e3aaee"
+    },
+    "status": "passed",
+    "seed": "0x51442026",
+    "cases": 1200,
+    "scope": "Independent generated plain-heading Unicode edits compared with exact candidate source; no GUI or persisted document mutation."
+  },
+  "protectedUserFiles": {
+    "src/renderer/index-3b82dd4d61e8.html": "9ea97c911a3482916cd4ff4de75be500ac42f9b6e907d1c4d5f0ffd250c49196",
+    "tests/fixtures/reader/mixed-layout.md": "c5d4f6f798e11a3550ddd494f020413020b8fde27fea89e46146be1c909aead1",
+    "tests/fixtures/reader/mixed-layout.md.mermarkd.json": "d62caa49b9b81b665dcf636cc620e8a1d5229ee9e30a1a2a86d88cce0eef691f"
+  },
+  "limitations": [
+    "Large native AX performance remains unresolved; observed tails are diagnostic, not performance acceptance.",
+    "No new physical IME, real installation/uninstallation, physical cross-display/volume or clean Windows acceptance.",
+    "Historical single large card jump, uninstall binary residue, long-term memory, hardware and public release gates remain open.",
+    "Local Setup generated; not installed or publicly released. Raw local traces/fixtures/screenshots are not uploaded."
+  ]
+}

@@ -1,5 +1,19 @@
 # MerMarkd 开发进度
 
+## 2026-11-20 · QA4 标题辅助名称与字素编辑（本机软件专项通过）
+
+已合并PR #27 / main `898c9ac`，分支 `codex/qa4-reader-ax`。范围和退出条件见 [QA4_ACCEPTANCE.md](QA4_ACCEPTANCE.md)。同包宿主A-B-A对照没有消除renderer序列化长任务，保留Browser成本变化和完整trace，不据此宣称AX性能达标；本批交付转为修复两个有独立复现证据的缺陷。
+
+- 可编辑标题原被统一操作提示命名，仅去掉title又变为空名。通过自身稳定DOM id引用实时正文，提示改为描述，保持已有目录id与编辑生命周期；嵌套标题补React useId。旧包专项在实际AX名称断言处失败，初始修复包语义检查通过。
+- 专项继而确认emoji尾追加在blur时因UTF-16代理位边界被拒绝。按两侧完整字素规划共同前后缀，插入通过完整相邻字素映射，仍限制同一exact Markdown文字叶及resolveSelection核验，拒绝孤立代理位，不做Unicode规范化。新增6组测试覆盖组合重音、ZWJ、肤色、旗帜及BOM/CRLF；原12项保留。
+- 最终运行时 `975a2db` 已在独立干净检出完成npm ci、类型检查、476/476单测与make；ASAR SHA `A1A6BE43536B7DEF963B6FA55B28742A8451AF610A2DE1900D0188DA487370CE`。精确安装补丁、lock及旧QA1冻结产物保持。标题专项九阶段通过，包含实际AX、可信输入、撤销/重做、精确保存与三文件边界。
+
+初始 `d1f4e91` 包37套通过及Unicode专项失败完整保留。最终同ASAR的38套窗口及实际Vite九套全部通过；原生客户端重新初始化后，小样本9个正文标题及完整末尾均确认，首次只取到窗口壳 / 聊天界面的查询保留为未通过尝试。证据见 [QA4_EVIDENCE.json](QA4_EVIDENCE.json)。
+
+最终包大样本内部完整AX仍为53,389节点 / 48,013 InlineTextBox，200正文heading名称全部正确；原生大样本快照仍截到19999字，未据此宣称全文已读。1500ms尾窗实际复跑捕捉538–552ms长任务，AX性能目标保持未通过。诊断窗口、候选进程和5178服务已停止，三项用户原修改摘要保持且排除提交，本地包未安装或公开发布。大样本AX性能、历史大跳、卸载残留、长期内存、硬件与公开发布门槛保持未关闭，QA1 / P0未整体退出。
+
+标题修复 `d1f4e91`、最终运行时 / 测试 `975a2db` 与验收 `33f418b` 已推送 `origin/codex/qa4-reader-ax`，创建并附加 [PR #28](https://github.com/KLucen/MerMarked/pull/28)，目标main，open且未合并。现有SSH / 官方API完成交付，连接器仍要求重新认证；云端check runs / status contexts为0，本机通过不当作云端CI。交付记录单独提交后再次核对本地、远端与PR head一致。
+
 ## 2026-11-20 · QA3 边缘拖动修复与原生诊断（本机专项通过）
 
 回到QA1软件收口，基于已合并PR #26的main `4214054`，分支 `codex/qa3-software-closeout`。范围见 [QA3_ACCEPTANCE.md](QA3_ACCEPTANCE.md)，决定ADR-061。

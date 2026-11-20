@@ -100,6 +100,108 @@ test('supports consecutive reader edits against the current unsaved buffer', () 
   if (second.ok) assert.equal(second.content, '更新一\n\n更新二');
 });
 
+test('maps insertion next to complete graphemes without changing BOM, CRLF or surrounding bytes', () => {
+  for (const grapheme of ['😀', 'e\u0301', '👩‍💻', '👍🏽', '🇨🇳']) {
+    for (const placement of ['prepend', 'append'] as const) {
+      const before = grapheme;
+      const after = placement === 'prepend' ? '新' + before : before + '新';
+      const original = Buffer.from(`\uFEFF# ${before}\r\n\r\n保持 **格式** 与 [链接](https://example.test)`);
+      const { content, format } = decodeMarkdownBytes(original);
+      const result = applyReaderMappedTextEdit(content, format.bomByteLength,
+        { blockStart: 0, sourceText: before, replacement: after });
+      assert.ok(result.ok, `${placement} ${grapheme}`);
+      const insertion = 2 + (placement === 'prepend' ? 0 : before.length);
+      assert.equal(result.sourceStart, insertion);
+      assert.equal(result.sourceEnd, insertion);
+      assert.equal(result.sourceExact, '');
+      assert.deepEqual(Buffer.from(encodeMarkdownBytes(result.content, format.bomByteLength)),
+        Buffer.from(`\uFEFF# ${after}\r\n\r\n保持 **格式** 与 [链接](https://example.test)`));
+      assert.deepEqual(original, Buffer.from(`\uFEFF# ${before}\r\n\r\n保持 **格式** 与 [链接](https://example.test)`));
+    }
+  }
+});
+
+test('replaces whole graphemes even when old and new text share surrogate or combining units', () => {
+  for (const [before, after] of [
+    ['😀', '😃'], // shared high surrogate
+    ['😀', '🈀'], // shared low surrogate
+    ['e\u0301', 'e\u0300'],
+    ['e\u0301', 'a\u0301'], // shared combining suffix is inside both graphemes
+    ['👩‍💻', '👩‍🔬'],
+    ['👩‍💻', '👨‍💻'], // shared ZWJ suffix is inside both graphemes
+    ['👍🏽', '👍🏻'],
+    ['🇨🇳', '🇨🇦'],
+  ]) {
+    const source = `## 前${before}后\n\n保留正文`;
+    const result = applyReaderMappedTextEdit(source, 0,
+      { blockStart: 0, sourceText: `前${before}后`, replacement: `前${after}后` });
+    assert.ok(result.ok, `${before} → ${after}`);
+    assert.equal(result.content, `## 前${after}后\n\n保留正文`);
+    assert.equal(result.sourceStart, 4);
+    assert.equal(result.sourceEnd, 4 + before.length);
+    assert.equal(result.sourceExact, before);
+  }
+});
+
+test('expands the edit when inserted text changes grapheme boundaries on the new side', () => {
+  for (const [before, after] of [
+    ['e', 'e\u0301'], ['👩', '👩‍💻'], ['🇨', '🇨🇳'], ['👍', '👍🏽'],
+    ['🇨🇳', '🇦🇨🇳'], ['🇦🇨🇳', '🇨🇳'], // a regional indicator shifts the suffix's pairing
+  ]) {
+    const result = applyReaderMappedTextEdit(`前${before}后`, 0,
+      { blockStart: 0, sourceText: `前${before}后`, replacement: `前${after}后` });
+    assert.ok(result.ok, `${before} → ${after}`);
+    assert.equal(result.content, `前${after}后`);
+    assert.equal(result.sourceStart, 1);
+    assert.equal(result.sourceEnd, 1 + before.length);
+    assert.equal(result.sourceExact, before, 'Replace the old grapheme; do not insert inside the new one');
+  }
+});
+
+test('deletes a complete grapheme and preserves exact inline leaf syntax', () => {
+  for (const grapheme of ['😀', 'e\u0301', '👩‍💻', '👍🏽', '🇨🇳']) {
+    const removed = applyReaderMappedTextEdit(`前${grapheme}后`, 0,
+      { blockStart: 0, sourceText: `前${grapheme}后`, replacement: '前后' });
+    assert.ok(removed.ok);
+    assert.equal(removed.content, '前后');
+    assert.equal(removed.sourceExact, grapheme);
+    for (const [source, expected] of [
+      [`**${grapheme}**`, `**${grapheme}新**`],
+      [`[${grapheme}](https://example.test)`, `[${grapheme}新](https://example.test)`],
+    ]) {
+      const appended = applyReaderMappedTextEdit(source, 0,
+        { blockStart: 0, sourceText: grapheme, replacement: grapheme + '新' });
+      assert.ok(appended.ok);
+      assert.equal(appended.content, expected);
+      assert.equal(appended.sourceExact, '');
+      assert.equal(appended.sourceStart, source.indexOf(grapheme) + grapheme.length);
+      assert.equal(appended.sourceEnd, appended.sourceStart);
+    }
+  }
+});
+
+test('rejects grapheme expansion across exact Markdown leaves or encoded text', () => {
+  for (const [source, replacement] of [
+    ['**e**\u0301', 'e\u0300'],
+    ['**👩**‍💻', '👩‍🔬'],
+    ['**🇨**🇳', '🇨🇦'],
+    ['**😀** 😃', '😄 😅'],
+    ['&#x1f600;', '😀新'],
+  ]) {
+    const block = buildSelectionMap(source, 0).blocks[0];
+    const result = applyReaderMappedTextEdit(source, 0,
+      { blockStart: block.blockStart, sourceText: block.visibleText, replacement });
+    assert.equal(result.ok, false, source);
+  }
+});
+
+test('rejects unpaired surrogate input instead of publishing replacement bytes', () => {
+  for (const replacement of ['\ud83d', '\ude00', '前\ud83d后', '😀\ude00', '\ud83d\ud83d\ude00']) {
+    const result = applyReaderMappedTextEdit('# 正文', 0, { blockStart: 0, sourceText: '正文', replacement });
+    assert.equal(result.ok, false);
+  }
+});
+
 test('rejects encoded text and edits spanning multiple inline leaves', () => {
   const entity = applyReaderMappedTextEdit('A &amp; B', 0, {
     blockStart: 0,
