@@ -1,0 +1,3270 @@
+{
+  "kind": "QA3-initial-autopan-ordering-fix-and-native-diagnostics",
+  "recordedAt": "2026-11-20T03:15:08.5827861Z",
+  "runtimeSourceCommit": "55af10b4052b8a1c6c5756e82d2a74257942ebb2",
+  "verificationHead": "2cceee7a36c2fc4e5a414489ddeb1a37886302d4",
+  "runtimeChangesSinceBuild": [],
+  "asar": {
+    "name": "app.asar",
+    "bytes": 4120599,
+    "sha256": "BBC424DBE9FFDD1616D71CBC69C639FE0E91457103E378F36096D47050AB6047"
+  },
+  "build": {
+    "identity": {
+      "name": "qa3-final-build-manifest.json",
+      "bytes": 10884,
+      "sha256": "1374803648919F276329E9BF4807A883C35D0A9C1DD868335E03915D712074D3"
+    },
+    "data": {
+      "sourceCommit": "55af10b4052b8a1c6c5756e82d2a74257942ebb2",
+      "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final",
+      "kind": "clean-detached-final-qa3-software-closeout-build",
+      "startedUtc": "2026-11-19T16:49:18.9541826Z",
+      "status": "passed",
+      "node": "v24.20.0",
+      "npm": "11.19.0",
+      "mainIndexBefore": {
+        "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+        "bytes": 34433,
+        "sha256": "2D08E582B1375C5429233C5B6749E32E51EF0E63A0A22886AB5E351A37267996"
+      },
+      "electronZip": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b\\electron-v44.4.1-win32-x64.zip",
+        "bytes": 158290103,
+        "sha256": "34BC07977D6C43B6514B956A5F2E3292255DAA3838A49E6110F3FE19FFAFB83F"
+      },
+      "processEnvironment": {
+        "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+      },
+      "steps": [
+        {
+          "name": "worktree",
+          "command": "git -C C:\\Users\\KLucen\\Desktop\\MerMarkd worktree add --detach C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final 55af10b4052b8a1c6c5756e82d2a74257942ebb2",
+          "executable": "git",
+          "arguments": [
+            "-C",
+            "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+            "worktree",
+            "add",
+            "--detach",
+            "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final",
+            "55af10b4052b8a1c6c5756e82d2a74257942ebb2"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\Desktop\\MerMarkd",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-19T16:49:20.1767322Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-worktree.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-19T16:49:20.5153717Z",
+          "durationSeconds": 0.339,
+          "logSha256": "32E0195F1D2AFF2E52E91BFCC8EB3DEE571A60F3AF8D15F86FB62A3AAC46552F",
+          "logBytes": 593
+        },
+        {
+          "name": "ci",
+          "command": "npm.cmd ci",
+          "executable": "npm.cmd",
+          "arguments": [
+            "ci"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-19T16:49:20.7881394Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ci.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-19T16:49:31.5608492Z",
+          "durationSeconds": 10.773,
+          "logSha256": "22A8B60B29666CF06FA080D463F5A89265E15CA8A126EEADCB9C7A02529E8878",
+          "logBytes": 2100
+        },
+        {
+          "name": "typecheck",
+          "command": "npm.cmd run typecheck",
+          "executable": "npm.cmd",
+          "arguments": [
+            "run",
+            "typecheck"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-19T16:49:31.5930109Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-typecheck.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-19T16:49:35.5492702Z",
+          "durationSeconds": 3.956,
+          "logSha256": "D267C25E280DBC527EB776F416F54BD66677BD6B48F8FDCFED674A82A62B164F",
+          "logBytes": 403
+        },
+        {
+          "name": "test",
+          "command": "npm.cmd test",
+          "executable": "npm.cmd",
+          "arguments": [
+            "test"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-19T16:49:35.552481Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-test.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-19T16:49:43.4880172Z",
+          "durationSeconds": 7.936,
+          "logSha256": "632F6C04125B7E6E8018BF46AB14EA8BE747CEC3139B37FE16D81A9B8AFF99C9",
+          "logBytes": 75938
+        },
+        {
+          "name": "make",
+          "command": "npm.cmd run make",
+          "executable": "npm.cmd",
+          "arguments": [
+            "run",
+            "make"
+          ],
+          "workingDirectory": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final",
+          "processEnvironment": {
+            "MERMARKD_ELECTRON_ZIP_DIR": "C:\\Users\\KLucen\\AppData\\Local\\electron\\Cache\\d69c2445857298b9bc0722ad3ce6e5cb9bf57d5c4eef6ff669ade3a51ef4d76b"
+          },
+          "startedUtc": "2026-11-19T16:49:43.4912616Z",
+          "status": "passed",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-make.log",
+          "exitCode": 0,
+          "completedUtc": "2026-11-19T16:50:49.7539173Z",
+          "durationSeconds": 66.263,
+          "logSha256": "C2D46385EBC1FC29F6678F1536AF8150F34A23481113651486FF090EB604FDA0",
+          "logBytes": 2220
+        }
+      ],
+      "limitations": [
+        "Build only. No app window started, installation, lifecycle cleanup, packaged E2E, or native export validation performed by this build task."
+      ],
+      "frozenValidationBefore": [
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+          "bytes": 4068827,
+          "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+          "bytes": 154837504,
+          "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+          "bytes": 79,
+          "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+          "bytes": 154081906,
+          "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+        }
+      ],
+      "worktreeCreation": "created detached",
+      "initialSourceStatus": [],
+      "initialSourceClean": true,
+      "initialLock": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\package-lock.json",
+        "bytes": 373705,
+        "sha256": "53C5FAA951F13C81CB59B68EEFE974F9DFDB8D3CE278B84C729F83785D1E1A93"
+      },
+      "sourceTree": "cce20b692b196222feca46963c6daad489e5dc02",
+      "dependencyPatch": {
+        "version": "0.0.83",
+        "script": {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\scripts\\patch-xyflow-autopan.mjs",
+          "bytes": 4197,
+          "sha256": "F5641C81731C2911854C4902906F10BAD98AE53D9C04F2086DDEC11B3BAEC6F8"
+        },
+        "entries": [
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\node_modules\\@xyflow\\system\\dist\\esm\\index.js",
+            "bytes": 155053,
+            "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+          },
+          {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\node_modules\\@xyflow\\system\\dist\\esm\\index.mjs",
+            "bytes": 155053,
+            "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+          }
+        ]
+      },
+      "testCount": 470,
+      "testPass": 470,
+      "testFail": 0,
+      "finalSourceStatus": [],
+      "finalSourceClean": true,
+      "finalLock": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\package-lock.json",
+        "bytes": 373705,
+        "sha256": "53C5FAA951F13C81CB59B68EEFE974F9DFDB8D3CE278B84C729F83785D1E1A93"
+      },
+      "lockUnchanged": true,
+      "artifacts": [
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+          "bytes": 4120599,
+          "sha256": "BBC424DBE9FFDD1616D71CBC69C639FE0E91457103E378F36096D47050AB6047"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+          "bytes": 154852864,
+          "sha256": "1E389F8612D66EF61B39D59384752B64F1115584E5C062131AD2C2C9B36541FA"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\make\\squirrel.windows\\x64\\RELEASES",
+          "bytes": 79,
+          "sha256": "6ABA28BF3760220D955F88F6E78CE5D66A17FFBF8FF8D24AD5CA56BCF06EDF04"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+          "bytes": 154097566,
+          "sha256": "C1D027A6FC9D7F52B3E49967E0CE1776021AEE3FB6E5C0087BC747C2FDB0372E"
+        }
+      ],
+      "releasesContent": "2AF91522F237E5D1C0028932C83732688D398CC2 MerMarkd-0.1.0-full.nupkg 154097566",
+      "frozenValidationAfter": [
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+          "bytes": 4068827,
+          "sha256": "24AC09F913C2D41A3C897D31E62C1C968854FB46567FC18891E8D31472D0F7C2"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0 Setup.exe",
+          "bytes": 154837504,
+          "sha256": "3CC81151A4D8D0AC303AE07245FD8B8C1B053FDDE635C9398B1B779CD578EC88"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\RELEASES",
+          "bytes": 79,
+          "sha256": "58F82C7F48A8823FCCB5A490B5FBB190C0DF293FE4F04525D60DA3E52201DE6F"
+        },
+        {
+          "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa1-validation\\out\\make\\squirrel.windows\\x64\\MerMarkd-0.1.0-full.nupkg",
+          "bytes": 154081906,
+          "sha256": "5E25D1EB1146E5BE6A1EF0A503A2BFF795873C3D5ADB275B3A4436E29870B5B2"
+        }
+      ],
+      "frozenValidationUnchanged": true,
+      "mainIndexAfter": {
+        "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\.git\\index",
+        "bytes": 34433,
+        "sha256": "2D08E582B1375C5429233C5B6749E32E51EF0E63A0A22886AB5E351A37267996"
+      },
+      "mainIndexUnchanged": true,
+      "finishedUtc": "2026-11-19T16:50:50.9491515Z"
+    }
+  },
+  "packagedRegression": {
+    "identity": {
+      "name": "qa3-final-regression-manifest.json",
+      "bytes": 14530,
+      "sha256": "5F43FA40EA660F5A8ADF275C7D4647D7C4E3EF269070D5CC0EA314E95EDB6E15"
+    },
+    "data": {
+      "commit": "55af10b4052b8a1c6c5756e82d2a74257942ebb2",
+      "worktree": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final",
+      "asarSha256": "BBC424DBE9FFDD1616D71CBC69C639FE0E91457103E378F36096D47050AB6047",
+      "startedUtc": "2026-11-19T16:51:31.6206152Z",
+      "status": "passed",
+      "runs": [
+        {
+          "name": "qa3-drag",
+          "command": "npm run test:e2e:qa3-drag",
+          "startedUtc": "2026-11-19T16:51:31.648869Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-qa3-drag.log",
+          "logSha256": "244FCD0A8920C76AA8F6033E702ACCBFF9056015CBAC30F30FED6165148A5084",
+          "finishedUtc": "2026-11-19T16:52:38.8925107Z"
+        },
+        {
+          "name": "qa3-squirrel",
+          "command": "npm run test:e2e:qa3-squirrel",
+          "startedUtc": "2026-11-19T16:52:38.9113105Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-qa3-squirrel.log",
+          "logSha256": "26C8491EE911E0C95D432E142712784E0D0FA8D1AD10B7280600A6376843517D",
+          "finishedUtc": "2026-11-19T16:52:45.0280154Z"
+        },
+        {
+          "name": "file1d",
+          "command": "npm run test:e2e:file1d",
+          "startedUtc": "2026-11-19T16:52:45.0403917Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-file1d.log",
+          "logSha256": "41D6578C57A55FD5D3E99403A9FC668D528FDCAC8EFCE71930CD119613F847FC",
+          "finishedUtc": "2026-11-19T16:53:18.2282252Z"
+        },
+        {
+          "name": "file1c",
+          "command": "npm run test:e2e:file1c",
+          "startedUtc": "2026-11-19T16:53:18.2424121Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-file1c.log",
+          "logSha256": "0EC4A394FCB38CF3B97183C9985AF5B31A19435DD92A5FC67BFD7BC2302CF47B",
+          "finishedUtc": "2026-11-19T16:53:44.5813241Z"
+        },
+        {
+          "name": "file1b",
+          "command": "npm run test:e2e:file1b",
+          "startedUtc": "2026-11-19T16:53:44.5918501Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-file1b.log",
+          "logSha256": "645C8F0BBCA2C9DA3D4877E0A8EA83D91DFD0FF7FE5B4BA3F24336DA1B970822",
+          "finishedUtc": "2026-11-19T16:54:06.65577Z"
+        },
+        {
+          "name": "file1a",
+          "command": "npm run test:e2e:file1a",
+          "startedUtc": "2026-11-19T16:54:06.6667902Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-file1a.log",
+          "logSha256": "576A41CFE1F0C7CDB395E1689559231097DD0773235D0F07A6D732D01F03E522",
+          "finishedUtc": "2026-11-19T16:54:21.7015352Z"
+        },
+        {
+          "name": "ux9",
+          "command": "npm run test:e2e:ux9",
+          "startedUtc": "2026-11-19T16:54:21.7123413Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux9.log",
+          "logSha256": "5255C5DC6AFF48C6F1EF4E345CCE22BEF1A92F4D2E80399B2CC1235F2627CFD9",
+          "finishedUtc": "2026-11-19T16:54:56.8983981Z"
+        },
+        {
+          "name": "qa2",
+          "command": "npm run test:e2e:qa2",
+          "startedUtc": "2026-11-19T16:54:56.9097775Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-qa2.log",
+          "logSha256": "EC45E785E94F0E54DC7A1A9B2F2D5CCC46328401AE93DC96BBD6BF009D67DB83",
+          "finishedUtc": "2026-11-19T16:55:25.6892578Z"
+        },
+        {
+          "name": "source-composition",
+          "command": "npm run test:e2e:source-composition",
+          "startedUtc": "2026-11-19T16:55:25.7002614Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-source-composition.log",
+          "logSha256": "EFC82BAA7156BC4235C34EA9EEB6BDCE94080C832578287B32DB6F2B080ACB4D",
+          "finishedUtc": "2026-11-19T16:55:30.8825937Z"
+        },
+        {
+          "name": "ux8",
+          "command": "npm run test:e2e:ux8",
+          "startedUtc": "2026-11-19T16:55:30.8929229Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux8.log",
+          "logSha256": "121DBFCEEEAC440FF639FC943350C6832FF63F4C1992AD94897CF5924C7432F8",
+          "finishedUtc": "2026-11-19T16:55:35.5827203Z"
+        },
+        {
+          "name": "ux7",
+          "command": "npm run test:e2e:ux7",
+          "startedUtc": "2026-11-19T16:55:35.5907153Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux7.log",
+          "logSha256": "CD7A93BB157DB7AE25848E3D50E70F8BF01CDAFA4FBDAC20FA1A23DDE9C7B272",
+          "finishedUtc": "2026-11-19T16:55:43.5598666Z"
+        },
+        {
+          "name": "ux6b",
+          "command": "npm run test:e2e:ux6b",
+          "startedUtc": "2026-11-19T16:55:43.5700493Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux6b.log",
+          "logSha256": "E3493F6FE7DF2FA8D09795270F11880B51062420C17983350405D8B94989DB85",
+          "finishedUtc": "2026-11-19T16:55:58.7462681Z"
+        },
+        {
+          "name": "a6",
+          "command": "npm run test:e2e:a6",
+          "startedUtc": "2026-11-19T16:55:58.7559822Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a6.log",
+          "logSha256": "13C804615DE8794DC564D5509D589FF12CFB4397285D0BF24FAEA7E4B3B8AA5E",
+          "finishedUtc": "2026-11-19T16:56:03.8868449Z"
+        },
+        {
+          "name": "a7-1",
+          "command": "npm run test:e2e:a7-1",
+          "startedUtc": "2026-11-19T16:56:03.8977819Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a7-1.log",
+          "logSha256": "66FDD2F6E1DE981C2A6277C01892D2ACD655357380B17F90E7F9951A5FF74317",
+          "finishedUtc": "2026-11-19T16:56:09.7202261Z"
+        },
+        {
+          "name": "a7-2",
+          "command": "npm run test:e2e:a7-2",
+          "startedUtc": "2026-11-19T16:56:09.7406968Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a7-2.log",
+          "logSha256": "7249BD51F93A4B84054963CE4945C513DF1DFECF85EB7D71987A13E0D72732A9",
+          "finishedUtc": "2026-11-19T16:56:13.6037255Z"
+        },
+        {
+          "name": "a7-3b",
+          "command": "npm run test:e2e:a7-3b",
+          "startedUtc": "2026-11-19T16:56:13.6124988Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a7-3b.log",
+          "logSha256": "FAC7E41851A7CE5CD94039EAC79CB41602EA292BF8A37C7028C527978057CF37",
+          "finishedUtc": "2026-11-19T16:56:19.1713509Z"
+        },
+        {
+          "name": "a7-4",
+          "command": "npm run test:e2e:a7-4",
+          "startedUtc": "2026-11-19T16:56:19.182418Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a7-4.log",
+          "logSha256": "29E55B649449C562905C96563BC6AA22A76F50A717F3F34F26BB7E11AA968FC9",
+          "finishedUtc": "2026-11-19T16:56:23.7788042Z"
+        },
+        {
+          "name": "a7-5",
+          "command": "npm run test:e2e:a7-5",
+          "startedUtc": "2026-11-19T16:56:23.7871925Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a7-5.log",
+          "logSha256": "236C9B1A684F5CFD9BF7F3CDB731E71784623F600F2EF83ED42735E47B49CCD2",
+          "finishedUtc": "2026-11-19T16:56:27.5393672Z"
+        },
+        {
+          "name": "a8-2",
+          "command": "npm run test:e2e:a8-2",
+          "startedUtc": "2026-11-19T16:56:27.5497076Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a8-2.log",
+          "logSha256": "1D8EF13FF203B6A462FF0FE8347034C26C08DE4A320FA391F48AA155BBC0F81D",
+          "finishedUtc": "2026-11-19T16:56:32.3381742Z"
+        },
+        {
+          "name": "a8-3",
+          "command": "npm run test:e2e:a8-3",
+          "startedUtc": "2026-11-19T16:56:32.3460105Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a8-3.log",
+          "logSha256": "53F30C8303BD17AA574F98B767CA5D6471A57F0C0E9D049AFF87E28A4819C4E5",
+          "finishedUtc": "2026-11-19T16:56:36.9098695Z"
+        },
+        {
+          "name": "a8-4",
+          "command": "npm run test:e2e:a8-4",
+          "startedUtc": "2026-11-19T16:56:36.9204407Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a8-4.log",
+          "logSha256": "EF568BA23F7440745727248D972C0DDE698054EC16DC71126E870DE83319F027",
+          "finishedUtc": "2026-11-19T16:56:43.4725591Z"
+        },
+        {
+          "name": "a8-5",
+          "command": "npm run test:e2e:a8-5",
+          "startedUtc": "2026-11-19T16:56:43.4831978Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-a8-5.log",
+          "logSha256": "B830F116EAFAE90C222008BDD1EE896CD845A0E27E814BEA99F9758BB9772E44",
+          "finishedUtc": "2026-11-19T16:56:49.5845666Z"
+        },
+        {
+          "name": "b1",
+          "command": "npm run test:e2e:b1",
+          "startedUtc": "2026-11-19T16:56:49.5957037Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-b1.log",
+          "logSha256": "5EA0FEFA5C045FBE7C601B49178760B0E0D7158AA1A23C129422D72634C1A66F",
+          "finishedUtc": "2026-11-19T16:56:53.9582077Z"
+        },
+        {
+          "name": "ux1",
+          "command": "npm run test:e2e:ux1",
+          "startedUtc": "2026-11-19T16:56:53.9659689Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux1.log",
+          "logSha256": "918BB4494154717073685C897AA50EB0726CB2D58F11C6D408AE173DE0553B5C",
+          "finishedUtc": "2026-11-19T16:56:58.5119799Z"
+        },
+        {
+          "name": "ux2",
+          "command": "npm run test:e2e:ux2",
+          "startedUtc": "2026-11-19T16:56:58.5237091Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux2.log",
+          "logSha256": "D27B66A09D2D5B2DE4111D419CE486A21B600B676380682FABA8C2BBFB9BBA15",
+          "finishedUtc": "2026-11-19T16:57:08.3326608Z"
+        },
+        {
+          "name": "ux3",
+          "command": "npm run test:e2e:ux3",
+          "startedUtc": "2026-11-19T16:57:08.3434623Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux3.log",
+          "logSha256": "617AE514E401141F6EA11F3AB4BCEBB065D2D61D2A844E278E10C50142749CAC",
+          "finishedUtc": "2026-11-19T16:57:15.8334699Z"
+        },
+        {
+          "name": "ux4",
+          "command": "npm run test:e2e:ux4",
+          "startedUtc": "2026-11-19T16:57:15.844501Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux4.log",
+          "logSha256": "4521598C6AA3882C32768638FC2F9FB3E145722ACAE853185E694ADF95FB2A63",
+          "finishedUtc": "2026-11-19T16:57:25.940946Z"
+        },
+        {
+          "name": "ux5",
+          "command": "npm run test:e2e:ux5",
+          "startedUtc": "2026-11-19T16:57:25.9526878Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux5.log",
+          "logSha256": "2CD9E901D79E30FDB239EFBEAB8C35BDEF5FA6C419BB3D23E5C796459E1D56C0",
+          "finishedUtc": "2026-11-19T16:57:33.7638957Z"
+        },
+        {
+          "name": "perf1",
+          "command": "npm run test:e2e:perf1",
+          "startedUtc": "2026-11-19T16:57:33.778283Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf1.log",
+          "logSha256": "F7BC1068DEE62408C0C287B08DD43137FD613C81BA436DD1B4189B1D30E82C77",
+          "finishedUtc": "2026-11-19T16:57:40.2032307Z"
+        },
+        {
+          "name": "ux6a",
+          "command": "npm run test:e2e:ux6a",
+          "startedUtc": "2026-11-19T16:57:40.213394Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-ux6a.log",
+          "logSha256": "6D141AD8B6BFCBC65CAF672F1850037B5FA9614577AEDF69B761DF08412ECD23",
+          "finishedUtc": "2026-11-19T16:57:47.0669759Z"
+        },
+        {
+          "name": "perf2",
+          "command": "npm run test:e2e:perf2",
+          "startedUtc": "2026-11-19T16:57:47.0767477Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf2.log",
+          "logSha256": "F1F628B732F8206850CBC8A276F55EE6C1B997B12A617A488337DE87E2C9B4C5",
+          "finishedUtc": "2026-11-19T16:57:53.0547664Z"
+        },
+        {
+          "name": "perf3a",
+          "command": "npm run test:e2e:perf3a",
+          "startedUtc": "2026-11-19T16:57:53.0680108Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf3a.log",
+          "logSha256": "33DCFFB1093FB4D4A64BE54372300E6378208AEDA34731562DBA28E1E2F4BFD1",
+          "finishedUtc": "2026-11-19T16:58:05.4523045Z"
+        },
+        {
+          "name": "perf3b",
+          "command": "npm run test:e2e:perf3b",
+          "startedUtc": "2026-11-19T16:58:05.4626135Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf3b.log",
+          "logSha256": "52E302C25731D1D8A75167C93551177765D065A3D5399673A68CC9BDE605AA3A",
+          "finishedUtc": "2026-11-19T16:58:09.5379295Z"
+        },
+        {
+          "name": "perf3c",
+          "command": "npm run test:e2e:perf3c",
+          "startedUtc": "2026-11-19T16:58:09.5475715Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf3c.log",
+          "logSha256": "EE5B898B82317177C5335AB73442B855F4D22BF15EA2ED35DF562C791DFD2719",
+          "finishedUtc": "2026-11-19T16:58:14.4279937Z"
+        },
+        {
+          "name": "perf3d",
+          "command": "npm run test:e2e:perf3d",
+          "startedUtc": "2026-11-19T16:58:14.4389236Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf3d.log",
+          "logSha256": "394D5B5524912D956FD970F2364B159B4248688AD57128D46D27AB1690FAAE74",
+          "finishedUtc": "2026-11-19T16:58:21.8892041Z"
+        },
+        {
+          "name": "perf3e",
+          "command": "npm run test:e2e:perf3e",
+          "startedUtc": "2026-11-19T16:58:21.9002246Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf3e.log",
+          "logSha256": "564DC7F42FBA4ECAD8A35449C62709CC192DF868DB0F63165497D272943950EC",
+          "finishedUtc": "2026-11-19T16:58:31.9107456Z"
+        },
+        {
+          "name": "perf3g",
+          "command": "npm run test:e2e:perf3g",
+          "startedUtc": "2026-11-19T16:58:31.9223506Z",
+          "exitCode": 0,
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-perf3g.log",
+          "logSha256": "FE48EDA5E198E713D615ECEF693A431357B0A91DEE43779055C413AEDE6B7845",
+          "finishedUtc": "2026-11-19T16:58:51.3916602Z"
+        }
+      ],
+      "finishedUtc": "2026-11-19T16:58:51.3942798Z"
+    }
+  },
+  "vite": {
+    "identity": {
+      "name": "qa3-final-vite-b-manifest.json",
+      "bytes": 3535,
+      "sha256": "5C080631FEBD0B4BF1D2AAA4F1A71516C7B2826480A35AAC6BA85FF3642391BC"
+    },
+    "data": {
+      "startedUtc": "2026-11-20T03:11:03.6557214Z",
+      "worktree": "C:/Users/KLucen/.codex/worktrees/mermarkd-qa3-final",
+      "commit": "2cceee7a36c2fc4e5a414489ddeb1a37886302d4",
+      "asarSha256": "BBC424DBE9FFDD1616D71CBC69C639FE0E91457103E378F36096D47050AB6047",
+      "status": "passed",
+      "runs": [
+        {
+          "name": "qa3-drag",
+          "startedUtc": "2026-11-20T03:11:04.4919339Z",
+          "command": "npm run test:e2e:qa3-drag",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-qa3-drag.log",
+          "exitCode": 0,
+          "logSha256": "E6DE6428D25A4CFF181B48B0383BD9FE60A8417802DC6BDF87B754E7781B83FA",
+          "finishedUtc": "2026-11-20T03:12:09.4487396Z"
+        },
+        {
+          "name": "file1d",
+          "startedUtc": "2026-11-20T03:12:09.4534609Z",
+          "command": "npm run test:e2e:file1d",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-file1d.log",
+          "exitCode": 0,
+          "logSha256": "E10F9B97D60897A030175ACE425F04B044D42A7016008E5EB1BD4E975C5C47B5",
+          "finishedUtc": "2026-11-20T03:12:41.6878516Z"
+        },
+        {
+          "name": "file1c",
+          "startedUtc": "2026-11-20T03:12:41.6896414Z",
+          "command": "npm run test:e2e:file1c",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-file1c.log",
+          "exitCode": 0,
+          "logSha256": "DBA0B51B73BF67BFA5D7A5DA95F4C87C84B5368B1B1644C89221ED1BE07F4F98",
+          "finishedUtc": "2026-11-20T03:13:08.4228038Z"
+        },
+        {
+          "name": "file1b",
+          "startedUtc": "2026-11-20T03:13:08.424203Z",
+          "command": "npm run test:e2e:file1b",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-file1b.log",
+          "exitCode": 0,
+          "logSha256": "61D0FDA32A538821B871789F56B02704A7C50064AA0AD27DC195E160637131F6",
+          "finishedUtc": "2026-11-20T03:13:29.5471873Z"
+        },
+        {
+          "name": "file1a",
+          "startedUtc": "2026-11-20T03:13:29.5486458Z",
+          "command": "npm run test:e2e:file1a",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-file1a.log",
+          "exitCode": 0,
+          "logSha256": "920014EC8C097F6B1AC70C901D53811583EA23FAB10CEEB56D5EB7E2FA40FAAB",
+          "finishedUtc": "2026-11-20T03:13:43.546087Z"
+        },
+        {
+          "name": "ux9",
+          "startedUtc": "2026-11-20T03:13:43.5477761Z",
+          "command": "npm run test:e2e:ux9",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-ux9.log",
+          "exitCode": 0,
+          "logSha256": "4376051EB32E14DF5EDA88B8466D3678DC3BF723D86EF5B569AB8B0FDFF0FB57",
+          "finishedUtc": "2026-11-20T03:14:17.8900518Z"
+        },
+        {
+          "name": "ux8",
+          "startedUtc": "2026-11-20T03:14:17.8915124Z",
+          "command": "npm run test:e2e:ux8",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-ux8.log",
+          "exitCode": 0,
+          "logSha256": "E43595B3ED0561A7ED7D64A64C9779981489E95E6661DD500F61CC4610EB6577",
+          "finishedUtc": "2026-11-20T03:14:22.3055707Z"
+        },
+        {
+          "name": "ux7",
+          "startedUtc": "2026-11-20T03:14:22.306989Z",
+          "command": "npm run test:e2e:ux7",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-b-ux7.log",
+          "exitCode": 0,
+          "logSha256": "CD7A93BB157DB7AE25848E3D50E70F8BF01CDAFA4FBDAC20FA1A23DDE9C7B272",
+          "finishedUtc": "2026-11-20T03:14:30.2387046Z"
+        }
+      ],
+      "serverProcessId": 32536,
+      "serverStopped": true,
+      "finishedUtc": "2026-11-20T03:14:31.4475891Z"
+    }
+  },
+  "priorFailures": [
+    {
+      "identity": {
+        "name": "qa3-drag-baseline-a.json",
+        "bytes": 24706,
+        "sha256": "023333579261602A9703F1EE482EE5EDF5DE75BC5D64F361E6CA5A03995D2547"
+      },
+      "status": "failed",
+      "scriptSha256": "b5a2d250f2133395ebeb66b05fd5f085fe3a00a627b1ae164c8fdb861a5104b0",
+      "interpretation": "Test setup/drag-ready failures, not used as product failure proof.",
+      "cases": [
+        {
+          "name": "central-0.11-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: selection precondition\n\ntrue !== false\n\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:202:52)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:281:76",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-central-0.11-unselected-trace.json",
+            "sha256": "be469803f79671c44b39912f0c17e263c3bc9f42208e39196440092cace4f4c7"
+          }
+        },
+        {
+          "name": "central-0.11-selected",
+          "status": "failed",
+          "error": "Error: Timed out: drag started\n    at wait (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:94:9)\n    at async runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:214:5)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:281:76",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-central-0.11-selected-trace.json",
+            "sha256": "8f1fa71a768aade1eb842caccb2d48e1d99f55aa9a2498ba8d76b2fe4f24ed2f"
+          }
+        },
+        {
+          "name": "central-1-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: selection precondition\n\ntrue !== false\n\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:202:52)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:281:76",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-central-1-unselected-trace.json",
+            "sha256": "ee8101eaad57b240a6771be3609cf365d7578fd90e0b555de6dc27853501c200"
+          }
+        },
+        {
+          "name": "central-1-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-central-1-selected-trace.json",
+            "sha256": "2d560206db70bfc0cbd1259795453639ffff3a83c32dd310a173e020580bcad4"
+          }
+        },
+        {
+          "name": "central-2-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: selection precondition\n\ntrue !== false\n\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:202:52)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:281:76",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-central-2-unselected-trace.json",
+            "sha256": "049370823e9d85841c00205d238c125201ff4a71785c4f949cc5a8a89f8d814d"
+          }
+        },
+        {
+          "name": "central-2-selected",
+          "status": "failed",
+          "error": "Error: Timed out: drag started\n    at wait (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:94:9)\n    at async runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:214:5)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:281:76",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-central-2-selected-trace.json",
+            "sha256": "5e0f822f5e936d7966432bb2e9844af837ed3dc369c3a4da68dce4528d9dffdb"
+          }
+        },
+        {
+          "name": "edge-autopan-0.11-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: selection precondition\n\ntrue !== false\n\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:202:52)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:282:38",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-edge-autopan-0.11-unselected-trace.json",
+            "sha256": "0fa093b3337fddd8327eb7bbee73b4b62c2f029378e743a3146d477d10a18bbb"
+          }
+        },
+        {
+          "name": "edge-autopan-1-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: selection precondition\n\ntrue !== false\n\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:202:52)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:282:38",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-edge-autopan-1-unselected-trace.json",
+            "sha256": "6f503802af73874896ded503e98a59cb9a8169d4219f394bcba16a56763198e6"
+          }
+        },
+        {
+          "name": "edge-autopan-2-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: selection precondition\n\ntrue !== false\n\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:202:52)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:282:38",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-a-edge-autopan-2-unselected-trace.json",
+            "sha256": "ec2be75755dc009adeb43b83493ff810e612e6dc0ee022f0e63acf9f7a6bf987"
+          }
+        }
+      ]
+    },
+    {
+      "identity": {
+        "name": "qa3-drag-baseline-b.json",
+        "bytes": 44535,
+        "sha256": "331FA032E76646D42975761EDA473854A9F751B1E73F72D9BF916373B05131A3"
+      },
+      "status": "failed",
+      "scriptSha256": "ba154f4dee2bb3cbece030a5c933731330c54ed660999d87784f352346a20f3b",
+      "interpretation": "Six central passes; three original auto-pan offsets persisted. Historical QA1 large jump not attributed.",
+      "cases": [
+        {
+          "name": "central-0.11-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": -1.999999999810598E-05,
+            "y": 1.000000000139778E-06
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-central-0.11-unselected-trace.json",
+            "sha256": "070e695f6477606a54af226f796261114cfb3fed2b8b56852d2a9c526272faff"
+          }
+        },
+        {
+          "name": "central-0.11-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": -1.999999999810598E-05,
+            "y": 1.000000000139778E-06
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-central-0.11-selected-trace.json",
+            "sha256": "2c66d73cbb505629954d7726120938c45fcc3ce7f7b9c351ab9e155dcb79c4c3"
+          }
+        },
+        {
+          "name": "central-1-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-central-1-unselected-trace.json",
+            "sha256": "4bd5cd47b9f7d11c1f5c865351544049f8a9bd9c106445e672ad566af7e82a44"
+          }
+        },
+        {
+          "name": "central-1-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-central-1-selected-trace.json",
+            "sha256": "cc48ac5e82624f87e756fd9be4e0bcca31a075ac832cba3f354163cc46f86c03"
+          }
+        },
+        {
+          "name": "central-2-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-central-2-unselected-trace.json",
+            "sha256": "9c6f2300ef7a9c0720a99782503e6b9f8a3974418984832bdd5a512a83abfeb5"
+          }
+        },
+        {
+          "name": "central-2-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-central-2-selected-trace.json",
+            "sha256": "9814456872dcafec9576bda3c878bcc1994bac080d146ac2ea68b72a39ec0eac"
+          }
+        },
+        {
+          "name": "edge-autopan-0.11-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: final rendered position: expected {\"x\":-1776.8181818181818,\"y\":80}, actual {\"x\":-1677.95,\"y\":80}, screen residual {\"x\":10.875499999999988,\"y\":0}\n    at assertPosition (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:47:10)\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:244:73)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:292:38",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-edge-autopan-0.11-unselected-trace.json",
+            "sha256": "89cc61d3550fc1831f691a20377c2eb089a6ccac4fc56af918a30fcaa6b67c9e"
+          }
+        },
+        {
+          "name": "edge-autopan-1-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: final rendered position: expected {\"x\":-107,\"y\":80}, actual {\"x\":-96.5,\"y\":80}, screen residual {\"x\":10.5,\"y\":0}\n    at assertPosition (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:47:10)\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:244:73)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:292:38",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-edge-autopan-1-unselected-trace.json",
+            "sha256": "df8e1b5f6478d81e3e78366d2d6fca7f6d626577d03ff44b8144013d41e2637a"
+          }
+        },
+        {
+          "name": "edge-autopan-2-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: final rendered position: expected {\"x\":-22.125,\"y\":80}, actual {\"x\":-16.6875,\"y\":80}, screen residual {\"x\":10.875,\"y\":0}\n    at assertPosition (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:47:10)\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:244:73)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:292:38",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-baseline-b-edge-autopan-2-unselected-trace.json",
+            "sha256": "66a020f615e621b198cac1ecc4653878ee84e4014606ec25a22b6e9288f1b050"
+          }
+        }
+      ]
+    },
+    {
+      "identity": {
+        "name": "qa3-drag-vite-c.json",
+        "bytes": 43840,
+        "sha256": "3A94BD0556389403CDF8B10281B159521CBF4C93402B3B8CB170B93FD60DF92D"
+      },
+      "status": "failed",
+      "scriptSha256": "2547db8560c9a02028ee2aeea7ab367f89b74197c4663dbcac03c3da72c5ae27",
+      "interpretation": "First move-only prototype 8/9; startup timing changed. Preserved and replaced with captured original condition.",
+      "cases": [
+        {
+          "name": "central-0.11-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": -1.999999999810598E-05,
+            "y": 1.000000000139778E-06
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-central-0.11-unselected-trace.json",
+            "sha256": "3dfefe7747955ba3cfa4e77af9ac090985445d833d41c0cf896c209c68366669"
+          }
+        },
+        {
+          "name": "central-0.11-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": -1.999999999810598E-05,
+            "y": 1.000000000139778E-06
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-central-0.11-selected-trace.json",
+            "sha256": "ef17311ac7977425caa9eec08e766fbe87d981cbdca1eb80fe5380acc1e7c07e"
+          }
+        },
+        {
+          "name": "central-1-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-central-1-unselected-trace.json",
+            "sha256": "b7c1864f115da6088d2219202e3c241ed4c5ab48d2b7d1b59c1d75cd90aa0e81"
+          }
+        },
+        {
+          "name": "central-1-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-central-1-selected-trace.json",
+            "sha256": "ca0366046b82a0d39c28fb0dbf970ee51704271f77ab68bda08c63f163b2dfdd"
+          }
+        },
+        {
+          "name": "central-2-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-central-2-unselected-trace.json",
+            "sha256": "1852e5045c09ded231d31bdaacdd1ac8bb994a9734776a076fc3e3d8d1f333ca"
+          }
+        },
+        {
+          "name": "central-2-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-central-2-selected-trace.json",
+            "sha256": "500bde095ebce3114fd26a4453d004cbd57a4ebfa555b4122b7e7316e4bb33fd"
+          }
+        },
+        {
+          "name": "edge-autopan-0.11-unselected",
+          "status": "failed",
+          "error": "AssertionError [ERR_ASSERTION]: crossing the drag threshold cannot hide a larger initial node jump\n    at runCase (file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:225:12)\n    at async file:///C:/Users/KLucen/Desktop/MerMarkd/tests/e2e/qa3-canvas-drag-packaged.mjs:296:38",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-edge-autopan-0.11-unselected-trace.json",
+            "sha256": "65c0422edd31ea61f764374e25330f42d61dd2af8515e3de84c32914bee8d4c0"
+          }
+        },
+        {
+          "name": "edge-autopan-1-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-edge-autopan-1-unselected-trace.json",
+            "sha256": "57fc4d40ac86bcb6e5858060dd13d478c2c7adee1fd8d05f09b77a5c5ced6a8a"
+          }
+        },
+        {
+          "name": "edge-autopan-2-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-c-edge-autopan-2-unselected-trace.json",
+            "sha256": "7ff002298e14219890db91076aefb663f77c0c5894c898fd5e0cd52e3c1b048f"
+          }
+        }
+      ]
+    },
+    {
+      "identity": {
+        "name": "qa3-final-vite-a-qa3-drag.json",
+        "bytes": 41199,
+        "sha256": "725991A2F2ACE9330A0DDEC1806FDCFD06DCCD8569F810078F5639F406458FF6"
+      },
+      "status": "failed",
+      "scriptSha256": "5baadfe8308423664b1f681637c6aaf9b7fb0300380a99505110e03e9d3eb489",
+      "interpretation": "First cold Vite case timed out before importing; old start-page targeting race found in test. Test now waits for requested URL and document completion; no product change.",
+      "cases": [
+        {
+          "name": "central-0.11-unselected",
+          "status": "failed",
+          "error": "Error: Timed out: real requested document ready\n    at wait (file:///C:/Users/KLucen/.codex/worktrees/mermarkd-qa3-final/tests/e2e/qa3-canvas-drag-packaged.mjs:94:9)\n    at async open (file:///C:/Users/KLucen/.codex/worktrees/mermarkd-qa3-final/tests/e2e/qa3-canvas-drag-packaged.mjs:134:3)\n    at async runCase (file:///C:/Users/KLucen/.codex/worktrees/mermarkd-qa3-final/tests/e2e/qa3-canvas-drag-packaged.mjs:198:100)\n    at async file:///C:/Users/KLucen/.codex/worktrees/mermarkd-qa3-final/tests/e2e/qa3-canvas-drag-packaged.mjs:295:76",
+          "residual": null,
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-central-0.11-unselected-trace.json",
+            "sha256": "b076a6485c9e854d26ed14dc480ded41bae171fa8f607b604055096a8bb79db0"
+          }
+        },
+        {
+          "name": "central-0.11-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": -1.999999999810598E-05,
+            "y": 1.000000000139778E-06
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-central-0.11-selected-trace.json",
+            "sha256": "45939f5e8295060679dc0fdc93ac44ec1fdf14f1065e165820d17b95064e9bfd"
+          }
+        },
+        {
+          "name": "central-1-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-central-1-unselected-trace.json",
+            "sha256": "12af68292262d65e6db728f842d886564c63a9d8749d0f8383cf27af8ba2ae0b"
+          }
+        },
+        {
+          "name": "central-1-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-central-1-selected-trace.json",
+            "sha256": "909424cf7cbbe4058875e1fc5cda24d2de98c018d2ad0230cbc9882d18cab501"
+          }
+        },
+        {
+          "name": "central-2-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-central-2-unselected-trace.json",
+            "sha256": "068ddac4ce657d7fe25071bbe5b79ff50030f42a4cc1ce4ae6a2dd338af8826c"
+          }
+        },
+        {
+          "name": "central-2-selected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-central-2-selected-trace.json",
+            "sha256": "ac3297483677e3a3cc91e498d8ed31fdf994478f26c9369fb81c56fa8d76d78e"
+          }
+        },
+        {
+          "name": "edge-autopan-0.11-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-edge-autopan-0.11-unselected-trace.json",
+            "sha256": "76e7febb89492d63e7c759dc54d1967edad45ab64f228db64722fb5419a79733"
+          }
+        },
+        {
+          "name": "edge-autopan-1-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-edge-autopan-1-unselected-trace.json",
+            "sha256": "56a6b42eaccf98f335e06b9d47f34fd21ee64e2e83105979e364d92c6b337764"
+          }
+        },
+        {
+          "name": "edge-autopan-2-unselected",
+          "status": "passed",
+          "error": null,
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-vite-a-qa3-drag-edge-autopan-2-unselected-trace.json",
+            "sha256": "3f3f0f0c63e8d4a6ed13e4cba75572dc5baf1bc3e470c4b4c135622dad54a9cb"
+          }
+        }
+      ]
+    }
+  ],
+  "protectedUserFilesUnchanged": 3,
+  "candidateProcessesRemaining": 0,
+  "limitations": [
+    "The reproducible initial auto-pan offset is fixed; the historical QA1 single large jump remains unlocated.",
+    "Native client AX serialization was observed with inlineTextBoxes, but the baseline was unfocused and profiled; no formal performance acceptance is claimed.",
+    "The HAST chunk exposure prototype was withdrawn after missing the goals; production reader behavior and AX features remain unchanged.",
+    "Old packaged Squirrel hooks already pass the held-helper test. No premature-process-exit fix or historical binary-residue fix is claimed; no real install, upgrade or uninstall performed.",
+    "No new physical IME, cross-screen DPI, cross-volume, clean-Windows or public-release acceptance; memory observations remain limited. QA1/P0 not complete."
+  ],
+  "guardLog": {
+    "name": "qa3-final-guards-qa3-drag.log",
+    "bytes": 996,
+    "sha256": "9F318C2450EC0220893A9F114EDD37BF3DA1A7333468CBD8E54306059F3EE8E1"
+  },
+  "guardTestCommit": "2cceee7a36c2fc4e5a414489ddeb1a37886302d4",
+  "lifecycleSuite": {
+    "identity": {
+      "name": "qa3-final-qa3-squirrel.json",
+      "bytes": 8200,
+      "sha256": "9ABF71CB66132B22A36C9615BFC88FF0EC83AB62CAB2776514325B4536EEFF17"
+    },
+    "data": {
+      "kind": "QA3-packaged-squirrel-exit-order",
+      "mode": "run",
+      "status": "passed",
+      "startedAt": "2026-11-19T16:52:39.371Z",
+      "workspace": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w",
+      "executable": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+      "script": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\tests\\e2e\\qa3-squirrel-startup-packaged.mjs",
+        "bytes": 13384,
+        "sha256": "add3f7023a608a5f3b9b417b903db0529391c3d3a3334870861b6f698fc346ed"
+      },
+      "helperSource": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\tests\\fixtures\\qa3-squirrel-helper.cs",
+        "bytes": 2500,
+        "sha256": "335344506d90668cd9062b1632df0d8054cfb0e80a68bd8bcc43fe706e7b8f06"
+      },
+      "cases": [
+        {
+          "name": "--squirrel-install",
+          "status": "passed",
+          "startedAt": "2026-11-19T16:52:40.779Z",
+          "pid": 880,
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-install\\profile",
+          "port": 59050,
+          "helperStart": {
+            "pid": 44148,
+            "token": "7b25bf46d6754f189de2ea13edf0de3c",
+            "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\Update.exe",
+            "argument": "--createShortcut=MerMarkd.exe",
+            "startedUtc": "2026-11-19T16:52:41.6757594Z"
+          },
+          "application": {
+            "executable": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\MerMarkd.exe",
+            "argv": [
+              "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\MerMarkd.exe",
+              "--squirrel-install",
+              "--inspect=127.0.0.1:59050",
+              "--user-data-dir=C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-install\\profile"
+            ],
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-install\\profile",
+            "windowCount": 0
+          },
+          "heldHelperObserved": true,
+          "releaseAt": "2026-11-19T16:52:42.458Z",
+          "exit": {
+            "code": 0,
+            "signal": null,
+            "observedAt": "2026-11-19T16:52:42.584Z"
+          },
+          "helperExiting": {
+            "token": "7b25bf46d6754f189de2ea13edf0de3c",
+            "exitingUtc": "2026-11-19T16:52:42.4905551Z"
+          },
+          "shortcutsUnchanged": true,
+          "finishedAt": "2026-11-19T16:52:42.585Z"
+        },
+        {
+          "name": "--squirrel-updated",
+          "status": "passed",
+          "startedAt": "2026-11-19T16:52:42.586Z",
+          "pid": 29060,
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-updated\\profile",
+          "port": 59054,
+          "helperStart": {
+            "pid": 39916,
+            "token": "3525b0fe75b748b4b5076703b686077e",
+            "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\Update.exe",
+            "argument": "--createShortcut=MerMarkd.exe",
+            "startedUtc": "2026-11-19T16:52:42.8544751Z"
+          },
+          "application": {
+            "executable": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\MerMarkd.exe",
+            "argv": [
+              "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\MerMarkd.exe",
+              "--squirrel-updated",
+              "--inspect=127.0.0.1:59054",
+              "--user-data-dir=C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-updated\\profile"
+            ],
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-updated\\profile",
+            "windowCount": 0
+          },
+          "heldHelperObserved": true,
+          "releaseAt": "2026-11-19T16:52:43.646Z",
+          "exit": {
+            "code": 0,
+            "signal": null,
+            "observedAt": "2026-11-19T16:52:43.776Z"
+          },
+          "helperExiting": {
+            "token": "3525b0fe75b748b4b5076703b686077e",
+            "exitingUtc": "2026-11-19T16:52:43.6780379Z"
+          },
+          "shortcutsUnchanged": true,
+          "finishedAt": "2026-11-19T16:52:43.777Z"
+        },
+        {
+          "name": "--squirrel-uninstall",
+          "status": "passed",
+          "startedAt": "2026-11-19T16:52:43.778Z",
+          "pid": 43900,
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-uninstall\\profile",
+          "port": 59059,
+          "helperStart": {
+            "pid": 6584,
+            "token": "2b75a63ace49430d9caeabde53784295",
+            "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\Update.exe",
+            "argument": "--removeShortcut=MerMarkd.exe",
+            "startedUtc": "2026-11-19T16:52:44.0262017Z"
+          },
+          "application": {
+            "executable": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\MerMarkd.exe",
+            "argv": [
+              "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\MerMarkd.exe",
+              "--squirrel-uninstall",
+              "--inspect=127.0.0.1:59059",
+              "--user-data-dir=C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-uninstall\\profile"
+            ],
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\squirrel-uninstall\\profile",
+            "windowCount": 0
+          },
+          "heldHelperObserved": true,
+          "releaseAt": "2026-11-19T16:52:44.8Z",
+          "exit": {
+            "code": 0,
+            "signal": null,
+            "observedAt": "2026-11-19T16:52:44.913Z"
+          },
+          "helperExiting": {
+            "token": "2b75a63ace49430d9caeabde53784295",
+            "exitingUtc": "2026-11-19T16:52:44.8160475Z"
+          },
+          "shortcutsUnchanged": true,
+          "finishedAt": "2026-11-19T16:52:44.914Z"
+        }
+      ],
+      "boundary": "Actual packaged hook with private copied application and compiled non-installing Update.exe stand-in. Does not run a real installer/updater/uninstaller or prove historical binary residue fixed. No user shortcut is created or removed.",
+      "compiler": {
+        "path": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe",
+        "bytes": 2569832,
+        "sha256": "46809206887326d2d24db1eff1f3064de972c3451abe766b49111450a5e08e00"
+      },
+      "compileOutput": "",
+      "helper": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\Update.exe",
+        "bytes": 6144,
+        "sha256": "58fc32f241be4cd1d323069e7643020790488ddbc97d48eef6bfdab369812a61"
+      },
+      "helperCheck": {
+        "status": "passed",
+        "started": {
+          "pid": 46120,
+          "token": "be4af3905a34410cbabe763a83b7e616",
+          "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\Update.exe",
+          "argument": "--createShortcut=MerMarkd.exe",
+          "startedUtc": "2026-11-19T16:52:39.6344159Z"
+        },
+        "completed": {
+          "token": "be4af3905a34410cbabe763a83b7e616",
+          "exitingUtc": "2026-11-19T16:52:40.0541118Z"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null
+        }
+      },
+      "selectedAsar": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+        "bytes": 4120599,
+        "sha256": "bbc424dbe9ffdd1616d71cbc69c639fe0e91457103e378f36096d47050ab6047"
+      },
+      "selectedExecutable": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+        "bytes": 246324736,
+        "sha256": "a16b97c5087c98d9ad2b7845da2e38a180fa5c696a8428086d8a6019cd5fd27e"
+      },
+      "copiedAsar": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\resources\\app.asar",
+        "bytes": 4120599,
+        "sha256": "bbc424dbe9ffdd1616d71cbc69c639fe0e91457103e378f36096d47050ab6047"
+      },
+      "copiedExecutable": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-au6r6w\\application\\app-0.1.0\\MerMarkd.exe",
+        "bytes": 246324736,
+        "sha256": "a16b97c5087c98d9ad2b7845da2e38a180fa5c696a8428086d8a6019cd5fd27e"
+      },
+      "finishedAt": "2026-11-19T16:52:44.922Z"
+    }
+  },
+  "dragSuite": {
+    "identity": {
+      "name": "qa3-final-guards-qa3-drag.json",
+      "bytes": 44787,
+      "sha256": "673FE360795C25A0CC7CD177229DC85AB5C2BC01AF04A69186D24187E023A4E7"
+    },
+    "data": {
+      "kind": "QA3-canvas-drag-diagnostic",
+      "status": "passed",
+      "startedAt": "2026-11-20T03:09:57.259Z",
+      "mode": "run",
+      "executable": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+      "rendererUrl": null,
+      "scriptSha256": "fa0527cdfe1cce537635e814f0c5c29f686385ecb6a902d4f76c0e2de5eeea5b",
+      "workspace": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP",
+      "cases": [
+        {
+          "name": "central-0.11-unselected",
+          "zoom": 0.11,
+          "selected": false,
+          "edge": false,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:09:59.058Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\central-0.11-unselected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-1",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-1",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144199061.303
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144199062.3042
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143444,
+              "sha256": "fe9d3b86f66bdef933c7baae7414ab81acdf1121397a771cfcc75a9df0abc668",
+              "mtimeMs": 1795144203702.9175
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 662.9905762672424,
+              "y": 444.5740051269531
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": 414,
+                "y": 316,
+                "zoom": 0.11
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 652.7999877929688,
+                "y": 437.6000061035156,
+                "width": 43.12002182006836,
+                "height": 33.43999099731445
+              },
+              "heading": {
+                "x": 659.9905762672424,
+                "y": 444.5740051269531
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 414,
+              "y": 316,
+              "zoom": 0.11
+            },
+            "position": {
+              "x": -138.182,
+              "y": -29.0909
+            },
+            "rect": {
+              "x": 628.7999877929688,
+              "y": 425.6000061035156,
+              "width": 43.12002182006836,
+              "height": 33.43999099731445
+            },
+            "heading": {
+              "x": 635.9905762672424,
+              "y": 432.5740051269531
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": -138.1818181818182,
+            "y": -29.090909090909093
+          },
+          "residual": {
+            "x": -1.999999999810598E-05,
+            "y": 1.000000000139778E-06
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144199061.303
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144199062.3042
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143477,
+              "sha256": "49a0756a0f35f93f5af65ca4c7a6a56b2658e2ee143678ff0b024e04c16ac2b9",
+              "mtimeMs": 1795144204340.1106
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-0.11-unselected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144199061.303
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144199062.3042
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143477,
+              "sha256": "49a0756a0f35f93f5af65ca4c7a6a56b2658e2ee143678ff0b024e04c16ac2b9",
+              "mtimeMs": 1795144204340.1106
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-0.11-unselected-trace.json",
+            "sha256": "d6d9d3bac53e6a19a6d808e88d5264fe4452e3703c93c3060cba7ab23d01b4b9"
+          },
+          "finishedAt": "2026-11-20T03:10:04.52Z"
+        },
+        {
+          "name": "central-0.11-selected",
+          "zoom": 0.11,
+          "selected": true,
+          "edge": false,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:04.754Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\central-0.11-selected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-2",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-2",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144204759.114
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144204761.114
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143444,
+              "sha256": "fe9d3b86f66bdef933c7baae7414ab81acdf1121397a771cfcc75a9df0abc668",
+              "mtimeMs": 1795144209059.2324
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 662.9905762672424,
+              "y": 444.5740051269531
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": 414,
+                "y": 316,
+                "zoom": 0.11
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 652.7999877929688,
+                "y": 437.6000061035156,
+                "width": 43.12002182006836,
+                "height": 33.43999099731445
+              },
+              "heading": {
+                "x": 659.9905762672424,
+                "y": 444.5740051269531
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 414,
+              "y": 316,
+              "zoom": 0.11
+            },
+            "position": {
+              "x": -138.182,
+              "y": -29.0909
+            },
+            "rect": {
+              "x": 628.7999877929688,
+              "y": 425.6000061035156,
+              "width": 43.12002182006836,
+              "height": 33.43999099731445
+            },
+            "heading": {
+              "x": 635.9905762672424,
+              "y": 432.5740051269531
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": -138.1818181818182,
+            "y": -29.090909090909093
+          },
+          "residual": {
+            "x": -1.999999999810598E-05,
+            "y": 1.000000000139778E-06
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144204759.114
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144204761.114
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143477,
+              "sha256": "49a0756a0f35f93f5af65ca4c7a6a56b2658e2ee143678ff0b024e04c16ac2b9",
+              "mtimeMs": 1795144209650.5725
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-0.11-selected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144204759.114
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144204761.114
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143477,
+              "sha256": "49a0756a0f35f93f5af65ca4c7a6a56b2658e2ee143678ff0b024e04c16ac2b9",
+              "mtimeMs": 1795144209650.5725
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-0.11-selected-trace.json",
+            "sha256": "fc79476029a463c051593540060ee6bf09bc6151d7494b0d271e136b7f729ae7"
+          },
+          "finishedAt": "2026-11-20T03:10:09.887Z"
+        },
+        {
+          "name": "central-1-unselected",
+          "zoom": 1,
+          "selected": false,
+          "edge": false,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:10.107Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\central-1-unselected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-3",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-3",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144210110.5256
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144210113.0337
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143441,
+              "sha256": "840976937a66c125861ddbbd15308f8fb084c6b4cb7b00c55ab976ff6145bce2",
+              "mtimeMs": 1795144214330.819
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 662.3687858581543,
+              "y": 445.19999408721924
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": 284,
+                "y": 189,
+                "zoom": 1
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 594,
+                "y": 381.8000183105469,
+                "width": 392,
+                "height": 304
+              },
+              "heading": {
+                "x": 659.3687858581543,
+                "y": 445.19999408721924
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 284,
+              "y": 189,
+              "zoom": 1
+            },
+            "position": {
+              "x": 56,
+              "y": 68
+            },
+            "rect": {
+              "x": 570,
+              "y": 369.8000183105469,
+              "width": 392,
+              "height": 304
+            },
+            "heading": {
+              "x": 635.3687858581543,
+              "y": 433.19999408721924
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": 56,
+            "y": 68
+          },
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144210110.5256
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144210113.0337
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143441,
+              "sha256": "d8bb50fe068f232b7fcd82f110117f851277b49a44adc76004064fdfa60934ed",
+              "mtimeMs": 1795144214968.9905
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-1-unselected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144210110.5256
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144210113.0337
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143441,
+              "sha256": "d8bb50fe068f232b7fcd82f110117f851277b49a44adc76004064fdfa60934ed",
+              "mtimeMs": 1795144214968.9905
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-1-unselected-trace.json",
+            "sha256": "571d7c1a68269b49c6fc5db2b130aa352f1fa35daaf8188bc4bc56839b08283e"
+          },
+          "finishedAt": "2026-11-20T03:10:15.147Z"
+        },
+        {
+          "name": "central-1-selected",
+          "zoom": 1,
+          "selected": true,
+          "edge": false,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:15.316Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\central-1-selected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-4",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-4",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144215320.9172
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144215323.934
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143441,
+              "sha256": "840976937a66c125861ddbbd15308f8fb084c6b4cb7b00c55ab976ff6145bce2",
+              "mtimeMs": 1795144219567.6924
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 662.3687858581543,
+              "y": 445.19999408721924
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": 284,
+                "y": 189,
+                "zoom": 1
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 594,
+                "y": 381.8000183105469,
+                "width": 392,
+                "height": 304
+              },
+              "heading": {
+                "x": 659.3687858581543,
+                "y": 445.19999408721924
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 284,
+              "y": 189,
+              "zoom": 1
+            },
+            "position": {
+              "x": 56,
+              "y": 68
+            },
+            "rect": {
+              "x": 570,
+              "y": 369.8000183105469,
+              "width": 392,
+              "height": 304
+            },
+            "heading": {
+              "x": 635.3687858581543,
+              "y": 433.19999408721924
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": 56,
+            "y": 68
+          },
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144215320.9172
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144215323.934
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143441,
+              "sha256": "d8bb50fe068f232b7fcd82f110117f851277b49a44adc76004064fdfa60934ed",
+              "mtimeMs": 1795144220161.92
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-1-selected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144215320.9172
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144215323.934
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143441,
+              "sha256": "d8bb50fe068f232b7fcd82f110117f851277b49a44adc76004064fdfa60934ed",
+              "mtimeMs": 1795144220161.92
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-1-selected-trace.json",
+            "sha256": "d0a54728ed8fad01ae1a9c58e4d9c5c2744d70723f6b4b5e549b5d2113c31ca5"
+          },
+          "finishedAt": "2026-11-20T03:10:20.341Z"
+        },
+        {
+          "name": "central-2-unselected",
+          "zoom": 2,
+          "selected": false,
+          "edge": false,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:20.609Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\central-2-unselected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-5",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-5",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144220613.0266
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144220615.589
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143440,
+              "sha256": "9f670af042df91b3c6048dffa2e39b76e8b49ac653735e212957950f3a43d333",
+              "mtimeMs": 1795144224790.0322
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 662.7375106811523,
+              "y": 444.6000003814697
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": 139,
+                "y": 45,
+                "zoom": 2
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 529,
+                "y": 317.8000183105469,
+                "width": 784,
+                "height": 608
+              },
+              "heading": {
+                "x": 659.7375106811523,
+                "y": 444.6000003814697
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 139,
+              "y": 45,
+              "zoom": 2
+            },
+            "position": {
+              "x": 68,
+              "y": 74
+            },
+            "rect": {
+              "x": 505,
+              "y": 305.8000183105469,
+              "width": 784,
+              "height": 608
+            },
+            "heading": {
+              "x": 635.7375106811523,
+              "y": 432.6000003814697
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": 68,
+            "y": 74
+          },
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144220613.0266
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144220615.589
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143440,
+              "sha256": "4f520634282879c4a3db192a031d2420fb02b0d9c8b6f19e517cd36fbf9aceec",
+              "mtimeMs": 1795144225431.2952
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-2-unselected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144220613.0266
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144220615.589
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143440,
+              "sha256": "4f520634282879c4a3db192a031d2420fb02b0d9c8b6f19e517cd36fbf9aceec",
+              "mtimeMs": 1795144225431.2952
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-2-unselected-trace.json",
+            "sha256": "dbf698004e7d3edd9d29528f3f7b9e31f59adda76966ea142389bd85657763b7"
+          },
+          "finishedAt": "2026-11-20T03:10:25.604Z"
+        },
+        {
+          "name": "central-2-selected",
+          "zoom": 2,
+          "selected": true,
+          "edge": false,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:25.824Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\central-2-selected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-6",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-6",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144225829.1726
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144225831.3494
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143440,
+              "sha256": "9f670af042df91b3c6048dffa2e39b76e8b49ac653735e212957950f3a43d333",
+              "mtimeMs": 1795144229975.9597
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 662.7375106811523,
+              "y": 444.6000003814697
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": 139,
+                "y": 45,
+                "zoom": 2
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 529,
+                "y": 317.8000183105469,
+                "width": 784,
+                "height": 608
+              },
+              "heading": {
+                "x": 659.7375106811523,
+                "y": 444.6000003814697
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 139,
+              "y": 45,
+              "zoom": 2
+            },
+            "position": {
+              "x": 68,
+              "y": 74
+            },
+            "rect": {
+              "x": 505,
+              "y": 305.8000183105469,
+              "width": 784,
+              "height": 608
+            },
+            "heading": {
+              "x": 635.7375106811523,
+              "y": 432.6000003814697
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": 68,
+            "y": 74
+          },
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144225829.1726
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144225831.3494
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143440,
+              "sha256": "4f520634282879c4a3db192a031d2420fb02b0d9c8b6f19e517cd36fbf9aceec",
+              "mtimeMs": 1795144230580.3862
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-2-selected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144225829.1726
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144225831.3494
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143440,
+              "sha256": "4f520634282879c4a3db192a031d2420fb02b0d9c8b6f19e517cd36fbf9aceec",
+              "mtimeMs": 1795144230580.3862
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-central-2-selected-trace.json",
+            "sha256": "2f004d030bc4f3381e81e5f49b2c2a52b80040bb8c05d62d0e90a2cd4b5f6a04"
+          },
+          "finishedAt": "2026-11-20T03:10:30.756Z"
+        },
+        {
+          "name": "edge-autopan-0.11-unselected",
+          "zoom": 0.11,
+          "selected": false,
+          "edge": true,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:30.959Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\edge-autopan-0.11-unselected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-7",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-7",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144230963.585
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144230965.5889
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143443,
+              "sha256": "f12b18b8235e3b6477b62b610ce8e72bb73be9aaff620efbd5b51cd271d36927",
+              "mtimeMs": 1795144235178.2617
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 244.9905641078949,
+              "y": 444.5740051269531
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": -4,
+                "y": 316,
+                "zoom": 0.11
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 234.8000030517578,
+                "y": 437.6000061035156,
+                "width": 43.1199951171875,
+                "height": 33.43999099731445
+              },
+              "heading": {
+                "x": 241.9905641078949,
+                "y": 444.5740051269531
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 198.5,
+              "y": 316,
+              "zoom": 0.11
+            },
+            "position": {
+              "x": -1770,
+              "y": 80
+            },
+            "rect": {
+              "x": 233.8000030517578,
+              "y": 437.6000061035156,
+              "width": 43.1199951171875,
+              "height": 33.43999099731445
+            },
+            "heading": {
+              "x": 240.9905641078949,
+              "y": 444.5740051269531
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": -1770,
+            "y": 80
+          },
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144230963.585
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144230965.5889
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143460,
+              "sha256": "5b3fed8551b17e7b60338abf8523202de1e4fe22a309d9e2db45d47fb4a2144f",
+              "mtimeMs": 1795144236373.3262
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-edge-autopan-0.11-unselected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144230963.585
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144230965.5889
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143460,
+              "sha256": "5b3fed8551b17e7b60338abf8523202de1e4fe22a309d9e2db45d47fb4a2144f",
+              "mtimeMs": 1795144236373.3262
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-edge-autopan-0.11-unselected-trace.json",
+            "sha256": "96cfd8fca7e8cd1ec18f23be5ace178f3a406aa72afa274c3a6d04be8f419149"
+          },
+          "finishedAt": "2026-11-20T03:10:36.554Z"
+        },
+        {
+          "name": "edge-autopan-1-unselected",
+          "zoom": 1,
+          "selected": false,
+          "edge": true,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:36.785Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\edge-autopan-1-unselected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-8",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-8",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144236788.8862
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144236790.395
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143442,
+              "sha256": "76db584046990dbf23e7088c248eeee7f402c0c3d364144439ef496b10547fd6",
+              "mtimeMs": 1795144240957.0376
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 245.36875534057617,
+              "y": 445.19999408721924
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": -133,
+                "y": 189,
+                "zoom": 1
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 177,
+                "y": 381.8000183105469,
+                "width": 392,
+                "height": 304
+              },
+              "heading": {
+                "x": 242.36875534057617,
+                "y": 445.19999408721924
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": 62,
+              "y": 189,
+              "zoom": 1
+            },
+            "position": {
+              "x": -116,
+              "y": 80
+            },
+            "rect": {
+              "x": 176,
+              "y": 381.8000183105469,
+              "width": 392,
+              "height": 304
+            },
+            "heading": {
+              "x": 241.36875534057617,
+              "y": 445.19999408721924
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": -116,
+            "y": 80
+          },
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144236788.8862
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144236790.395
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143444,
+              "sha256": "8bc78948cf5bd109b7c4f7aebc89afd691111d207634e8bba04a562bec018d19",
+              "mtimeMs": 1795144242141.9417
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-edge-autopan-1-unselected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144236788.8862
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144236790.395
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143444,
+              "sha256": "8bc78948cf5bd109b7c4f7aebc89afd691111d207634e8bba04a562bec018d19",
+              "mtimeMs": 1795144242141.9417
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-edge-autopan-1-unselected-trace.json",
+            "sha256": "0130069cbb813463e8b53b676dac83725375e101b4634be3083544dd0e056d0f"
+          },
+          "finishedAt": "2026-11-20T03:10:42.321Z"
+        },
+        {
+          "name": "edge-autopan-2-unselected",
+          "zoom": 2,
+          "selected": false,
+          "edge": true,
+          "status": "passed",
+          "startedAt": "2026-11-20T03:10:42.489Z",
+          "documentPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\edge-autopan-2-unselected\\拖动诊断.md",
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-9",
+          "environment": {
+            "execPath": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\MerMarkd-win32-x64\\MerMarkd.exe",
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-drag-Vg7XbP\\profile-9",
+            "features": [
+              "nativeAPIs"
+            ],
+            "focused": true,
+            "visible": true,
+            "minimized": false
+          },
+          "beforeFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144242498.4006
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144242502.8835
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143441,
+              "sha256": "cdd3ebd740abe529b109a2cc0ca2597226fa9907d7f4debd369b7de1420aead4",
+              "mtimeMs": 1795144246669.8247
+            }
+          ],
+          "reference": {
+            "client": {
+              "x": 244.73749542236328,
+              "y": 444.6000003814697
+            },
+            "geometry": {
+              "host": {
+                "x": 230,
+                "y": 112.80000305175781,
+                "width": 954.7999877929688,
+                "height": 737.6000366210938
+              },
+              "viewport": {
+                "x": -279,
+                "y": 45,
+                "zoom": 2
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "rect": {
+                "x": 111,
+                "y": 317.8000183105469,
+                "width": 784,
+                "height": 608
+              },
+              "heading": {
+                "x": 241.73749542236328,
+                "y": 444.6000003814697
+              },
+              "selected": true,
+              "dragging": true
+            }
+          },
+          "final": {
+            "host": {
+              "x": 230,
+              "y": 112.80000305175781,
+              "width": 954.7999877929688,
+              "height": 737.6000366210938
+            },
+            "viewport": {
+              "x": -76.5,
+              "y": 45,
+              "zoom": 2
+            },
+            "position": {
+              "x": -21.75,
+              "y": 80
+            },
+            "rect": {
+              "x": 110,
+              "y": 317.8000183105469,
+              "width": 784,
+              "height": 608
+            },
+            "heading": {
+              "x": 240.73749542236328,
+              "y": 444.6000003814697
+            },
+            "selected": true,
+            "dragging": false
+          },
+          "expected": {
+            "x": -21.75,
+            "y": 80
+          },
+          "residual": {
+            "x": 0,
+            "y": 0
+          },
+          "afterFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144242498.4006
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144242502.8835
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143445,
+              "sha256": "5750353c504b2b4066987782ad84758ad45bd0296002bef7d9433bfdd0e5ea1d",
+              "mtimeMs": 1795144247850.039
+            }
+          ],
+          "screenshot": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-edge-autopan-2-unselected.png",
+          "finalFiles": [
+            {
+              "suffix": "",
+              "bytes": 5271583,
+              "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+              "mtimeMs": 1795144242498.4006
+            },
+            {
+              "suffix": ".annotations.yaml",
+              "bytes": 295206,
+              "sha256": "db294709aa8fe7850074f464f52c3be31a7f8585c0740e52ee912d1471a5ed45",
+              "mtimeMs": 1795144242502.8835
+            },
+            {
+              "suffix": ".mermarkd.json",
+              "bytes": 143445,
+              "sha256": "5750353c504b2b4066987782ad84758ad45bd0296002bef7d9433bfdd0e5ea1d",
+              "mtimeMs": 1795144247850.039
+            }
+          ],
+          "traceArtifact": {
+            "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\out\\qa\\qa3-final-guards-qa3-drag-edge-autopan-2-unselected-trace.json",
+            "sha256": "c58e6de48a6c8e728689647a74058a5d3d281ca817f809d1be492be4594e41d0"
+          },
+          "finishedAt": "2026-11-20T03:10:48.019Z"
+        }
+      ],
+      "boundary": "Actual isolated packaged window, real pointer dispatch/renderer/IPC/filesystem. Does not close the retained QA1 drag failure or claim a performance budget. Native source dialog is mocked; no physical IME, installation or hardware acceptance.",
+      "fixture": {
+        "bytes": 5271583,
+        "sha256": "aa0c2c4432d8f3a75ce1307e59a74f7814c7ab32cac3bfbedbe2794ca4b2fb7e",
+        "cards": 200,
+        "highlights": 500
+      },
+      "asarSha256": "bbc424dbe9ffdd1616d71cbc69c639fe0e91457103e378f36096d47050ab6047",
+      "finishedAt": "2026-11-20T03:10:48.251Z"
+    }
+  },
+  "dependencyPatch": {
+    "version": "0.0.83",
+    "script": {
+      "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\scripts\\patch-xyflow-autopan.mjs",
+      "bytes": 4197,
+      "sha256": "F5641C81731C2911854C4902906F10BAD98AE53D9C04F2086DDEC11B3BAEC6F8"
+    },
+    "entries": [
+      {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\node_modules\\@xyflow\\system\\dist\\esm\\index.js",
+        "bytes": 155053,
+        "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+      },
+      {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-qa3-final\\node_modules\\@xyflow\\system\\dist\\esm\\index.mjs",
+        "bytes": 155053,
+        "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+      }
+    ]
+  },
+  "priorVite": {
+    "identity": {
+      "name": "qa3-final-vite-a-manifest.json",
+      "bytes": 927,
+      "sha256": "4B8638BE962F388336450FB81DF9484F197714031CDE14B089F6E8DB6FACFAE8"
+    },
+    "data": {
+      "startedUtc": "2026-11-20T03:07:05.3251062Z",
+      "worktree": "C:/Users/KLucen/.codex/worktrees/mermarkd-qa3-final",
+      "commit": "55af10b4052b8a1c6c5756e82d2a74257942ebb2",
+      "asarSha256": "BBC424DBE9FFDD1616D71CBC69C639FE0E91457103E378F36096D47050AB6047",
+      "status": "failed",
+      "runs": [
+        {
+          "name": "qa3-drag",
+          "startedUtc": "2026-11-20T03:07:07.8916956Z",
+          "command": "npm run test:e2e:qa3-drag",
+          "log": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-a-qa3-drag.log",
+          "exitCode": 1,
+          "logSha256": "4745C20BBE106576530844E7F7DB7BB5AADCDB18AADCC972ACB97B05F0B0F1ED",
+          "finishedUtc": "2026-11-20T03:08:42.1805857Z"
+        }
+      ],
+      "error": "Vite regression failed: C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-final-vite-a-qa3-drag.log",
+      "serverProcessId": 36484,
+      "serverStopped": true,
+      "finishedUtc": "2026-11-20T03:08:42.8943594Z"
+    }
+  },
+  "prebuildVite": {
+    "identity": {
+      "name": "qa3-drag-vite-d.json",
+      "bytes": 44256,
+      "sha256": "49E37337029BEC86FE9B455300C441C0CC70E96DDB20781AA7826C2925AE4ED0"
+    },
+    "status": "passed",
+    "scriptSha256": "2547db8560c9a02028ee2aeea7ab367f89b74197c4663dbcac03c3da72c5ae27",
+    "interpretation": "Final A24 patched ESM entries; nine real Vite drag scenarios.",
+    "cases": [
+      {
+        "name": "central-0.11-unselected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": -1.999999999810598E-05,
+          "y": 1.000000000139778E-06
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-central-0.11-unselected-trace.json",
+          "sha256": "3332a4d6641686ba35d9fca82545f533b0cb994dbb5951311ab4a1b54e16bcdf"
+        }
+      },
+      {
+        "name": "central-0.11-selected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": -1.999999999810598E-05,
+          "y": 1.000000000139778E-06
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-central-0.11-selected-trace.json",
+          "sha256": "e9902011abc0a0a42dbdc3612772a5cfefb5c126e916cb867e680e5e47229a0d"
+        }
+      },
+      {
+        "name": "central-1-unselected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": 0,
+          "y": 0
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-central-1-unselected-trace.json",
+          "sha256": "14518ffc02f5a1853536e41ad5270c7b266bc78d19d8eb904b2b8a4c4f44fa47"
+        }
+      },
+      {
+        "name": "central-1-selected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": 0,
+          "y": 0
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-central-1-selected-trace.json",
+          "sha256": "1d7054d2fa1c848045c96e08ca206172e9fcc78b08bfcc5b99ac043df4af26c8"
+        }
+      },
+      {
+        "name": "central-2-unselected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": 0,
+          "y": 0
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-central-2-unselected-trace.json",
+          "sha256": "87b6c3d1181747607fddc735441f55102666666bb8bb0bab4e37074469deb061"
+        }
+      },
+      {
+        "name": "central-2-selected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": 0,
+          "y": 0
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-central-2-selected-trace.json",
+          "sha256": "197bfe1ec973cd28e87c1b034fd16ff59b42eca272b363788270d20113c280e8"
+        }
+      },
+      {
+        "name": "edge-autopan-0.11-unselected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": 0,
+          "y": 0
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-edge-autopan-0.11-unselected-trace.json",
+          "sha256": "76cdebb519f68cbbc7f33916bafb0b47ff1f438b1617c176c85b4a44e8f0ac69"
+        }
+      },
+      {
+        "name": "edge-autopan-1-unselected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": 0,
+          "y": 0
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-edge-autopan-1-unselected-trace.json",
+          "sha256": "554146b625b41e030ec506fc752e8a537d59763517ec690d1eb6b1c3e159de27"
+        }
+      },
+      {
+        "name": "edge-autopan-2-unselected",
+        "status": "passed",
+        "error": null,
+        "residual": {
+          "x": 0,
+          "y": 0
+        },
+        "traceArtifact": {
+          "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\out\\qa\\qa3-drag-vite-d-edge-autopan-2-unselected-trace.json",
+          "sha256": "2149df004daeb4bb30abd5c994fecb11e6f31004acaf657f49a3dd0c671e1d5c"
+        }
+      }
+    ]
+  },
+  "squirrelBaseline": {
+    "identity": {
+      "name": "qa3-squirrel-baseline-a.json",
+      "bytes": 8155,
+      "sha256": "0AF54F5C3C82ED5524D75D5F04D223916D5D4D273FAA213BBC9FD9713357CBF5"
+    },
+    "data": {
+      "kind": "QA3-packaged-squirrel-exit-order",
+      "mode": "run",
+      "status": "passed",
+      "startedAt": "2026-11-19T16:38:28.011Z",
+      "workspace": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw",
+      "executable": "C:/Users/KLucen/.codex/worktrees/mermarkd-file1d-final/out/MerMarkd-win32-x64/MerMarkd.exe",
+      "script": {
+        "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\tests\\e2e\\qa3-squirrel-startup-packaged.mjs",
+        "bytes": 13198,
+        "sha256": "3d53433cf8a906ae43478969bcec2b92820ce5d2c7604223bda523375909b07e"
+      },
+      "helperSource": {
+        "path": "C:\\Users\\KLucen\\Desktop\\MerMarkd\\tests\\fixtures\\qa3-squirrel-helper.cs",
+        "bytes": 2447,
+        "sha256": "91f5b30a1cb1a78bb2b37e616b3beaa8bdf5ef95cd8d4baed6a61d02fd0f4f7c"
+      },
+      "cases": [
+        {
+          "name": "--squirrel-install",
+          "status": "passed",
+          "startedAt": "2026-11-19T16:38:29.291Z",
+          "pid": 32596,
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-install\\profile",
+          "port": 53202,
+          "helperStart": {
+            "pid": 34976,
+            "token": "3111ecd59d024450b2fa9244c470a07f",
+            "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\Update.exe",
+            "argument": "--createShortcut=MerMarkd.exe",
+            "startedUtc": "2026-11-19T16:38:30.177893Z"
+          },
+          "application": {
+            "executable": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\MerMarkd.exe",
+            "argv": [
+              "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\MerMarkd.exe",
+              "--squirrel-install",
+              "--inspect=127.0.0.1:53202",
+              "--user-data-dir=C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-install\\profile"
+            ],
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-install\\profile",
+            "windowCount": 0
+          },
+          "heldHelperObserved": true,
+          "releaseAt": "2026-11-19T16:38:30.952Z",
+          "exit": {
+            "code": 0,
+            "signal": null,
+            "observedAt": "2026-11-19T16:38:31.097Z"
+          },
+          "helperExiting": {
+            "token": "3111ecd59d024450b2fa9244c470a07f",
+            "exitingUtc": "2026-11-19T16:38:30.9682422Z"
+          },
+          "shortcutsUnchanged": true,
+          "finishedAt": "2026-11-19T16:38:31.099Z"
+        },
+        {
+          "name": "--squirrel-updated",
+          "status": "passed",
+          "startedAt": "2026-11-19T16:38:31.1Z",
+          "pid": 35848,
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-updated\\profile",
+          "port": 53206,
+          "helperStart": {
+            "pid": 41256,
+            "token": "626a9cedb089485c8065d6bef5a9947c",
+            "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\Update.exe",
+            "argument": "--createShortcut=MerMarkd.exe",
+            "startedUtc": "2026-11-19T16:38:31.3575378Z"
+          },
+          "application": {
+            "executable": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\MerMarkd.exe",
+            "argv": [
+              "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\MerMarkd.exe",
+              "--squirrel-updated",
+              "--inspect=127.0.0.1:53206",
+              "--user-data-dir=C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-updated\\profile"
+            ],
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-updated\\profile",
+            "windowCount": 0
+          },
+          "heldHelperObserved": true,
+          "releaseAt": "2026-11-19T16:38:32.153Z",
+          "exit": {
+            "code": 0,
+            "signal": null,
+            "observedAt": "2026-11-19T16:38:32.251Z"
+          },
+          "helperExiting": {
+            "token": "626a9cedb089485c8065d6bef5a9947c",
+            "exitingUtc": "2026-11-19T16:38:32.1683995Z"
+          },
+          "shortcutsUnchanged": true,
+          "finishedAt": "2026-11-19T16:38:32.252Z"
+        },
+        {
+          "name": "--squirrel-uninstall",
+          "status": "passed",
+          "startedAt": "2026-11-19T16:38:32.253Z",
+          "pid": 2496,
+          "profile": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-uninstall\\profile",
+          "port": 53210,
+          "helperStart": {
+            "pid": 44944,
+            "token": "a57ed6fc7bb64575b906e356338b180b",
+            "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\Update.exe",
+            "argument": "--removeShortcut=MerMarkd.exe",
+            "startedUtc": "2026-11-19T16:38:32.4613815Z"
+          },
+          "application": {
+            "executable": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\MerMarkd.exe",
+            "argv": [
+              "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\MerMarkd.exe",
+              "--squirrel-uninstall",
+              "--inspect=127.0.0.1:53210",
+              "--user-data-dir=C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-uninstall\\profile"
+            ],
+            "userData": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\squirrel-uninstall\\profile",
+            "windowCount": 0
+          },
+          "heldHelperObserved": true,
+          "releaseAt": "2026-11-19T16:38:33.247Z",
+          "exit": {
+            "code": 0,
+            "signal": null,
+            "observedAt": "2026-11-19T16:38:33.341Z"
+          },
+          "helperExiting": {
+            "token": "a57ed6fc7bb64575b906e356338b180b",
+            "exitingUtc": "2026-11-19T16:38:33.2774005Z"
+          },
+          "shortcutsUnchanged": true,
+          "finishedAt": "2026-11-19T16:38:33.342Z"
+        }
+      ],
+      "boundary": "Actual packaged hook with private copied application and compiled non-installing Update.exe stand-in. Does not run a real installer/updater/uninstaller or prove historical binary residue fixed. No user shortcut is created or removed.",
+      "compiler": {
+        "path": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe",
+        "bytes": 2569832,
+        "sha256": "46809206887326d2d24db1eff1f3064de972c3451abe766b49111450a5e08e00"
+      },
+      "compileOutput": "",
+      "helper": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\Update.exe",
+        "bytes": 6144,
+        "sha256": "b62a0affd16ab94fc22553b8adaf6bf05b910a539a0781b902c9e86c4bb3477c"
+      },
+      "helperCheck": {
+        "status": "passed",
+        "started": {
+          "pid": 35408,
+          "token": "cea22cfbaf844cabab6b8dba21650c21",
+          "helperPath": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\Update.exe",
+          "argument": "--createShortcut=MerMarkd.exe",
+          "startedUtc": "2026-11-19T16:38:28.1644753Z"
+        },
+        "completed": {
+          "token": "cea22cfbaf844cabab6b8dba21650c21",
+          "exitingUtc": "2026-11-19T16:38:28.5424753Z"
+        },
+        "exit": {
+          "code": 0,
+          "signal": null
+        }
+      },
+      "selectedAsar": {
+        "path": "C:\\Users\\KLucen\\.codex\\worktrees\\mermarkd-file1d-final\\out\\MerMarkd-win32-x64\\resources\\app.asar",
+        "bytes": 4120372,
+        "sha256": "a111dd7c3a1c5fd87d26697f94d5ac091dfbc4da1019f89beb6c52c50316c65e"
+      },
+      "selectedExecutable": {
+        "path": "C:/Users/KLucen/.codex/worktrees/mermarkd-file1d-final/out/MerMarkd-win32-x64/MerMarkd.exe",
+        "bytes": 246324736,
+        "sha256": "2ebd8a2db00d1e5885dd937bd7f5d4f27a0b827196d05a94defe5bd90855a963"
+      },
+      "copiedAsar": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\resources\\app.asar",
+        "bytes": 4120372,
+        "sha256": "a111dd7c3a1c5fd87d26697f94d5ac091dfbc4da1019f89beb6c52c50316c65e"
+      },
+      "copiedExecutable": {
+        "path": "C:\\Users\\KLucen\\AppData\\Local\\Temp\\mermarkd-qa3-squirrel-NWYaZw\\application\\app-0.1.0\\MerMarkd.exe",
+        "bytes": 246324736,
+        "sha256": "2ebd8a2db00d1e5885dd937bd7f5d4f27a0b827196d05a94defe5bd90855a963"
+      },
+      "finishedAt": "2026-11-19T16:38:33.348Z"
+    }
+  },
+  "helperCompileFailure": {
+    "name": "qa3-squirrel-helper-a-fixture-check.json",
+    "bytes": 2025,
+    "sha256": "D71FB64934CF930CE6D5003D03EAF14342FB4A89C723DFAF1134C2830FB04C80"
+  },
+  "nativeAccessibility": {
+    "status": "diagnostic-only-unresolved",
+    "baselineSession": {
+      "name": "qa3-ax-baseline-a-session.json",
+      "bytes": 6459,
+      "sha256": "CFEEFE85CB704EBC29C0172C88B5B649EA412000B6947C2FAFAEF4696DCF895E"
+    },
+    "baselineTrace": {
+      "name": "qa3-native-ax-baseline-a.trace.json",
+      "bytes": 73401442,
+      "sha256": "1D8758F2AA90396B7B8A6BD29C3DB9C13FAC4FD0EECEAB28F402663232F14902"
+    },
+    "features": [
+      "nativeAPIs",
+      "webContents",
+      "inlineTextBoxes",
+      "extendedProperties"
+    ],
+    "baselineFocus": false,
+    "rendererSerializeMs": 559.842,
+    "browserAXMs": 618.088,
+    "rendererOuterTaskMs": 577.121,
+    "browserOuterTaskMs": 656.397,
+    "prototypeStatus": "withdrawn-not-shipped",
+    "prototypeSession": {
+      "name": "qa3-ax-prototype-a-session.json",
+      "bytes": 17614,
+      "sha256": "DE21E87D61E9B56692BA01C22D8B161EDF7B69CD836D28CD8D56FB9F2CB3005C"
+    },
+    "prototypeTrace": {
+      "name": "qa3-ax-prototype-a.trace.json",
+      "bytes": 285567412,
+      "sha256": "5A7D30CD7FF590732BC092D7AC3D87D707BDC7EDC0D7F8A62674FDDAD70D14DD"
+    },
+    "prototypePatch": {
+      "name": "qa3-ax-prototype-a.patch",
+      "bytes": 10836,
+      "sha256": "9BEE5F725769EEE20C1150E9D055628152EEE85D96EB4BDD3F72F04C9DC837DC"
+    },
+    "prototypeRendererSerializeMs": 433.706,
+    "prototypeBrowserAXMs": 705.422,
+    "comparison": "Different build modes and focus; no fair percentage or budget pass inferred."
+  }
+}

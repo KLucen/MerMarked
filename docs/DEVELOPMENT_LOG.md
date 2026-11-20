@@ -2161,3 +2161,43 @@ ASAR4120372bytes / SHA256 A111DD7C3A1C5FD87D26697F94D5AC091DFBC4DA1019F89BEB6C52
 GitHub连接器仍返回UNAUTHORIZED / requires reauthentication，本机已有KLucen GCM账户核验成功，沿用既有SSH和官方GitHub API同步，不新建凭据或扩大权限。运行时6f0beaa、三项测试加强及验收ae3a226已推送origin/codex/file1d-open-bundle，创建并附加PR #26（https://github.com/KLucen/MerMarked/pull/26），目标main，open且未合并。首次回执核对本地 / PR精确head为ae3a226；随后交付文档提交再次推送并核对最终head。云端check runs / status contexts为0，本地检查不等同云端CI，PR不自动合并。
 
 本批未新增真实IME、安装升级卸载、物理跨屏 / 跨卷、辅助客户端、正式性能或干净Windows验收。当前恢复中的旧文档需先处理恢复；严格目录前缀别名和32层 / 128目录上限保守保留。普通副本自动切换、更多附件、HTML / 间接依赖、链接改写、通用压缩仍需后续独立切片，FILE1 / QA1 / P0不整体退出。
+
+## 2026-11-20 · QA3 边缘拖动修复与原生诊断
+
+### 目标与范围
+
+按用户要求回到QA1软件质量收口，基于已合并PR #26 / main4214054，新分支codex/qa3-software-closeout。并行核查真实辅助客户端AX性能、历史拖动异常与卸载残留；有独立复现证据的缺陷才交付修复。最终产品改动只修本批稳定复现的首次auto-pan坐标偏差，原生AX和Squirrel调查分别保留结果。合同QA3_ACCEPTANCE.md，决定ADR-061。
+
+### 边缘拖动：复现、失败原型和修复
+
+新增qa3-canvas-drag-packaged.mjs以生成5MiB / 200卡 / 500高亮样本，记录capture-phase pointer / mouse事件、逐帧viewport / node transform、MutationObserver、请求指针、抓取偏移及实际落盘模型。中央与边缘分别覆盖zoom0.11 / 1 / 2，中央再分已选和未选。最终断言保持1.25 CSS px残差上限，首次阈值移动也不能隐藏跳动；核验其他199卡、箭头及Markdown / YAML bytes / mtime。
+
+首个脚本语法缺括号在GUI前修正。基线A为1/9：测试未真正清选、节点未恢复draggable时就拖动，不能作产品失败。修正为hit-test空白pane真实点击、等待实际draggable后，旧FILE1D包A111…的B轮六个中央全通过，三个边缘稳定偏差约10.875 / 10.5 / 10.875 CSS px且写入JSON。该偏差与首个auto-pan量吻合，历史QA1约742px单次大跳仍缺逐事件证据，未据此归因或关闭。
+
+锁定@xyflow/system0.0.83先启动autoPan，异步pan校正lastPos后，同一drag又用pan前pointerPos覆盖它。第一版只移动启动guard，Vite C为8/9：首次越阈时提早启动，edge0.11初始jump失败，原始trace保留。最终在原位置捕获shouldStartAutoPan，pointer更新后再启动，保留原启动事件时机与速度配置 / 计算公式；首次计算使用本次mousePosition。D轮在相同断言和相同脚本SHA下9/9，三个边缘残差0、中央最大约0.00002 CSS px。D明确是旧Electron壳配实际Vite，不作最终打包版结果。
+
+修复使用scripts/patch-xyflow-autopan.mjs的postinstall精确补丁，两个ESM入口原始SHA BA3932F6…E6BD5C，最终A24AD58C…C1E699。包名、版本、整文件前后SHA、唯一片段均校验；未知版本 / 字节拒绝，幂等及已知一端完成状态可续。未加依赖或改版本，lock仅增加根hasInstallScript。10项纯测试精确提取真实autoPan / drag handler到vm执行async panBy，对三个缩放及首次阈值证明旧失败 / 新正确；不改速度、不关auto-pan、不在松手时回跳补偿。
+
+### AX：真实路径确认，未达标原型撤回
+
+通过computer-use技能的@oai/sky原生查询，记录nativeAPIs / webContents / inlineTextBoxes / extendedProperties，补上QA2仅开两项特性未覆盖的真实查询路径。旧包5MiB打开 / 返回阅读记录约592 / 575ms长帧，trace含toplevel：返回renderer SerializeLifecycleStage559.842ms，Browser OnAccessibilityEvents618.088ms，外层任务577.121 / 656.397ms。嵌套事件不相加，样本失焦，只作诊断，不判正式预算。
+
+完整HAST根块分批挂载 / AX暴露原型同时补pending事件与焦点 / 提交保护，纯分组8测与typecheck通过，但开发模式首开7947ms、缓存返回1299ms；返回仍有433.706ms renderer序列化、705.422ms Browser AX，未达目标。不同构建方式与焦点不作公平百分比比较。原型source / patch / trace已留out/qa，产品与对应纯测试全部撤回，本批没有阅读或辅助功能设置改动。后续需继续比较真实查询与可编辑宿主成本，保留全量内容及模式隔离，不能靠关闭辅助功能收口。
+
+### Squirrel：实际对照否定提前退出推测
+
+锁定electron-squirrel-startup1.0.1的受控mock观察到冗余quit在helper close前调用，一度准备移除；新增真实打包hook测试与C#假Update后，旧包三个install / updated / uninstall均hold700ms存活、零BrowserWindow，release后约100ms退出0。读取ASAR确认旧gate存在，说明调用时序不能推成实际提前进程退出。拟议主进程helper及9纯测试全部撤回，保留仅写自有gate的假helper与打包诊断。首轮C#编译缺System.dll引用失败保留，补显式引用后fixture通过。
+
+精确Squirrel2.0.1+eef37460ae源码有意在卸载后保留.dead，删除异常被吞，退出0不证明零残留；历史三个二进制残留仍缺占用过程证据。当前安装目录已不在，但没有中间记录，不能推断清理原因或宣布修复。未运行真实安装 / 卸载、未删用户数据或真实安装目录，既有用户快捷方式摘要保持。
+
+### 冻结构建与收口
+
+运行时55af10b在独立detached检出mermarkd-qa3-final完成npm ci、typecheck、470/470单测和make。ci实际应用两ESM补丁并核验A24…，源码clean、lock、主区index与原QA1冻结产物保持。ASAR4120599bytes / SHA BBC424DBE9FFDD1616D71CBC69C639FE0E91457103E378F36096D47050AB6047；Setup154852864bytes / SHA 1E389F8612D66EF61B39D59384752B64F1115584E5C062131AD2C2C9B36541FA。实际ASAR renderer与冻结生成文件逐字节一致，捕获条件→pointer更新→auto-pan顺序已复核。
+
+同一ASAR的37套窗口回归全部通过，包含新9项拖动和3项假helper真实打包hook；打包版三个边缘残差0，中央最大约0.00002 CSS px，首次jump与三文件断言保持。截图已视觉检查。
+
+最终Vite A首个场景在打开fixture前超时，截图仍为开始页，其余八个场景通过；manifest与截图保留、服务已停。发现测试Page.navigate后只等按钮存在，可命中跳转前的旧开始页；2cceee7仅增加实际URL与document.readyState完成等待，原条件与位移断言保持，不改产品或ASAR。同包加强后九项打包专项再次通过，Vite B的QA3拖动 / FILE1D / FILE1C / FILE1B / FILE1A / UX9 / UX8 / UX7八套全部通过；不将A首轮失败描述为产品拖动复现或覆盖它。本机原始日志与失败候选不公开上传。
+
+qa3-collect.ps1核准470单测、37窗口、加强后9项专项、8Vite、同包身份、安装补丁与三项用户文件，输出QA3_EVIDENCE.json；候选进程与5178服务均已停止。原生trace、失败原型和Squirrel旧包全绿按其真实含义分别记录。GitHub连接器仍要求重新认证，沿用既有KLucen SSH / GCM和官方API交付；运行时55af10b、测试2cceee7与验收9e04f2d已推送origin/codex/qa3-software-closeout，创建并附加PR #27（https://github.com/KLucen/MerMarked/pull/27），目标main，open且未合并，首次回执与本地精确head9e04f2d一致。随后交付文档提交再次推送并核对最终head。云端check runs / status contexts为0，不将本地验证描述为云端CI，不自动合并。
+
+QA1历史单次大跳、原生AX性能、卸载二进制残留与长期内存仍未解决，硬件和公开发布门槛独立等待。本批不进行新的物理IME、真实安装生命周期、跨屏 / 跨卷或干净Windows验收，不标记QA1 / P0整体退出。
