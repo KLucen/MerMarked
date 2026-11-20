@@ -12,6 +12,8 @@
 
 最终包大样本内部完整AX仍为53,389节点 / 48,013 InlineTextBox，200正文heading名称全部正确；原生大样本快照仍截到19999字，未据此宣称全文已读。1500ms尾窗实际复跑捕捉538–552ms长任务，AX性能目标保持未通过。诊断窗口、候选进程和5178服务已停止，三项用户原修改摘要保持且排除提交，本地包未安装或公开发布。大样本AX性能、历史大跳、卸载残留、长期内存、硬件与公开发布门槛保持未关闭，QA1 / P0未整体退出。
 
+标题修复 `d1f4e91`、最终运行时 / 测试 `975a2db` 与验收 `33f418b` 已推送 `origin/codex/qa4-reader-ax`，创建并附加 [PR #28](https://github.com/KLucen/MerMarked/pull/28)，目标main，open且未合并。现有SSH / 官方API完成交付，连接器仍要求重新认证；云端check runs / status contexts为0，本机通过不当作云端CI。交付记录单独提交后再次核对本地、远端与PR head一致。
+
 ## 2026-11-20 · QA3 边缘拖动修复与原生诊断（本机专项通过）
 
 回到QA1软件收口，基于已合并PR #26的main `4214054`，分支 `codex/qa3-software-closeout`。范围见 [QA3_ACCEPTANCE.md](QA3_ACCEPTANCE.md)，决定ADR-061。

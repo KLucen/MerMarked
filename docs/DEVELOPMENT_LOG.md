@@ -2239,3 +2239,5 @@ QA1历史单次大跳、原生AX性能、卸载二进制残留与长期内存仍
 实际执行包括两次独立干净构建helper（各自npm ci / typecheck / test / make）、最终qa4b-full-regression.ps1、qa4b-vite-check-b.ps1、标题专项旧 / 初始 / 最终各唯一prefix、原生hold A / B、无GUI fixture check、核心18测及1200生成检查、诊断会话A / B、内部AX检查及证据收集。初始37套结果不能替代最终38套，未覆盖项在证据中保留。三项用户原修改摘要保持且排除提交。GitHub连接器仍需重新认证，沿用已核验的KLucen SSH / 官方API交付，不自动合并。
 
 大文档原生AX性能、历史单次大跳、卸载二进制残留、长期内存及设备 / 发布门槛继续未解决。本批不将浏览器可信输入当作物理IME，不进行真实安装生命周期、跨物理屏幕 / 卷或干净Windows验收，QA1 / P0整体状态保持。
+
+交付：`d1f4e91`、`975a2db`、验收 `33f418b` 已通过SSH推送codex/qa4-reader-ax。官方API以现有KLucen凭证创建PR #28（https://github.com/KLucen/MerMarked/pull/28），首次head与本地 / 远端33f418b完全一致，目标main，open且未合并，并附加到当前任务；未触发自动合并。check runs / status contexts为0，不将本地验收当作云端CI。随后交付文档单独提交、再次推送及核对最终head，工作区仅保留三项用户原修改。
