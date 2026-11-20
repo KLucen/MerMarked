@@ -48,6 +48,8 @@ export function ReaderEditableBlock({
   id,
   tabIndex,
 }: ReaderEditableBlockProps) {
+  // Chromium does not name editable headings from their contents automatically.
+  // Refer to the live DOM text so unsaved input is reflected without a stale label.
   const generatedId = useId();
   const headingId = as === 'p' ? undefined : (id ?? `reader-heading-${generatedId}`);
   const elementRef = useRef<HTMLElement | null>(null);

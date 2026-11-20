@@ -50,6 +50,42 @@ export type ReaderPlainTextEditResult =
   | { readonly ok: false; readonly reason: string };
 
 const encoder = new TextEncoder();
+const editGraphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+function hasUnpairedSurrogate(text: string): boolean {
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = text.charCodeAt(index + 1);
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      index += 1;
+    } else if (code >= 0xdc00 && code <= 0xdfff) return true;
+  }
+  return false;
+}
+
+function* graphemeBoundaries(segments: Intl.Segments): Generator<number> {
+  yield 0;
+  for (const { index, segment } of segments) yield index + segment.length;
+}
+
+/** Find the longest common suffix whose ends are grapheme boundaries on both sides. */
+function sharedGraphemeSuffix(
+  before: Intl.Segments, after: Intl.Segments, beforeLength: number, afterLength: number, maximum: number,
+): number {
+  if (maximum === 0) return 0;
+  // The two boundary streams are monotonic in distance from the text end. Merge
+  // them without materializing a per-character array for a large text block.
+  const oldBoundaries = graphemeBoundaries(before), newBoundaries = graphemeBoundaries(after);
+  let oldBoundary = oldBoundaries.next(), newBoundary = newBoundaries.next();
+  while (!oldBoundary.done && !newBoundary.done) {
+    const oldSuffix = beforeLength - oldBoundary.value, newSuffix = afterLength - newBoundary.value;
+    if (oldSuffix > maximum || oldSuffix > newSuffix) oldBoundary = oldBoundaries.next();
+    else if (newSuffix > maximum || newSuffix > oldSuffix) newBoundary = newBoundaries.next();
+    else return oldSuffix;
+  }
+  return 0;
+}
 
 const readerPlainTextEscapes = new Set(['\\', '`', '*', '_', '[', ']', '~', '<', '|']);
 
@@ -276,6 +312,9 @@ export function applyReaderMappedTextEdit(
   if (/[\r\n]/u.test(edit.replacement)) {
     return { ok: false, reason: '正文编辑暂只支持单行纯文本。' };
   }
+  if (hasUnpairedSurrogate(edit.replacement)) {
+    return { ok: false, reason: '正文输入包含不完整的 Unicode 字符，请重新输入。' };
+  }
   const map = (() => {
     try { return buildSelectionMap(content, bomByteLength); }
     catch { return null; }
@@ -292,9 +331,15 @@ export function applyReaderMappedTextEdit(
     return { ok: true, content, sourceStart: block.blockStart, sourceEnd: block.blockEnd, sourceExact: map.source.slice(block.blockStart, block.blockEnd) };
   }
 
+  const beforeSegments = editGraphemeSegmenter.segment(block.visibleText);
+  const afterSegments = editGraphemeSegmenter.segment(edit.replacement);
+  const beforeIterator = beforeSegments[Symbol.iterator](), afterIterator = afterSegments[Symbol.iterator]();
   let visibleStart = 0;
-  const shared = Math.min(block.visibleText.length, edit.replacement.length);
-  while (visibleStart < shared && block.visibleText[visibleStart] === edit.replacement[visibleStart]) visibleStart += 1;
+  for (;;) {
+    const before = beforeIterator.next(), after = afterIterator.next();
+    if (before.done || after.done || before.value.segment !== after.value.segment) break;
+    visibleStart = before.value.index + before.value.segment.length;
+  }
   let visibleEnd = block.visibleText.length;
   let replacementEnd = edit.replacement.length;
   while (visibleEnd > visibleStart && replacementEnd > visibleStart &&
@@ -302,32 +347,27 @@ export function applyReaderMappedTextEdit(
     visibleEnd -= 1;
     replacementEnd -= 1;
   }
-  const leaf = block.leaves.find((candidate) => candidate.visibleStart <= visibleStart && visibleEnd <= candidate.visibleEnd);
+  const suffix = sharedGraphemeSuffix(beforeSegments, afterSegments,
+    block.visibleText.length, edit.replacement.length, block.visibleText.length - visibleEnd);
+  visibleEnd = block.visibleText.length - suffix;
+  replacementEnd = edit.replacement.length - suffix;
+  const insertion = visibleStart === visibleEnd;
+  // A zero-width insertion is mapped through one complete adjacent grapheme.
+  // ±1 UTF-16 unit would cut emoji, combining marks and ZWJ sequences.
+  const adjacent = insertion ? beforeSegments.containing(Math.min(visibleStart, block.visibleText.length - 1)) : undefined;
+  if (insertion && !adjacent) return { ok: false, reason: '无法确定正文输入的安全边界。' };
+  const selectionStart = adjacent?.index ?? visibleStart;
+  const selectionEnd = adjacent ? adjacent.index + adjacent.segment.length : visibleEnd;
+  const leaf = block.leaves.find((candidate) => candidate.visibleStart <= selectionStart && selectionEnd <= candidate.visibleEnd);
   if (!leaf) return { ok: false, reason: '阅读编辑不能跨越多个 Markdown 语法片段。' };
 
-  let sourceStart: number;
-  let sourceEnd: number;
-  if (visibleStart === visibleEnd) {
-    if (visibleStart < block.visibleText.length) {
-      const boundary = resolveSelection(map, block.blockStart, visibleStart, visibleStart + 1);
-      if (!boundary.ok) return { ok: false, reason: boundary.reason };
-      sourceStart = boundary.sourceStart;
-      sourceEnd = sourceStart;
-    } else {
-      const boundary = resolveSelection(map, block.blockStart, visibleStart - 1, visibleStart);
-      if (!boundary.ok) return { ok: false, reason: boundary.reason };
-      sourceStart = boundary.sourceEnd;
-      sourceEnd = sourceStart;
-    }
-  } else {
-    const boundary = resolveSelection(map, block.blockStart, visibleStart, visibleEnd);
-    if (!boundary.ok) return { ok: false, reason: boundary.reason };
-    if (boundary.sourceStart < leaf.sourceStart || boundary.sourceEnd > leaf.sourceEnd) {
-      return { ok: false, reason: '阅读编辑不能跨越多个 Markdown 语法片段。' };
-    }
-    sourceStart = boundary.sourceStart;
-    sourceEnd = boundary.sourceEnd;
+  const boundary = resolveSelection(map, block.blockStart, selectionStart, selectionEnd);
+  if (!boundary.ok) return { ok: false, reason: boundary.reason };
+  if (boundary.sourceStart < leaf.sourceStart || boundary.sourceEnd > leaf.sourceEnd) {
+    return { ok: false, reason: '阅读编辑不能跨越多个 Markdown 语法片段。' };
   }
+  const sourceStart = insertion && visibleStart === block.visibleText.length ? boundary.sourceEnd : boundary.sourceStart;
+  const sourceEnd = insertion ? sourceStart : boundary.sourceEnd;
   const nextSource = map.source.slice(0, sourceStart) + edit.replacement.slice(visibleStart, replacementEnd) + map.source.slice(sourceEnd);
   // File decoding stores BOM separately; preserve the caller's text representation.
   const nextContent = content.startsWith('\uFEFF') ? `\uFEFF${nextSource}` : nextSource;
