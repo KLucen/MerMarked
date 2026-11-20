@@ -41,3 +41,5 @@
 - Vite A首个场景未打开fixture、截图仍在开始页，后续八场景通过；该轮失败manifest / 截图保留，服务已停。发现测试导航后可命中旧开始页的竞态，`2cceee7` 仅补实际URL和页面完成等待，不改产品、位移断言或ASAR。加强后的九项打包专项再次通过。实际Vite B的QA3拖动 / FILE1D / FILE1C / FILE1B / FILE1A / UX9 / UX8 / UX7八套全部通过，服务和候选窗口已停止，三项用户原文件SHA保持。
 
 本地命令与日志位于 `out/qa/qa3-final-build-manifest.json`、`qa3-final-regression-manifest.json`、`qa3-final-guards-qa3-drag.log`、`qa3-final-vite-a-manifest.json` 及独立B轮前缀。原始AX诊断、A / B / C拖动失败与Squirrel旧包通过回执均保留；生成fixture / profile、原始trace / 图片和本地安装包不随Git公开上传。
+
+已推送 `origin/codex/qa3-software-closeout` 并创建、附加 [PR #27](https://github.com/KLucen/MerMarked/pull/27)，目标main，待审未合并。运行时55af10b，测试2cceee7，验收9e04f2d；交付记录只改文档，后续核对精确最终head。GitHub当前check runs / status contexts为0，不将本地结果称为云端CI。

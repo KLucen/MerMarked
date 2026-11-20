@@ -2198,6 +2198,6 @@ GitHub连接器仍返回UNAUTHORIZED / requires reauthentication，本机已有K
 
 最终Vite A首个场景在打开fixture前超时，截图仍为开始页，其余八个场景通过；manifest与截图保留、服务已停。发现测试Page.navigate后只等按钮存在，可命中跳转前的旧开始页；2cceee7仅增加实际URL与document.readyState完成等待，原条件与位移断言保持，不改产品或ASAR。同包加强后九项打包专项再次通过，Vite B的QA3拖动 / FILE1D / FILE1C / FILE1B / FILE1A / UX9 / UX8 / UX7八套全部通过；不将A首轮失败描述为产品拖动复现或覆盖它。本机原始日志与失败候选不公开上传。
 
-qa3-collect.ps1核准470单测、37窗口、加强后9项专项、8Vite、同包身份、安装补丁与三项用户文件，输出QA3_EVIDENCE.json；候选进程与5178服务均已停止。原生trace、失败原型和Squirrel旧包全绿按其真实含义分别记录。GitHub连接器仍要求重新认证，沿用既有KLucen SSH / GCM和官方API交付；PR回执随后补充，不将本地验证描述为云端CI，不自动合并。
+qa3-collect.ps1核准470单测、37窗口、加强后9项专项、8Vite、同包身份、安装补丁与三项用户文件，输出QA3_EVIDENCE.json；候选进程与5178服务均已停止。原生trace、失败原型和Squirrel旧包全绿按其真实含义分别记录。GitHub连接器仍要求重新认证，沿用既有KLucen SSH / GCM和官方API交付；运行时55af10b、测试2cceee7与验收9e04f2d已推送origin/codex/qa3-software-closeout，创建并附加PR #27（https://github.com/KLucen/MerMarked/pull/27），目标main，open且未合并，首次回执与本地精确head9e04f2d一致。随后交付文档提交再次推送并核对最终head。云端check runs / status contexts为0，不将本地验证描述为云端CI，不自动合并。
 
 QA1历史单次大跳、原生AX性能、卸载二进制残留与长期内存仍未解决，硬件和公开发布门槛独立等待。本批不进行新的物理IME、真实安装生命周期、跨屏 / 跨卷或干净Windows验收，不标记QA1 / P0整体退出。
