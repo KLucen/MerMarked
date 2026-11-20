@@ -125,7 +125,11 @@ async function open(item) {
   const port = 18500 + Math.floor(Math.random() * 350), profile = path.join(workspace, `profile-${++launches}`);
   child = await spawn(executable, [`--remote-debugging-port=${port}`, `--inspect=127.0.0.1:${port + 8000}`, `--user-data-dir=${profile}`], { cwd: root, stdio: 'ignore' });
   page = await connectCdp(port, target => target.type === 'page'); main = await connectCdp(port + 8000, target => target.type === 'node');
-  if (process.env.MERMARKD_QA_RENDERER_URL) await page.send('Page.navigate', { url: process.env.MERMARKD_QA_RENDERER_URL });
+  if (process.env.MERMARKD_QA_RENDERER_URL) {
+    const rendererUrl = new URL(process.env.MERMARKD_QA_RENDERER_URL).href;
+    await page.send('Page.navigate', { url: rendererUrl });
+    await wait(`location.href===${JSON.stringify(rendererUrl)}&&document.readyState==='complete'`, 'requested Vite page loaded');
+  }
   await page.send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await page.send('Emulation.setDeviceMetricsOverride', { width: 1200, height: 850, deviceScaleFactor: 1, mobile: false });
   await wait('Boolean(document.querySelector("[data-start-open]"))', 'start page');
