@@ -227,7 +227,7 @@ try {
       dialog.showSaveDialog=async()=>{throw Error('Existing private sources need no save picker');};})()`);
     await wait('Boolean(document.querySelector("[data-start-open]"))&&typeof __sourceControl==="function"', 'Start page and test source bridge');
     await page.evaluate(`(()=>{globalThis.__qa5Scenario='setup';globalThis.__qa5SyntheticEvents=[];
-      for(const type of ['focusin','focusout','keydown','compositionstart','compositionupdate','compositionend','beforeinput','input'])window.addEventListener(type,event=>{
+      for(const type of ['focusin','focusout','keydown','paste','compositionstart','compositionupdate','compositionend','beforeinput','input'])window.addEventListener(type,event=>{
         const t=event.target;if(!(t instanceof Element))return;
         __qa5SyntheticEvents.push({scenario:__qa5Scenario,type:event.type,isTrusted:event.isTrusted,time:performance.now(),mode:document.querySelector('.app-shell')?.dataset.activeMode,
           target:t.dataset.sourceBlockStart??null,text:t.matches('[data-reader-editable]')?t.textContent:null,data:event.data??null,inputType:event.inputType??null,isComposing:event.isComposing??null,key:event.key??null});},true);
@@ -355,6 +355,34 @@ try {
       assert.deepEqual(event, []);
     });
     await undoToBaseline('正文普通');
+
+    await scenario('rejected-paste-preserves-existing-reader-draft', async record => {
+      record.provenance = 'Trusted CDP insertText followed by a synthetic ClipboardEvent on the actual paste handler; actual feedback dismissal and shared blur commit. Does not modify the system clipboard.';
+      await prepare();
+      await page.send('Input.insertText', { text: '保留' });
+      await wait('__qa5Target.textContent==="正文保留"&&document.querySelector(".app-shell")?.dataset.dirty==="true"', 'Existing native draft before rejected paste');
+      assert.equal(await page.evaluate(`(()=>{const data=new DataTransfer();data.setData('text/plain','拒绝的粘贴\\n第二行');
+        return __qa5Target.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));})()`), false, 'The actual paste handler prevents the multiline insertion');
+      await wait('document.querySelector("textarea[aria-label=未应用的输入]")?.value==="拒绝的粘贴\\n第二行"&&!document.querySelector(".markdown-body p").isContentEditable', 'Native multiline paste pauses reader editing');
+      record.disabled = await page.evaluate(`({connected:__qa5Target.isConnected,same:document.querySelector('.markdown-body p')===__qa5Target,
+        text:__qa5Target.textContent,source:__sourceControl().value})`);
+      assert.equal(record.disabled.connected, true, 'Permission-only disable keeps the edited DOM connected');
+      assert.equal(record.disabled.same, true, 'Permission-only disable does not replace the edited paragraph');
+      assert.equal(record.disabled.text, '正文保留', 'Rejecting a paste retains the preceding unpublished native input');
+      assert.equal(record.disabled.source, source, 'Rejected paste does not publish or save the preceding draft');
+      const nativeEvents = await page.evaluate(`__qa5SyntheticEvents.filter(e=>e.scenario===${JSON.stringify(record.name)})`);
+      assert.ok(nativeEvents.some(event => event.type === 'paste' && !event.isTrusted), 'The controlled paste reaches the actual handler without changing the system clipboard');
+      assert.ok(nativeEvents.some(event => event.type === 'input' && event.isTrusted), 'The earlier draft came from browser input');
+      await untouched('Rejecting multiline paste keeps all source and sidecar bytes and mtimes');
+      assert.equal(count(await counts(), 'markdown-editor:update') - count(record.ipcBefore, 'markdown-editor:update'), 0);
+      await click('[aria-label="关闭阅读编辑提示"]');
+      await reader('正文保留');
+      assert.equal(await page.evaluate('document.querySelector(".app-shell")?.dataset.dirty'), 'true', 'Dismissing the paste feedback retains the preceding draft dirty state');
+      assert.equal(await page.evaluate('document.querySelector(".markdown-body p")===__qa5Target'), true, 'Re-enabling editing also preserves the native paragraph');
+      await page.evaluate('__qa5Target.focus();__qa5Target.blur()');
+      await committed('正文保留', record);
+    });
+    await undoToBaseline('正文保留');
 
     await scenario('settle-then-discard-leaves-normally-and-old-detached-events-are-inert', async record => {
       await prepare();

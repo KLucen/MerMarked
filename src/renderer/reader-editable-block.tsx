@@ -59,14 +59,19 @@ export function ReaderEditableBlock({
   const elementRef = useRef<HTMLElement | null>(null);
   const [restoreVersion, setRestoreVersion] = useState(0);
   const nativeMutationRef = useRef(false);
+  const sourceIdentityRef = useRef({ documentKey, as, blockStart, sourceText, id });
   const sessionRef = useRef<ReturnType<typeof createReaderEditSession> | null>(null);
   const callbacks = useRef({ onCommit, onDraftChange, onRestricted });
   callbacks.current = { onCommit, onDraftChange, onRestricted };
   useLayoutEffect(() => {
-    // Source/identity replacement and disabling invalidate native input and any
-    // deferred replies. Only edited surfaces need new children: untouched DOM
-    // and the live ranges anchored in it must survive permission changes.
-    if (nativeMutationRef.current) {
+    const previous = sourceIdentityRef.current;
+    const replaced = previous.documentKey !== documentKey || previous.as !== as ||
+      previous.blockStart !== blockStart || previous.sourceText !== sourceText || previous.id !== id;
+    sourceIdentityRef.current = { documentKey, as, blockStart, sourceText, id };
+    // A new source invalidates native mutations. Permission changes only pause
+    // editing: a rejected paste must not erase text already typed in this block.
+    // Untouched DOM and the live ranges anchored in it also stay connected.
+    if (replaced && nativeMutationRef.current) {
       nativeMutationRef.current = false;
       setRestoreVersion(version => version + 1);
     }
@@ -90,6 +95,9 @@ export function ReaderEditableBlock({
       },
     });
     sessionRef.current = session;
+    // Chromium may keep focus while contenteditable is temporarily disabled.
+    // Adopt that focus so the next blur can publish the preserved native draft.
+    if (document.activeElement === elementRef.current) session.focus();
     return () => {
       session.dispose();
       if (sessionRef.current === session) sessionRef.current = null;
