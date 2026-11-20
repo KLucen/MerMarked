@@ -353,24 +353,34 @@ function App() {
   const [editNewTagName, setEditNewTagName] = useState('');
   const editNoteBaseline = useRef({ text: '', tag: NO_TAG });
   const readerInputActivity = useRef({ composing: 0, committing: 0 });
+  const readerCompositionTargets = useRef(new Set<EventTarget>());
+  const readerActivityBusy = useCallback(() => {
+    const targets = readerCompositionTargets.current;
+    // A replaced surface may disappear without a final native compositionend.
+    // Only live targets can keep the workspace in an active composition.
+    for (const target of targets) if (target instanceof Node && !target.isConnected) targets.delete(target);
+    readerInputActivity.current.composing = targets.size;
+    return targets.size > 0 || readerInputActivity.current.committing > 0;
+  }, []);
   useEffect(() => {
-    const composing = new Set<EventTarget>();
+    const composing = readerCompositionTargets.current;
     const start = (event: CompositionEvent) => {
       if (event.target) composing.add(event.target);
-      readerInputActivity.current.composing = composing.size;
+      readerActivityBusy();
     };
     const end = (event: CompositionEvent) => {
       if (event.target) composing.delete(event.target);
-      readerInputActivity.current.composing = composing.size;
+      readerActivityBusy();
     };
     window.addEventListener('compositionstart', start, true);
     window.addEventListener('compositionend', end, true);
     return () => {
       window.removeEventListener('compositionstart', start, true);
       window.removeEventListener('compositionend', end, true);
+      composing.clear();
       readerInputActivity.current.composing = 0;
     };
-  }, []);
+  }, [readerActivityBusy]);
   const reportReaderActivity = useCallback((kind: 'composing' | 'committing', active: boolean) => {
     readerInputActivity.current[kind] = Math.max(0, readerInputActivity.current[kind] + (active ? 1 : -1));
   }, []);
@@ -530,10 +540,14 @@ function App() {
   const [readerDraftDirty, setReaderDraftDirty] = useState(false);
   useEffect(() => { setReaderDraftDirty(false); }, [activeMode, openedDocument]);
   const saveSource = useCallback(() => {
+    if (readerActivityBusy()) {
+      setMessage('请先完成当前输入，再保存正文。', 'alert');
+      return;
+    }
     const active = document.activeElement;
     if (active instanceof HTMLElement && active.hasAttribute('data-reader-editable')) active.blur();
     void editorController.save();
-  }, [editorController.save]);
+  }, [editorController.save, readerActivityBusy, setMessage]);
   const [canvasStatus, setCanvasStatus] = useState<{ path: string; sha256: string; status: PartStatus } | null>(null);
   const reportCanvasStatus = useCallback((path: string, sha256: string, status: PartStatus) => {
     setCanvasStatus((old) => old?.path === path && old.sha256 === sha256 && old.status.text === status.text && old.status.tone === status.tone
@@ -559,7 +573,7 @@ function App() {
   const localDraftKeyRef = useRef(localDraftKey); localDraftKeyRef.current = localDraftKey;
   const localInputKey = JSON.stringify([editorController.editor?.epoch, editorController.editor?.revision, activeMode, localDraftKey]);
   const leaveGuard = useInputLeaveGuard(() => ({ key: localInputKey, kinds: localInputKinds,
-    busy: readerInputActivity.current.composing > 0 || readerInputActivity.current.committing > 0 ||
+    busy: readerActivityBusy() ||
       mutationInFlight.current || editorController.busy || editorController.opening || opening }),
     () => returnToInputs.current(), () => setMessage('请先完成当前输入或保存，再继续离开操作。', 'alert'));
   const workspaceStatuses: WorkspaceStatuses = {
@@ -1622,6 +1636,10 @@ function App() {
     afterSaved?: (result: AnnotationSaveResult) => void,
     allowRelocation = false,
   ) => {
+    if (readerActivityBusy()) {
+      setMessage('请先完成当前输入，再修改批注。', 'alert');
+      return;
+    }
     const allowedStatus = annotationView?.status === 'ready' ||
       (allowRelocation && annotationView?.status === 'needs-relocation');
     if (!readingReady || dirtyPreview || readerDraftDirty || activeMode !== 'reader' || !allowedStatus || annotationView.pendingDraftCount > 0 ||
@@ -1657,7 +1675,7 @@ function App() {
       mutationInFlight.current = false;
       if (documentEpoch.current === epoch) setAnnotationSaving(false);
     }
-  }, [activeMode, annotationLoading, annotationView, clearReaderSelection, dirtyPreview, readerDraftDirty, readingReady,
+  }, [activeMode, annotationLoading, annotationView, clearReaderSelection, dirtyPreview, readerActivityBusy, readerDraftDirty, readingReady,
     refreshAnnotations, setMessage]);
 
   const createHighlight = useCallback((color: AnnotationColor, frozenProbe?: SuccessfulSelectionProbe) => {
@@ -1710,6 +1728,10 @@ function App() {
   }, [setAnnotationPanelOpen]);
 
   const saveForAnnotation = useCallback(async (intent: ReaderAnnotationIntent) => {
+    if (readerActivityBusy()) {
+      setNoteSaveError('请先完成当前输入，再保存正文并继续批注。');
+      return;
+    }
     if (readerDraftDirty || editorController.busy) return;
     const key = String(noteDocumentKey.current);
     setNoteSaveError(null);
@@ -1722,7 +1744,7 @@ function App() {
     const mapped = resolveReaderAnnotationIntent(intent, key, result.document.content, result.document.bomByteLength);
     setNoteSaveError(mapped.ok ? null : mapped.reason);
     window.requestAnimationFrame(() => noteComposerRef.current?.focus({ preventScroll: true }));
-  }, [editorController.busy, editorController.save, readerDraftDirty]);
+  }, [editorController.busy, editorController.save, readerActivityBusy, readerDraftDirty]);
 
   const openNoteComposer = useCallback((frozenMenu?: ReaderContextMenuState, saveFirst = false) => {
     const probe = frozenMenu?.probe ?? readSelection();
@@ -1905,12 +1927,13 @@ function App() {
     const headingIds = new Map(retainedReading.data.sections.sections.map(section => [section.headingRange.start - bomOffset, ids[section.index]]));
     return { blocks, headingIds };
   }, [retainedReading]);
+  const readerComponentDocumentKey = String(noteDocumentKey.current);
   const readerComponentState = useMemo<ReaderComponentState | null>(() => retainedReading?.data ? ({
     analysis: retainedReading.data, blocks: retainedReadingIndex!.blocks, headingIds: retainedReadingIndex!.headingIds,
-    editable: retainedReaderCanEdit, documentPath: openedDocument?.path ?? '',
+    editable: retainedReaderCanEdit, documentKey: readerComponentDocumentKey, documentPath: openedDocument?.path ?? '',
     onCommit: commitReaderTextEdit, onDraftChange: setReaderDraftDirty, onActivityChange: reportReaderActivity,
     onRestricted: reportReaderEditRestriction, onOpenLink: openLink,
-  }) : null, [retainedReading, retainedReadingIndex, retainedReaderCanEdit, openedDocument?.path, commitReaderTextEdit, reportReaderActivity, reportReaderEditRestriction, openLink]);
+  }) : null, [retainedReading, retainedReadingIndex, retainedReaderCanEdit, readerComponentDocumentKey, openedDocument?.path, commitReaderTextEdit, reportReaderActivity, reportReaderEditRestriction, openLink]);
 
   const highlightItems = annotationView?.items.filter((item) => item.kind === 'highlight') ?? [];
   const noteItems = annotationView?.items.filter((item) => item.kind === 'note') ?? [];
@@ -1951,7 +1974,7 @@ function App() {
 
   const changeMode = useCallback(async (mode: AppMode, readerSection?: number) => {
     if (!openedDocument || mode === activeMode) return false;
-    if (readerInputActivity.current.composing || readerInputActivity.current.committing || mutationInFlight.current) {
+    if (readerActivityBusy() || mutationInFlight.current) {
       setMessage('请先完成当前输入或保存，再切换视图。', 'alert'); return false;
     }
     if (readerDraftDirty) { setMessage('请先提交当前段落输入，再切换视图。', 'alert'); return false; }
@@ -1983,7 +2006,7 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
     if (!editorController.editor) await editorController.open();
     return true;
-  }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, openedDocument, readerDocument, readerDraftDirty, setMessage]);
+  }, [activeMode, activeSection, clearReaderSelection, closeReaderSearch, editorController.editor, editorController.open, openedDocument, readerActivityBusy, readerDocument, readerDraftDirty, setMessage]);
 
   const canLocateSectionInCanvas = activeMode === 'reader' && readingReady && activeSection !== null &&
     sectionTree?.sections[activeSection]?.index === activeSection && !opening && !editorController.busy &&
@@ -2134,7 +2157,7 @@ function App() {
 
   const createSavedDocumentCopy = async (bundle = false) => {
     if (!openedDocument || openedDocument.temporary || documentCopying || opening || leaveGuard.locked) return;
-    if (dirtyPreview || localInputKinds.length || readerInputActivity.current.composing || readerInputActivity.current.committing ||
+    if (dirtyPreview || localInputKinds.length || readerActivityBusy() ||
         mutationInFlight.current || editorController.busy || editorController.opening || annotationSaving || recoveryOpen || annotationView?.pendingDraftCount) {
       setMessage(`请先保存正文、提交或处理批注输入并完成恢复，再${bundle ? '创建副本包' : '创建已保存副本'}；当前内容仍保留。`, 'alert'); return;
     }

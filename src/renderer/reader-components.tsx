@@ -11,6 +11,7 @@ export interface ReaderComponentState {
   readonly blocks: ReadonlyMap<number, ReadingAnalysis['selection']['blocks'][number]>;
   readonly headingIds: ReadonlyMap<number, string>;
   readonly editable: boolean;
+  readonly documentKey: string;
   readonly documentPath: string;
   readonly onCommit: EditProps['onCommit'];
   readonly onDraftChange: EditProps['onDraftChange'];
@@ -35,7 +36,7 @@ function ReaderText({ tag, node, children, ...props }: ComponentProps<'h1'> & Ex
   const block = start === undefined ? undefined : state.blocks.get(start);
   const id = tag === 'p' || start === undefined ? undefined : state.headingIds.get(start);
   if (block && start !== undefined && isReaderMappedTextBlock(selection, block)) {
-    return <ReaderEditableBlock as={tag} blockStart={start} sourceText={block.visibleText} enabled={state.editable}
+    return <ReaderEditableBlock as={tag} documentKey={state.documentKey} blockStart={start} sourceText={block.visibleText} enabled={state.editable}
       onCommit={state.onCommit} onDraftChange={state.onDraftChange} onActivityChange={state.onActivityChange} onRestricted={state.onRestricted}
       id={id} tabIndex={id ? -1 : undefined} className={props.className}>{children}</ReaderEditableBlock>;
   }
