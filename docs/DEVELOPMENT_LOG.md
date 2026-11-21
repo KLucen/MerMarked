@@ -2302,4 +2302,6 @@ C包Vite首轮qa5c-final-vite-b中QA5 / QA4通过，QA3拖动8/9通过；central
 
 qa5-collect.mjs逐项复核最终C构建产物、496单测、39套新窗口日志、10Vite、16场景、独立原生验收、精确依赖补丁和三项用户文件，输出QA5_EVIDENCE.json。确认冻结C检出仍clean、lock与旧QA1产物保持，窗口及5178服务均已停止；本机原始profile / fixture / trace / 截图和包体不上传。回执聚合只选择可公开摘要，不带临时文档绝对路径。GitHub连接器再次读取PR #28仍要求重新认证，现有KLucen SSH / GCM官方API已核验，继续按已有授权交付且不自动合并。
 
+交付：验收提交 `50360c9` 连同本批实现和最终运行时 `653bff5` 已通过SSH推送origin/codex/qa5-reader-composition。官方API使用既有KLucen凭证创建 [PR #29](https://github.com/KLucen/MerMarked/pull/29)，目标main，open、非draft且未合并，并通过attach_artifact附加到当前任务。首次回执、本地及ls-remote head均为50360c946145e9065ef7d198cae83290527ec858，首次回执另存保留；check runs / status contexts均0，不把本机验证当作云端CI。交付文档再单独提交、推送并核对最终本地 / 远端 / PR head一致，未合并、安装或公开发布包体。工作区只保留三项用户原修改。
+
 历史单次大跳、大文档原生AX性能、卸载二进制残留与长期内存仍未收口；物理跨屏 / 跨卷、干净Windows及公开发布门槛保持独立。本批不修改安装状态或用户数据，不将浏览器可信事件当作物理输入验收。

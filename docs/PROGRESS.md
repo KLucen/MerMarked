@@ -14,6 +14,8 @@ A / B候选缺陷、A的perf3g首轮失败后原样通过、B菜单焦点首轮�
 
 本批两项AX探针均未消除主要长任务，已恢复全部DOM / CSS；焦点无效的样本只作诊断。原生AX性能、历史单次大跳、卸载残留、长期内存及物理设备 / 发布门槛继续独立跟踪，QA1 / P0尚未整体退出。下一切片继续定位这些软件质量问题，并保持完整正文、辅助功能与模式隔离。
 
+实现 `eca8d19` / `40aced2`、测试时序 `4aae0ac`、最终运行时 `653bff5` 及验收 `50360c9` 已推送 `origin/codex/qa5-reader-composition`，创建并附加 [PR #29](https://github.com/KLucen/MerMarked/pull/29)，目标main，open且未合并。首个交付回执、本地与远端head均为 `50360c9`；交付文档单独提交后再次核对最终head一致。现有SSH / GCM官方API完成交付，连接器仍要求重新认证；云端check runs / status contexts为0，本机通过不当作云端CI。
+
 ## 2026-11-20 · QA4 标题辅助名称与字素编辑（本机软件专项通过）
 
 已合并PR #27 / main `898c9ac`，分支 `codex/qa4-reader-ax`。范围和退出条件见 [QA4_ACCEPTANCE.md](QA4_ACCEPTANCE.md)。同包宿主A-B-A对照没有消除renderer序列化长任务，保留Browser成本变化和完整trace，不据此宣称AX性能达标；本批交付转为修复两个有独立复现证据的缺陷。
