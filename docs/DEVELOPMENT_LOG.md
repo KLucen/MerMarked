@@ -2241,3 +2241,67 @@ QA1历史单次大跳、原生AX性能、卸载二进制残留与长期内存仍
 大文档原生AX性能、历史单次大跳、卸载二进制残留、长期内存及设备 / 发布门槛继续未解决。本批不将浏览器可信输入当作物理IME，不进行真实安装生命周期、跨物理屏幕 / 卷或干净Windows验收，QA1 / P0整体状态保持。
 
 交付：`d1f4e91`、`975a2db`、验收 `33f418b` 已通过SSH推送codex/qa4-reader-ax。官方API以现有KLucen凭证创建PR #28（https://github.com/KLucen/MerMarked/pull/28），首次head与本地 / 远端33f418b完全一致，目标main，open且未合并，并附加到当前任务；未触发自动合并。check runs / status contexts为0，不将本地验收当作云端CI。随后交付文档单独提交、再次推送及核对最终head，工作区仅保留三项用户原修改。
+
+## 2026-11-20至21 · QA5 阅读组合输入收尾与保存保护（本机软件专项通过）
+
+### 范围与AX阴性实验
+
+按用户“继续”接续已合并PR #28 / main `5ea768f`，分支 `codex/qa5-reader-composition`。先继续QA1原生AX诊断，再依据实际复现收缩为阅读输入生命周期修复；不将本批专项等同QA1 / P0整体退出。合同见QA5_ACCEPTANCE.md，文件格式、schema、IPC权限、依赖版本及持久化模型均保持。
+
+以QA4冻结ASAR和真实@oai/sky查询激活nativeAPIs / webContents / inlineTextBoxes / extendedProperties，诊断工具绑定绝对EXE、构建回执、ASAR及脚本摘要。分别仅移除失活阅读布局的content-visibility:hidden，以及将200个长段落的Text切成1400相邻Text节点；后者不包span、只在空白边界切分。每次核对正文摘要、高度、500个原Range引文与连接状态及源三文件，最后恢复自有style / splitText修改并做原始对照。
+
+原始对照563ms长任务，CSS探针两次554 / 562ms且额外出现约110ms任务，Text拆分558 / 557ms，恢复后516 / 526ms。未消除主要长任务，产品DOM / CSS不交付这些探针。全部测量焦点为false，只作诊断，不是正式性能通过，也不计算可靠收益百分比。qa5-ax-negative-summary.json记录各次真实尾窗结果与恢复状态，原始会话和trace保留本地。
+
+只读核实引擎Electron44.4.1 / Chrome152.0.7977.78及其源码：本批未找到产品可用的实时AX分片预算；snapshot max-node / timeout路径不能代替实时客户端修复。InlineTextBox父级缓存边界也不足以证明此前怀疑的重复边界调用是平方复杂度。保留完整正文、全部辅助特性和hidden / inert模式隔离，不重复已失败的分批AX暴露，也不使用会省略屏外辅助内容的content-visibility:auto。
+
+### 已复现的尾随输入缺陷与实现
+
+新增qa5-reader-composition-packaged.mjs，以实际打包阅读组件、共享源码缓冲区和正常文档 / 模式命令处理受控CompositionEvent / InputEvent。独立临时profile与三份私有fixture，真实三文件bytes / mtime、窄IPC观察代理及冻结包 / 脚本摘要分别校验；代理调用原handler，不改产品返回值。原生有界hold只记录后续物理验收证据，不自动宣告真实IME通过。
+
+旧QA4包在传统input先于compositionend的第一场景通过，第二场景compositionend之后才到最终input时失败：预期“正文你”，共享源码实际已提交“正文ni”。qa5-old-composition-a.json保留首个证明，之后以扩为16场景的当时脚本运行，qa5-old-composition-final-script.json仍在同一断言失败。两者均为受控合成顺序；尚未证明当前WeType自然触发旧缺陷，不将结果归因于特定物理输入法。
+
+新增reader-edit-session控制器，在compositionend后等待rAF及其后的task，再读取实时DOM；尾随input可重新安排，活动租约跨完成阶段和异步提交连续持有。新组合、重新聚焦、Escape、恢复、源 / 文档身份替换和卸载使旧任务失效；已发出提交的独立租约等其自身finally释放。普通blur仍立即交接，重复blur幂等；旧回复不能还原新输入或清除别块的新dirty标记。非法多行内容进入现有可复制反馈，不提交源码。
+
+ReaderEditableBlock用layout effect持有会话，补documentKey、最新回调ref及229 / isComposing键盘边界。main窗口捕获负责composing集合，剔除断开目标；统一活动检查覆盖保存、批注保存 / 变更、模式切换、离开与副本入口。活动候选 / 完成阶段先反馈，不发送保存或批注IPC；非组合普通blur后的单次显式保存路径保持。初始新增19项纯会话测试，相关45测及类型检查通过，C再增加第20项所有权测试，全量由495升为496；React skill复核生命周期、活动所有权和不必要DOM更换。
+
+### A候选、权限暂停缺陷与B修复
+
+运行时 `eca8d19` 在独立干净检出mermarkd-qa5-final通过npm ci、npm run typecheck、npm test（495/495）和npm run make。ASAR4,123,757字节 / SHA `B569C74DE6EB533554E7CF61D2A7C29A734EE27EA13E875E091CB9437EA3E08C`；原15场景输入专项通过，包括尾随顺序、取消 / refocus / 新组合 / 重复blur、保存与批注 / 离开保护、普通blur、实际文档卸载和精确保存 / 锚点映射。该包仅作为初始候选，未安装或公开发布。
+
+A包首轮39套前38通过，perf3g返回阅读被输入活动保护阻止；原样、同包单独复跑通过。qa5-final-regression-manifest.json保留首轮失败，qa5-final-retry-regression-manifest.json明确复用前38项并记录最后一套复跑，不能描述成一次无失败全套通过。确切原因未明，不把它归因于已交付修复或任意测试时序。额外clean Ctrl+S检查曾等待无操作保存IPC超时，应用在clean状态本来不发保存；撤回该错误测试前提，保留qa5-old-composition-b.json，不算产品缺陷。
+
+复核发现另一自然路径：正文有尚未blur的输入，再粘贴多行内容触发反馈。反馈仅记录本次粘贴内容，enabled变false却使A候选重建所有被编辑DOM，丢掉此前正文草稿。qa5-permission-old-a.json用可信CDP insertText及实际Ctrl+V、qa5-permission-old-b.json用同样可信已有输入及合成ClipboardEvent，均在旧DOM连接断言失败。两份来源分别保留，后者避免再改变系统剪贴板，不宣称合成paste可信。
+
+中间B运行时 `40aced2` 改为只在documentKey / 标签 / 块位置 / 可见原文 / id真实更换时恢复被编辑DOM；权限 / activity callback变化仅销毁旧会话、保留DOM及native标记，重建时采纳仍持有的焦点。专项扩到16场景，新增输入→拒绝多行粘贴→实际关闭反馈→恢复编辑→失焦一次提交→跨模式撤销，核验同一DOM、保留草稿、dirty、共享源码和三文件。脚本明确可信insertText、合成paste与物理IME的证据边界；B通过此专项仍不能代替原UX3完整边界。
+
+### B候选回归、所有权修复与C验证
+
+B运行时 `40aced2` 在独立干净检出mermarkd-qa5b-final完成npm ci、类型检查、495/495单测和make。ASAR4,124,026字节 / SHA `E0D8C337EAEE4FFA5BDF5EEE3AE384D19234782414C9EECDA3249FF375E152A5`；Setup154,854,400字节 / SHA `B8E7B9FBE08A1951562ADAE747C42E5103376EE973214D8F3EFD6F4A5DF73C05`，仅本地生成。B的16场景与真实WeType通过，但后续完整回归发现真实产品回归，因此不作为最终候选，B证据不替代C。
+
+B包真实WeType验收使用qa5-native-ime-a的180000ms有界hold及独立临时文档，C另以新包 / 新profile和qa5-native-ime-c独立重做相同原生流程。@oai/sky原生点击正文、End定位后按n / i，候选可见；候选期Ctrl+S没有额外保存或正文更新IPC，源三文件bytes / mtime保持。Escape取消后dirty为false且共享源码不变；再次n / i / Space确认“你”，Ctrl+Enter只发一次正文更新。切到源码，Ctrl+Z一次恢复原文、Ctrl+Y一次恢复中文；显式Ctrl+S只保存一次，Markdown96字节精确匹配BOM / CRLF / 无尾换行，批注摘要和精确byte锚点迁移，canvas bytes / mtime不变。
+
+保存后返回阅读再次按n启动候选，原生点击标题失焦，WeType实际提交字母n；共享源码等于最终DOM与compositionend数据，不强求失焦时选中中文。随后在源码Ctrl+Z撤销临时n，缓冲区回到已保存中文且dirty=false，文件不再变化。全程实际聚焦、可见、未最小化，原生hold结束自行停止窗口。只读进程核实既有WeType目录版本3.0.2.44；没有安装或切换输入法。
+
+两轮各自十二个只读检查点保留实际事件和三文件摘要 / mtime。每轮三个compositionstart、七个update和七个input均可信；收到的三个compositionend实际isTrusted=false，数据分别为空、你、n，原值保留，不声称全事件可信或WeType自然复现旧合成顺序缺陷。qa5-native-accept.mjs核验实际包 / profile / 时间窗、原生历史、精确字节、锚点与画布后分别生成qa5-native-acceptance.json及qa5-native-acceptance-c.json，后者绑定C运行时 `653bff5` 并已通过。B聚合初次因Windows路径分隔符、MD额外base64字段比较失败，分别规范化路径并比较同一bytes / hash / mtime元数据后通过，未放宽源字节或锚点断言。
+
+构建helper持续核验lock、精确@xyflow/system补丁、旧QA1冻结产物及三项用户原修改；这些原修改不进入提交。原始fixture、profile、日志、截图、trace与本地安装包保留本机。最终证据、窗口 / 服务停止、GitHub推送和PR创建待全部门槛完成后记录，不提前填写通过或交付状态，也不自动合并。
+
+B包首轮前17套通过，A7.3b在reader context menu arrow navigation超时，后续Vite依赖检查因此停止，没有并行GUI。原日志qa5b-final-a7-3b.log及manifest保留。独立只读焦点记录复跑经过完整流程通过，记录复制项→源码输入区→复制项的初始化变化及方向键后剪切项跨两帧保持；源码显示菜单effect本身还会在下一帧重复focusFirst。首个诊断错误插入到了更早的源码菜单方向键位置、journal尚不存在，修正诊断位置后通过；失败脚本 / 日志均保留，不能当作产品失败。
+
+测试 `4aae0ac` 仅在阅读菜单重开、首项焦点出现后等待两帧并再次核验首项，然后执行原ArrowDown与剪切项焦点断言。没有跳过、重试或弱化导航断言，没有改产品菜单行为；未完全证明首轮超时根因。加强后A7.3b同B包通过，qa5b-full-regression.ps1使用根目录该脚本、绝对B包EXE，从该套恢复剩余回归；前17通过日志逐一SHA与同ASAR复核后复用。运行时仍40aced2，与测试修订HEAD的src / package / lock差异为空，没有为这项测试修订重建产品。
+
+B恢复回归累计前27套通过后，在UX3的跨强调 / 链接替换拒绝断言失败：反馈已保存“跨格式替换的未应用文字”，正文DOM却仍是该尝试文本，预期应恢复“跨强调和链接的内容。”。qa5b-final-retry-ux3.log和原断言保留，属于B引入的真实产品回归，不用等待或放宽断言掩盖。根因是commit已经交出草稿，main映射拒绝同步设置反馈，enabled=false的layout cleanup先dispose会话，Promise的false分支随后因alive=false跳过恢复；B一概保留权限变化中的native DOM，把未交接草稿与已交接内容混淆。
+
+C运行时 `653bff5` 暴露ownsDraft，组件cleanup在dispose之前保存所有权。实际源身份变化，或旧会话已经交接草稿时，只恢复被修改DOM；尚未交接的权限暂停保留DOM和dirty。恢复后即使元素已失焦，新会话也采纳保留草稿的所有权，不移动DOM焦点 / caret，避免第二次未refocus暂停又误清草稿。旧Promise仍受alive / generation / focus核验并只释放自身租约，不能用无条件迟到恢复覆盖新输入。新增第20项纯测试证明handoff后所有权释放、refocus重新持有及旧拒绝回复不清除；16场景原有粘贴回归内增加第二次未refocus暂停。
+
+独立干净C检出通过npm ci、npm run typecheck、npm test（496/496）和npm run make。ASAR4,124,119字节 / SHA `9E57A1263DC3B60CF178617E19327A405C0C0B78E48FCA097A736E07E24AA796`；Setup154,853,888字节 / SHA `698EB615889B53C071BC196F631E6949BFE4192D8BF0EB1A3119944736FA5FD2`。C的16场景专项、原UX3定向与独立原生12检查点均已通过，包含双暂停草稿保留、跨叶拒绝恢复原排版、精确保存与真实输入法流程；A / B均作为中间失败候选保留，不复用其结果替代C。
+
+最终C完整39套窗口已从头串行全部通过，各套均全新运行，不复用A / B前17、前27或其他已通过日志。实际Vite第二轮十套在同一干净C检出全部通过；所有旧失败、诊断、修订和中间候选原始产物继续保留，不能把此前的复跑通过描述成从未失败。
+
+C包Vite首轮qa5c-final-vite-b中QA5 / QA4通过，QA3拖动8/9通过；central-1-unselected在open()连接page DevTools target处15秒超时，尚未进入场景指针断言，其余八场景继续运行通过。manifest、逐场景回执 / trace及日志保留；helper finally核验5178服务停止。没有改产品 / 脚本、提高超时或跳过场景，qa5c-vite-check-c.ps1仅更换唯一证据prefix，在同一C ASAR和检出重新执行全部十套并全部通过。该连接失败原因未明确，不据此宣称产品拖动问题复现或把首轮记录覆盖。
+
+qa5-collect.mjs逐项复核最终C构建产物、496单测、39套新窗口日志、10Vite、16场景、独立原生验收、精确依赖补丁和三项用户文件，输出QA5_EVIDENCE.json。确认冻结C检出仍clean、lock与旧QA1产物保持，窗口及5178服务均已停止；本机原始profile / fixture / trace / 截图和包体不上传。回执聚合只选择可公开摘要，不带临时文档绝对路径。GitHub连接器再次读取PR #28仍要求重新认证，现有KLucen SSH / GCM官方API已核验，继续按已有授权交付且不自动合并。
+
+交付：验收提交 `50360c9` 连同本批实现和最终运行时 `653bff5` 已通过SSH推送origin/codex/qa5-reader-composition。官方API使用既有KLucen凭证创建 [PR #29](https://github.com/KLucen/MerMarked/pull/29)，目标main，open、非draft且未合并，并通过attach_artifact附加到当前任务。首次回执、本地及ls-remote head均为50360c946145e9065ef7d198cae83290527ec858，首次回执另存保留；check runs / status contexts均0，不把本机验证当作云端CI。交付文档再单独提交、推送并核对最终本地 / 远端 / PR head一致，未合并、安装或公开发布包体。工作区只保留三项用户原修改。
+
+历史单次大跳、大文档原生AX性能、卸载二进制残留与长期内存仍未收口；物理跨屏 / 跨卷、干净Windows及公开发布门槛保持独立。本批不修改安装状态或用户数据，不将浏览器可信事件当作物理输入验收。

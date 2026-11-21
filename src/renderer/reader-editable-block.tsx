@@ -1,7 +1,9 @@
-import { createElement, useEffect, useId, useRef, useState } from 'react';
+import { createElement, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { KeyboardEvent, ReactNode, ClipboardEvent, FormEvent } from 'react';
+import { createReaderEditSession } from './reader-edit-session';
 
 interface ReaderEditableBlockProps {
+  readonly documentKey: string;
   readonly as: 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   readonly blockStart: number;
   readonly sourceText: string;
@@ -16,9 +18,9 @@ interface ReaderEditableBlockProps {
   readonly tabIndex?: number;
 }
 
-function insertPlainText(text: string): void {
+function insertPlainText(text: string): boolean {
   const selection = window.getSelection();
-  if (!selection || selection.rangeCount !== 1) return;
+  if (!selection || selection.rangeCount !== 1) return false;
   const range = selection.getRangeAt(0);
   range.deleteContents();
   const node = document.createTextNode(text);
@@ -27,6 +29,7 @@ function insertPlainText(text: string): void {
   range.collapse(true);
   selection.removeAllRanges();
   selection.addRange(range);
+  return true;
 }
 
 /**
@@ -35,6 +38,7 @@ function insertPlainText(text: string): void {
  * block's visible text and maps it back to a proven source range.
  */
 export function ReaderEditableBlock({
+  documentKey,
   as,
   blockStart,
   sourceText,
@@ -53,38 +57,55 @@ export function ReaderEditableBlock({
   const generatedId = useId();
   const headingId = as === 'p' ? undefined : (id ?? `reader-heading-${generatedId}`);
   const elementRef = useRef<HTMLElement | null>(null);
-  const originalRef = useRef(sourceText);
   const [restoreVersion, setRestoreVersion] = useState(0);
-  const draftRef = useRef(sourceText);
-  const editingRef = useRef(false);
-  const composingRef = useRef(false);
-  const pendingBlurRef = useRef(false);
-
-  useEffect(() => {
-    if (editingRef.current) return;
-    originalRef.current = sourceText;
-    draftRef.current = sourceText;
-  }, [sourceText]);
-
-  const restore = () => {
-    const element = elementRef.current;
-    if (!element) return;
-    // Recreate the original React children so formatting and link handlers survive Escape.
-    setRestoreVersion((version) => version + 1);
-    draftRef.current = originalRef.current;
-    onDraftChange(false);
-  };
-
-  const handleInput = (event: FormEvent<HTMLElement>) => {
-    const text = event.currentTarget.textContent ?? '';
-    if (/\r|\n/u.test(text)) {
-      onRestricted(blockStart, '换行请在源码中继续，已保留未应用的输入。', text);
-      restore();
-      return;
+  const nativeMutationRef = useRef(false);
+  const retainedDraftRef = useRef(true);
+  const sourceIdentityRef = useRef({ documentKey, as, blockStart, sourceText, id });
+  const sessionRef = useRef<ReturnType<typeof createReaderEditSession> | null>(null);
+  const callbacks = useRef({ onCommit, onDraftChange, onRestricted });
+  callbacks.current = { onCommit, onDraftChange, onRestricted };
+  useLayoutEffect(() => {
+    const previous = sourceIdentityRef.current;
+    const replaced = previous.documentKey !== documentKey || previous.as !== as ||
+      previous.blockStart !== blockStart || previous.sourceText !== sourceText || previous.id !== id;
+    sourceIdentityRef.current = { documentKey, as, blockStart, sourceText, id };
+    // Preserve a draft paused before handoff (for example, a rejected paste).
+    // Once handed off, the source/feedback owns its text: restore the rendered
+    // children even if disabling disposes this session before its reply arrives.
+    // Untouched DOM and its live ranges always stay connected.
+    if ((replaced || !retainedDraftRef.current) && nativeMutationRef.current) {
+      nativeMutationRef.current = false;
+      setRestoreVersion(version => version + 1);
     }
-    draftRef.current = text;
-    onDraftChange(text !== originalRef.current);
-  };
+    if (!enabled) return;
+    const session = createReaderEditSession({
+      sourceText,
+      readText: () => elementRef.current?.isConnected ? elementRef.current.textContent ?? '' : null,
+      isFocused: () => document.activeElement === elementRef.current,
+      restoreChildren: () => {
+        nativeMutationRef.current = false;
+        setRestoreVersion(version => version + 1);
+      },
+      onCommit: text => callbacks.current.onCommit(blockStart, sourceText, text),
+      onDraftChange: dirty => callbacks.current.onDraftChange(dirty),
+      onRestricted: (reason, text) => callbacks.current.onRestricted(blockStart, reason, text),
+      // Only own committing leases. Window capture owns composing activity.
+      onCommittingChange: active => onActivityChange('committing', active),
+      scheduler: {
+        frame: run => { const frame = requestAnimationFrame(run); return () => cancelAnimationFrame(frame); },
+        task: run => { const task = window.setTimeout(run, 0); return () => window.clearTimeout(task); },
+      },
+    });
+    sessionRef.current = session;
+    // Adopt a paused draft even if disabling moved focus away. Its ownership
+    // must survive another pause; this does not move the DOM focus or caret.
+    if ((nativeMutationRef.current && retainedDraftRef.current) || document.activeElement === elementRef.current) session.focus();
+    return () => {
+      retainedDraftRef.current = session.ownsDraft();
+      session.dispose();
+      if (sessionRef.current === session) sessionRef.current = null;
+    };
+  }, [documentKey, as, blockStart, sourceText, enabled, id, onActivityChange]);
 
   const handlePaste = (event: ClipboardEvent<HTMLElement>) => {
     event.preventDefault();
@@ -93,40 +114,14 @@ export function ReaderEditableBlock({
       onRestricted(blockStart, '多行内容请在源码中粘贴，当前正文未改变。', text);
       return;
     }
-    insertPlainText(text);
-    draftRef.current = event.currentTarget.textContent ?? '';
-    onDraftChange(draftRef.current !== originalRef.current);
-  };
-
-  const commitDraft = () => {
-    editingRef.current = false;
-    const next = draftRef.current;
-    onDraftChange(false);
-    if (next !== originalRef.current) {
-      onActivityChange('committing', true);
-      void onCommit(blockStart, originalRef.current, next).then((accepted) => {
-        if (!accepted) onRestricted(blockStart, '正文输入尚未应用，请在源码中继续。', next);
-        // Native contenteditable mutations are not the cached React tree. Put
-        // its original children back even after acceptance; the next analyzed
-        // source mounts a new tree. Undo before that reply may reuse this one.
-        if (elementRef.current?.isConnected) restore();
-      }).catch(() => {
-        onRestricted(blockStart, '正文输入尚未应用，请保留输入并重试。', next);
-        if (elementRef.current?.isConnected) restore();
-      }).finally(() => onActivityChange('committing', false));
+    if (insertPlainText(text)) {
+      nativeMutationRef.current = true;
+      sessionRef.current?.input();
     }
-  };
-
-  const handleBlur = () => {
-    if (composingRef.current) {
-      pendingBlurRef.current = true;
-      return;
-    }
-    commitDraft();
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (composingRef.current || event.nativeEvent.isComposing) return;
+    if (sessionRef.current?.composing() || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
     if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
       event.preventDefault();
       elementRef.current?.blur();
@@ -139,7 +134,7 @@ export function ReaderEditableBlock({
     }
     if (event.key === 'Escape') {
       event.preventDefault();
-      restore();
+      sessionRef.current?.restore();
       elementRef.current?.blur();
       return;
     }
@@ -157,28 +152,28 @@ export function ReaderEditableBlock({
     'data-reader-editable': enabled ? 'true' : undefined,
     'data-source-block-start': blockStart,
     'aria-description': enabled ? '点击正文直接编辑；换行或复杂编辑可在源码中继续' : undefined,
-    onFocus: enabled ? () => { editingRef.current = true; } : undefined,
-    onCompositionStart: () => { composingRef.current = true; pendingBlurRef.current = false; },
-    onCompositionEnd: () => {
-      composingRef.current = false;
-      if (pendingBlurRef.current && document.activeElement !== elementRef.current) {
-        pendingBlurRef.current = false;
-        commitDraft();
-      }
-    },
+    onFocus: enabled ? () => sessionRef.current?.focus() : undefined,
+    onCompositionStart: enabled ? () => {
+      nativeMutationRef.current = true;
+      sessionRef.current?.compositionStart();
+    } : undefined,
+    onCompositionEnd: enabled ? () => sessionRef.current?.compositionEnd() : undefined,
     onBeforeInput: (event: FormEvent<HTMLElement>) => {
       if (!enabled) { event.preventDefault(); return; }
       const inputType = (event.nativeEvent as InputEvent).inputType;
-      if (!composingRef.current && (inputType === 'insertParagraph' || inputType === 'insertLineBreak' || inputType.startsWith('format'))) {
+      if (!sessionRef.current?.composing() && (inputType === 'insertParagraph' || inputType === 'insertLineBreak' || inputType.startsWith('format'))) {
         event.preventDefault();
         onRestricted(blockStart, inputType.startsWith('format')
           ? '这项格式操作请使用选文菜单，或在源码中继续。'
           : '阅读中暂不拆分段落，请在源码中换行。');
       }
     },
-    onInput: enabled ? handleInput : undefined,
+    onInput: enabled ? () => {
+      nativeMutationRef.current = true;
+      sessionRef.current?.input();
+    } : undefined,
     onPaste: enabled ? handlePaste : undefined,
     onKeyDown: enabled ? handleKeyDown : undefined,
-    onBlur: handleBlur,
+    onBlur: () => sessionRef.current?.blur(),
   }, children);
 }
