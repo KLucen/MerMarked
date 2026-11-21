@@ -413,6 +413,10 @@ try {
   await cdp.evaluate(`document.querySelector('.markdown-body')?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'F10', shiftKey: true }))`);
   await waitFor(cdp, `Boolean(document.querySelector('[data-reader-context-menu]'))`, 'reader context menu reopened after note cancellation');
   await waitFor(cdp, `document.activeElement?.textContent === '复制正文'`, 'reopened context menu focus');
+  // Menu entry also schedules focus for the next frame. Finish that setup
+  // before exercising navigation, rather than racing its initial focus pass.
+  await cdp.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
+  await waitFor(cdp, `document.activeElement?.textContent === '复制正文'`, 'reopened menu focus after scheduled initialization');
   await cdp.evaluate(`document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))`);
   await waitFor(cdp, `document.querySelector('[data-reader-context-menu]')?.querySelector('[role="menuitem"]:focus')?.textContent === '剪切正文'`,
     'reader context menu arrow navigation');
