@@ -1,0 +1,649 @@
+{
+  "batch": "QA5",
+  "date": "2026-11-21",
+  "status": "local-software-slice-verified-not-QA1-exit",
+  "runtimeSourceCommit": "653bff54373e78e950736691d2bddbecc9040d3f",
+  "build": {
+    "manifest": {
+      "path": "out/qa/qa5c-final-build-manifest.json",
+      "bytes": 10904,
+      "sha256": "34102a6c0bdc18fbe8e8d3543b3a4a8bd51574fa3937ae700bb65e5fa7d87f2d"
+    },
+    "tests": 496,
+    "passed": 496,
+    "failed": 0,
+    "cleanSource": true,
+    "lockUnchanged": true,
+    "dependencyPatch": [
+      {
+        "bytes": 155053,
+        "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+      },
+      {
+        "bytes": 155053,
+        "sha256": "A24AD58CF3D16245CBAA2F7254970A963282A189ADEC5A844F345E0B54C1E699"
+      }
+    ],
+    "artifacts": [
+      {
+        "name": "app.asar",
+        "bytes": 4124119,
+        "sha256": "9E57A1263DC3B60CF178617E19327A405C0C0B78E48FCA097A736E07E24AA796"
+      },
+      {
+        "name": "MerMarkd-0.1.0 Setup.exe",
+        "bytes": 154853888,
+        "sha256": "698EB615889B53C071BC196F631E6949BFE4192D8BF0EB1A3119944736FA5FD2"
+      },
+      {
+        "name": "RELEASES",
+        "bytes": 79,
+        "sha256": "EA7D35C4D7D9FA8BF48621CD9A54BF26DA83C5BF452A4351357A5095FA7502D2"
+      },
+      {
+        "name": "MerMarkd-0.1.0-full.nupkg",
+        "bytes": 154098661,
+        "sha256": "8FC0E9CD72C557F63626558A24741D0C772F918995F8D0F980B0C7C0535C752D"
+      }
+    ]
+  },
+  "packaged": {
+    "manifest": {
+      "path": "out/qa/qa5c-final-regression-manifest.json",
+      "bytes": 15410,
+      "sha256": "8b1994497420e37b520207d9b6aac3f008c701fb7c8e77326344bbe11ad13b82"
+    },
+    "suites": [
+      "qa5-reader",
+      "qa4-reader",
+      "qa3-drag",
+      "qa3-squirrel",
+      "file1d",
+      "file1c",
+      "file1b",
+      "file1a",
+      "ux9",
+      "qa2",
+      "source-composition",
+      "ux8",
+      "ux7",
+      "ux6b",
+      "a6",
+      "a7-1",
+      "a7-2",
+      "a7-3b",
+      "a7-4",
+      "a7-5",
+      "a8-2",
+      "a8-3",
+      "a8-4",
+      "a8-5",
+      "b1",
+      "ux1",
+      "ux2",
+      "ux3",
+      "ux4",
+      "ux5",
+      "perf1",
+      "ux6a",
+      "perf2",
+      "perf3a",
+      "perf3b",
+      "perf3c",
+      "perf3d",
+      "perf3e",
+      "perf3g"
+    ],
+    "reusedPassingSuites": 0,
+    "menuNavigationRevision": "4aae0acb286067d58e5d60d3ec60a79093d90f54",
+    "menuNavigationScript": {
+      "path": "tests/e2e/a7-3b-packaged.mjs",
+      "bytes": 43554,
+      "sha256": "c47eb3f8924ea6a97f8a21188b4e2850892b1904aa27912f3f0fdbb9e60f7049"
+    }
+  },
+  "vite": {
+    "manifest": {
+      "path": "out/qa/qa5c-final-vite-c-manifest.json",
+      "bytes": 4413,
+      "sha256": "217a85e57e40328363e421109d03bc486252cdd4dac077a125081c678d29b40f"
+    },
+    "suites": [
+      "qa5-reader",
+      "qa4-reader",
+      "qa3-drag",
+      "file1d",
+      "file1c",
+      "file1b",
+      "file1a",
+      "ux9",
+      "ux8",
+      "ux7"
+    ],
+    "serverStopped": true
+  },
+  "focused": {
+    "report": {
+      "path": "out/qa/qa5c-new-composition-a.json",
+      "bytes": 311484,
+      "sha256": "b418bf48ca6bdc4430400539349f8c32aa20e589226eeb0680bf8a8d4e0c9d92"
+    },
+    "script": "2c4fa50254a62830fe54b28b0fd11343b5731249f1f05da743074e799ee7d35b",
+    "checks": [
+      {
+        "name": "final-input-before-compositionend",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "compositionend-before-final-input",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "compositionend-reads-final-dom-without-another-input",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "final-input-in-later-browser-task",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "cancelled-composition-without-final-input",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "escape-cancels-focused-settling",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "refocus-defers-the-same-block-until-fresh-blur",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "new-composition-invalidates-previous-settle",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "duplicate-blur-publishes-once",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "composition-and-settle-block-mode-save-annotations-and-departure",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "ordinary-noncomposition-blur-keeps-one-shared-edit",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "rejected-paste-preserves-existing-reader-draft",
+        "status": "passed",
+        "provenance": "Trusted CDP insertText followed by a synthetic ClipboardEvent on the actual paste handler; actual feedback dismissal and shared blur commit. Does not modify the system clipboard."
+      },
+      {
+        "name": "settle-then-discard-leaves-normally-and-old-detached-events-are-inert",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "test-owned-disconnected-composition-target-releases-shell-guard",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "final-chinese-edit-before-explicit-save",
+        "status": "passed",
+        "provenance": "synthetic DOM CompositionEvent/InputEvent; actual product component and shared session"
+      },
+      {
+        "name": "explicit-save-exact-bytes-and-annotation-mapping",
+        "status": "passed",
+        "provenance": "Actual shell save and persisted three-file verification"
+      }
+    ],
+    "savedFiles": [
+      {
+        "suffix": "",
+        "bytes": 113,
+        "sha256": "0f150e6196570da070bb4515cc3af9fdab3d051588e1bdbf36713260b310cda8",
+        "mtimeNs": "1795232715145613500"
+      },
+      {
+        "suffix": ".annotations.yaml",
+        "bytes": 723,
+        "sha256": "586f072e4fd0912b858624a152e15552ae7b1f9d04e552ada32efcd18c4d8176",
+        "mtimeNs": "1795232715159187100"
+      },
+      {
+        "suffix": ".mermarkd.json",
+        "bytes": 824,
+        "sha256": "be4df93c40af74874246d41b48921e516c286069f1b1a8bd9690faa2ae8e9b95",
+        "mtimeNs": "1795232707710089400"
+      }
+    ],
+    "provenance": "Controlled composition event ordering, actual product component/shared history/save. Trusted ordinary browser input plus synthetic ClipboardEvent for paste rejection. Physical IME acceptance recorded separately."
+  },
+  "native": {
+    "report": {
+      "path": "out/qa/qa5-native-acceptance-c.json",
+      "bytes": 4846,
+      "sha256": "85cdb5de002165f9e8933e159b5ca2d06ed144bd6480876770af3eff63845d2f"
+    },
+    "status": "passed",
+    "date": "2026-11-21",
+    "asarSha256": "9e57a1263dc3b60cf178617e19327a405c0c0b78e48fca097a736e07e24aa796",
+    "runtimeSourceCommit": "653bff54373e78e950736691d2bddbecc9040d3f",
+    "reports": [
+      {
+        "path": "out/qa/qa5-native-ime-c.json",
+        "bytes": 351435,
+        "sha256": "03dc6b5c0231f6037033e1eede396b1ef437cfd185aaa91f6a756c6d9ccb4ce8"
+      }
+    ],
+    "samples": [
+      {
+        "label": "baseline",
+        "report": "out/qa/qa5-native-ime-c-baseline.json",
+        "sha256": "f471ae8508b4ceb90e24c4a673ffa07e42d8dd101f9ad6c4244ea003e6daacbd",
+        "bytes": 9193
+      },
+      {
+        "label": "candidate",
+        "report": "out/qa/qa5-native-ime-c-candidate.json",
+        "sha256": "9601c6eaeafc97139e66b165ee49c0bc2e680c83142d4035166344ee1cf61b75",
+        "bytes": 11900
+      },
+      {
+        "label": "guarded-save",
+        "report": "out/qa/qa5-native-ime-c-guarded-save.json",
+        "sha256": "1b10a84163b858da37e07c9cc1a1f0e39b5e6d554d9c399a840c6301f6e67e0d",
+        "bytes": 13093
+      },
+      {
+        "label": "cancelled",
+        "report": "out/qa/qa5-native-ime-c-cancelled.json",
+        "sha256": "b4674a2501e517399e7aa77621856b88ba36c1749e789fa4fad111cd519c0ad8",
+        "bytes": 14590
+      },
+      {
+        "label": "confirmed",
+        "report": "out/qa/qa5-native-ime-c-confirmed.json",
+        "sha256": "0ffc7e301a4512edd4d85ea4411777fe0d70559a643975e48fb523c6bee5c418",
+        "bytes": 18856
+      },
+      {
+        "label": "committed",
+        "report": "out/qa/qa5-native-ime-c-committed.json",
+        "sha256": "9da6146e8271c02850c18442eeeb28aa2979e77ad32b2de8de52662a55b85213",
+        "bytes": 19663
+      },
+      {
+        "label": "undone",
+        "report": "out/qa/qa5-native-ime-c-undone.json",
+        "sha256": "a82eaf784f318b2bc00231b5b189305c48df623ef5cce2e2cff87a88766a8d94",
+        "bytes": 20430
+      },
+      {
+        "label": "redone",
+        "report": "out/qa/qa5-native-ime-c-redone.json",
+        "sha256": "d9c26cc7db7c12ed24df62b5bb3dfc4caec2e6f2a209c75277ae1affd272e265",
+        "bytes": 21206
+      },
+      {
+        "label": "saved",
+        "report": "out/qa/qa5-native-ime-c-saved.json",
+        "sha256": "49f2820d27b1ae005abd5f23be921a59eefd48895feb60663c61ad01cfbf92d0",
+        "bytes": 21858
+      },
+      {
+        "label": "blur-candidate",
+        "report": "out/qa/qa5-native-ime-c-blur-candidate.json",
+        "sha256": "9f13b861c80bfec2107b32139cd65f6f1667d62da1727bab540a8b5c0f08a4a2",
+        "bytes": 23707
+      },
+      {
+        "label": "blurred",
+        "report": "out/qa/qa5-native-ime-c-blurred.json",
+        "sha256": "690d2b5ea61900b09f9cd8411a55d6c147a30dd0c630bdcd1abf236572e7d87d",
+        "bytes": 24220
+      },
+      {
+        "label": "final-clean",
+        "report": "out/qa/qa5-native-ime-c-final-clean.json",
+        "sha256": "1946f223926aa6ecde40a896a392f4b6b5adcc9bd7a0b9bab9d67fedc6b533da",
+        "bytes": 25001
+      }
+    ],
+    "provider": {
+      "name": "Tencent WeType",
+      "observedVersion": "3.0.2.44",
+      "evidence": "Candidate UI observed during native key presses; local wetype_server process version directory read after the session. No input method installation or switch."
+    },
+    "nativeActions": [
+      "Click actual reader paragraph and verify focus",
+      "Native n/i keys produce visible candidates",
+      "Ctrl+S during candidate: zero additional save/update IPC and unchanged three files",
+      "Escape cancels candidate to original text with no history or disk change",
+      "Native n/i/space confirms 你; Ctrl+Enter commits one shared edit",
+      "Switch to source; Ctrl+Z restores original, Ctrl+Y restores Chinese",
+      "Explicit Ctrl+S saves exact UTF-8 BOM + CRLF, no final newline, and maps the retained annotation",
+      "Return to reader, start native n candidate, click title to blur: actual provider final n matches shared source",
+      "Undo the temporary n to the already-saved Chinese state; no second persistence"
+    ],
+    "eventTrust": {
+      "keydown:trusted": 23,
+      "compositionstart:trusted": 3,
+      "compositionupdate:trusted": 7,
+      "beforeinput:trusted": 7,
+      "input:trusted": 7,
+      "compositionend:untrusted": 3
+    },
+    "compositionEnds": [
+      {
+        "data": "",
+        "isTrusted": false
+      },
+      {
+        "data": "你",
+        "isTrusted": false
+      },
+      {
+        "data": "n",
+        "isTrusted": false
+      }
+    ],
+    "sourceAndCompanions": {
+      "unchangedBeforeExplicitSave": true,
+      "sourceBytes": 96,
+      "sourceSha256": "17f8871e805b5a0251e5aa3e93ff027c7a42b9fc85c45d610af698d999e6fb58",
+      "annotationMapped": true,
+      "canvasBytesAndMtimeUnchanged": true,
+      "onlyOneExplicitNativeSave": true
+    },
+    "boundary": "Windows SendInput / existing WeType path was exercised, not CDP text insertion for IME. compositionstart/update and native input were trusted; the observed compositionend events had isTrusted=false and are preserved as received. This does not prove WeType naturally reproduces the synthetic old-package event-order defect. No human typing interference observed; no formal performance sample."
+  },
+  "axDiagnostic": {
+    "report": {
+      "path": "out/qa/qa5-ax-negative-summary.json",
+      "bytes": 4261,
+      "sha256": "06dc6c8a2ea92341abb08aa7b35114194e4dc429eca05257694d4bf8a03a0f56"
+    },
+    "rows": [
+      {
+        "id": "qa5-ax-layout-a-3-reader",
+        "readyMs": 92.09999999403954,
+        "gapMs": 566.8000000000029,
+        "longTasks": [
+          {
+            "start": 114692.39999999106,
+            "duration": 563
+          }
+        ],
+        "eligible": "diagnostic-focus-or-visibility-invalid",
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa5-ax-layout-a-5-reader",
+        "readyMs": 763.6000000089407,
+        "gapMs": 579.2999999999884,
+        "longTasks": [
+          {
+            "start": 190281.29999999702,
+            "duration": 110
+          },
+          {
+            "start": 190463.79999999702,
+            "duration": 554
+          }
+        ],
+        "eligible": "diagnostic-focus-or-visibility-invalid",
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa5-ax-layout-a-7-reader",
+        "readyMs": 176,
+        "gapMs": 525,
+        "longTasks": [
+          {
+            "start": 194740.89999999106,
+            "duration": 110
+          },
+          {
+            "start": 194916.09999999404,
+            "duration": 562
+          }
+        ],
+        "eligible": "diagnostic-focus-or-visibility-invalid",
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa5-ax-layout-a-9-reader",
+        "readyMs": 86.40000000596046,
+        "gapMs": 558.3000000000175,
+        "longTasks": [
+          {
+            "start": 208272.79999999702,
+            "duration": 558
+          }
+        ],
+        "eligible": "diagnostic-focus-or-visibility-invalid",
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa5-ax-layout-a-11-reader",
+        "readyMs": 89.29999999701977,
+        "gapMs": 558.2999999999884,
+        "longTasks": [
+          {
+            "start": 212018.69999998808,
+            "duration": 557
+          }
+        ],
+        "eligible": "diagnostic-focus-or-visibility-invalid",
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa5-ax-layout-a-13-reader",
+        "readyMs": 87,
+        "gapMs": 516.6000000000058,
+        "longTasks": [
+          {
+            "start": 237074.59999999404,
+            "duration": 516
+          }
+        ],
+        "eligible": "diagnostic-focus-or-visibility-invalid",
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      },
+      {
+        "id": "qa5-ax-layout-a-15-reader",
+        "readyMs": 82.09999999403954,
+        "gapMs": 525,
+        "longTasks": [
+          {
+            "start": 240767.79999999702,
+            "duration": 526
+          }
+        ],
+        "eligible": "diagnostic-focus-or-visibility-invalid",
+        "features": [
+          "nativeAPIs",
+          "webContents",
+          "inlineTextBoxes",
+          "extendedProperties"
+        ]
+      }
+    ],
+    "controls": [
+      "Original product #3",
+      "CV hidden removal #5/#7",
+      "Adjacent text split #9/#11",
+      "Restored product #13/#15"
+    ],
+    "focus": "All diagnostic action before/after snapshots were not focused; no budget pass or reliable percentage improvement claimed.",
+    "finalDom": {
+      "mode": "reader",
+      "dirty": "false",
+      "ready": "ready",
+      "headings": 200,
+      "highlights": 500,
+      "hostCount": 1001,
+      "editableHosts": 1001,
+      "focusableParagraphs": 0,
+      "probe": null,
+      "textSha256": "8ce32c1a8c194f0041a1419fd12c00a75c18b81da10f51b58915718713804455",
+      "textUnits": 5263209,
+      "hasTail": true
+    },
+    "conclusion": "Both CSS and adjacent-Text probes were restored. Focus was false; no formal performance pass or reliable improvement percentage. Native AX long tasks remain unresolved."
+  },
+  "preservedAttempts": [
+    {
+      "report": {
+        "path": "out/qa/qa5-old-composition-c-script.json",
+        "bytes": 67699,
+        "sha256": "4bfb6dd33775f9dc843a1daf188703928e2a1bdf7275eb52c4f01d4e94cb930b"
+      },
+      "scope": "QA4 frozen package commits intermediate pinyin after controlled blur/end/final-input ordering; not attributed to a physical IME provider."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-permission-old-c-script.json",
+        "bytes": 270555,
+        "sha256": "e8aa1aaf9f722ec57d4f267460103678507e4784734cb57a8ca3afb7e5487306"
+      },
+      "scope": "Initial QA5 candidate loses preceding unpublished input on rejected multiline paste; final identical script rejects this candidate."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-permission-old-a.json",
+        "bytes": 270945,
+        "sha256": "17a5e262aa887e51b572aa5b1a4197c0fe8d67a68237bc8671f1943b3476bc02"
+      },
+      "scope": "Earlier trusted Ctrl+V version independently reproduced the same initial-candidate permission-reset defect; final regression avoids the shared system clipboard."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-old-composition-b.json",
+        "bytes": 44422,
+        "sha256": "d8c5d1733efdac93aa479aadd287881509d40ab5785ecfee61d56d3a7343a9d9"
+      },
+      "scope": "Invalid clean Ctrl+S test setup: clean shortcut intentionally does not dispatch save. Test removed; not a product defect."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-final-regression-manifest.json",
+        "bytes": 15432,
+        "sha256": "f48c8369188ac9210e9a752f269ff49c8c667efa6ba01351c1a65468ae188c84"
+      },
+      "scope": "Initial candidate: first 38 suites passed, perf3g return-reader was blocked by an input/save guard. Exact cause unconfirmed."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-final-retry-regression-manifest.json",
+        "bytes": 19351,
+        "sha256": "ccda0787a6beaeef528a16ac84b24154a7e243173e8c94b6de7e932d9c7232f9"
+      },
+      "scope": "Same initial ASAR, unchanged perf3g rerun passed; preceding 38 log hashes verified and reused. Does not erase the first failure."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5b-final-regression-manifest.json",
+        "bytes": 7450,
+        "sha256": "a44fe8364a35bcc9998dfba1359774a626e5e3d545e0ca9096b207541507b0cc"
+      },
+      "scope": "Intermediate B runtime: first 17 suites passed, a7-3b timed out at reader menu arrow navigation. Diagnostic rerun passed; exact initial cause not established. Test now waits for the existing scheduled focus initialization before retaining the same navigation assertion."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5b-final-retry-regression-manifest.json",
+        "bytes": 13175,
+        "sha256": "e93987ee7ac75aa91950de1deb3f1209f7775a0e06d6e7a13a38bb9e7cbb141f"
+      },
+      "scope": "Intermediate B runtime resumed with 17 verified passing suites, then UX3 exposed a product regression: rejected cross-leaf native text was not restored after feedback disposed the session. Final C distinguishes draft ownership from handed-off text; all 39 final C suites rerun without reused results."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-native-acceptance.json",
+        "bytes": 4846,
+        "sha256": "692d9b3c4654d898eeddf65b5783f290271a6e33fea9a61f7dc3f5d9ccf8e624"
+      },
+      "scope": "B physical IME acceptance passed on its identified ASAR; kept as intermediate evidence, not used for final C physical acceptance."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-a7-focus-probe-b.log",
+        "bytes": 1944,
+        "sha256": "00f49125cb87b76292028a777f6ebb38e06ceb1e2c7fa9a9f51a46e87fd02991"
+      },
+      "scope": "Read-only focus journal and two-frame observation on the same final ASAR; full a7-3b flow passed. This does not prove the first timeout root cause."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5-a7-focus-probe.log",
+        "bytes": 955,
+        "sha256": "0616bec594d14f96964f6866710f6259cf6a797992526cd698f8949bc77fa039"
+      },
+      "scope": "Invalid first diagnostic script inserted a reader journal reference into the earlier source-menu arrow site; corrected the diagnostic site, without changing product code."
+    },
+    {
+      "report": {
+        "path": "out/qa/qa5c-final-vite-b-manifest.json",
+        "bytes": 1800,
+        "sha256": "b6b959f1ca3a8bb8c949e170ac71a75baf886e0fa07a245712e22286166c16f6"
+      },
+      "scope": "First final-C Vite run: QA5/QA4 passed, QA3 drag had 8/9 cases pass and one DevTools target connection assertion before pointer validation. Server stopped; all ten suites rerun on the same ASAR and unchanged scripts."
+    }
+  ],
+  "protectedUserFiles": {
+    "src/renderer/index-3b82dd4d61e8.html": "9ea97c911a3482916cd4ff4de75be500ac42f9b6e907d1c4d5f0ffd250c49196",
+    "tests/fixtures/reader/mixed-layout.md": "c5d4f6f798e11a3550ddd494f020413020b8fde27fea89e46146be1c909aead1",
+    "tests/fixtures/reader/mixed-layout.md.mermarkd.json": "d62caa49b9b81b665dcf636cc620e8a1d5229ee9e30a1a2a86d88cce0eef691f"
+  },
+  "limitations": [
+    "Native AX performance, historical single large canvas jump, uninstall binary residue and long-term memory remain open.",
+    "No new real installation/uninstallation, physical cross-display/volume, clean Windows or public release acceptance.",
+    "Setup generated locally; not installed or publicly released. Raw profiles, fixtures, native captures and traces remain local.",
+    "Local test results are separate from cloud CI. QA1/P0 has not reached overall exit."
+  ]
+}
