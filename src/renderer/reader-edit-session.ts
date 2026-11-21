@@ -133,6 +133,7 @@ export function createReaderEditSession(options: ReaderEditSessionOptions) {
 
   return {
     composing: () => composing,
+    ownsDraft: () => editing,
     focus: () => {
       if (!alive) return;
       cancel();

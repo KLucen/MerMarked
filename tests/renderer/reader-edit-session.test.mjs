@@ -201,6 +201,26 @@ test('refocus cancels stale settling and leaves the draft for a later blur', asy
   await settled();
 });
 
+test('draft ownership transfers on commit and returns to a fresh focused edit', async () => {
+  const response = deferred();
+  const h = harness(() => response.promise);
+  assert.equal(h.session.ownsDraft(), false);
+  h.focus();
+  assert.equal(h.session.ownsDraft(), true);
+  h.input('正文保留');
+  h.blur();
+  assert.equal(h.session.ownsDraft(), false, 'source/feedback owns the text after handoff');
+  assert.equal(h.activity, 1, 'the emitted commit still owns its lease');
+  h.focus();
+  h.input('正文新的输入');
+  assert.equal(h.session.ownsDraft(), true, 'a refocused draft cannot be restored by the old reply');
+  response.resolve(false);
+  await settled();
+  assert.equal(h.session.ownsDraft(), true);
+  assert.equal(h.dom, '正文新的输入');
+  assert.equal(h.activity, 0);
+});
+
 test('a new composition rejects an already queued completion of the old one', async () => {
   const h = harness();
   composeThenBlur(h);

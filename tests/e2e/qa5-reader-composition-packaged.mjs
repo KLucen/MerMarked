@@ -379,6 +379,14 @@ try {
       await reader('正文保留');
       assert.equal(await page.evaluate('document.querySelector(".app-shell")?.dataset.dirty'), 'true', 'Dismissing the paste feedback retains the preceding draft dirty state');
       assert.equal(await page.evaluate('document.querySelector(".markdown-body p")===__qa5Target'), true, 'Re-enabling editing also preserves the native paragraph');
+      // Pause again before refocusing: the replacement session must inherit
+      // the retained draft's ownership even though the feedback button has focus.
+      assert.equal(await page.evaluate(`(()=>{const data=new DataTransfer();data.setData('text/plain','再次拒绝\\n第二行');
+        return __qa5Target.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:data}));})()`), false);
+      await wait('document.querySelector("textarea[aria-label=未应用的输入]")?.value==="再次拒绝\\n第二行"&&!document.querySelector(".markdown-body p").isContentEditable', 'Second permission pause before refocusing');
+      assert.equal(await page.evaluate('__qa5Target.isConnected&&document.querySelector(".markdown-body p")===__qa5Target&&__qa5Target.textContent==="正文保留"'), true, 'Repeated pause preserves a still-unpublished draft');
+      await click('[aria-label="关闭阅读编辑提示"]'); await reader('正文保留');
+      await untouched('Repeated permission pauses never persist the draft or rejected paste');
       await page.evaluate('__qa5Target.focus();__qa5Target.blur()');
       await committed('正文保留', record);
     });

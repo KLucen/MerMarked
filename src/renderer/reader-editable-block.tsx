@@ -59,6 +59,7 @@ export function ReaderEditableBlock({
   const elementRef = useRef<HTMLElement | null>(null);
   const [restoreVersion, setRestoreVersion] = useState(0);
   const nativeMutationRef = useRef(false);
+  const retainedDraftRef = useRef(true);
   const sourceIdentityRef = useRef({ documentKey, as, blockStart, sourceText, id });
   const sessionRef = useRef<ReturnType<typeof createReaderEditSession> | null>(null);
   const callbacks = useRef({ onCommit, onDraftChange, onRestricted });
@@ -68,10 +69,11 @@ export function ReaderEditableBlock({
     const replaced = previous.documentKey !== documentKey || previous.as !== as ||
       previous.blockStart !== blockStart || previous.sourceText !== sourceText || previous.id !== id;
     sourceIdentityRef.current = { documentKey, as, blockStart, sourceText, id };
-    // A new source invalidates native mutations. Permission changes only pause
-    // editing: a rejected paste must not erase text already typed in this block.
-    // Untouched DOM and the live ranges anchored in it also stay connected.
-    if (replaced && nativeMutationRef.current) {
+    // Preserve a draft paused before handoff (for example, a rejected paste).
+    // Once handed off, the source/feedback owns its text: restore the rendered
+    // children even if disabling disposes this session before its reply arrives.
+    // Untouched DOM and its live ranges always stay connected.
+    if ((replaced || !retainedDraftRef.current) && nativeMutationRef.current) {
       nativeMutationRef.current = false;
       setRestoreVersion(version => version + 1);
     }
@@ -95,10 +97,11 @@ export function ReaderEditableBlock({
       },
     });
     sessionRef.current = session;
-    // Chromium may keep focus while contenteditable is temporarily disabled.
-    // Adopt that focus so the next blur can publish the preserved native draft.
-    if (document.activeElement === elementRef.current) session.focus();
+    // Adopt a paused draft even if disabling moved focus away. Its ownership
+    // must survive another pause; this does not move the DOM focus or caret.
+    if ((nativeMutationRef.current && retainedDraftRef.current) || document.activeElement === elementRef.current) session.focus();
     return () => {
+      retainedDraftRef.current = session.ownsDraft();
       session.dispose();
       if (sessionRef.current === session) sessionRef.current = null;
     };
